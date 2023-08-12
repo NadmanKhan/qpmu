@@ -1,6 +1,8 @@
 #ifndef PHASORPOLARVIEW_H
 #define PHASORPOLARVIEW_H
 
+#include "appcentralwidget.h"
+#include "apptoolbar.h"
 #include "phasor.h"
 
 #include <QLineSeries>

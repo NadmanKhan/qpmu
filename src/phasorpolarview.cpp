@@ -13,6 +13,26 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
     chart->legend()->hide();
     chart->setTheme(QChart::ChartThemeBlueIcy);
 
+    auto controlWidget = new QWidget();
+    controlWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    auto controlWidgetLayout = new QVBoxLayout();
+    controlWidget->setLayout(controlWidgetLayout);
+
+    auto cw = AppCentralWidget::ptr();
+    auto tb = AppToolBar::ptr();
+    connect(cw,
+            &AppCentralWidget::currentChanged,
+            tb,
+            [this, cw, tb, controlWidget](int index) {
+                if (cw->widget(index) == this) {
+                    // this is the active widget
+                    tb->setControlWidget(controlWidget);
+                } else {
+                    // this is NOT the active widget
+                    tb->setControlWidget(nullptr);
+                }
+            });
+
     auto axisAngular = new QCategoryAxis(this);
     axisAngular->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
     axisAngular->setRange(0, 360);
@@ -20,7 +40,6 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
         auto label = QString::asprintf("%d&deg;", toAngleActual(angleOnAxis));
         axisAngular->append(label, angleOnAxis);
     }
-
     chart->addAxis(axisAngular, QPolarChart::PolarOrientationAngular);
 
     auto axisRadial = new QValueAxis(this);
@@ -52,6 +71,23 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
                     series->replace(1, toPointF(v));
                 }
             });
+
+        auto checkBox = new QCheckBox(phasor->label, controlWidget);
+        {
+            auto css = QString(
+                           "QCheckBox::indicator {"
+                           "    background-color: %1;"
+                           "}"
+                           "QCheckBox::indicator:checked {"
+                           "    border-image: url(:/images/view.png) 0 0 0 0 stretch stretch;"
+                           "}")
+                           .arg(series->pen().color().name(QColor::HexRgb));
+            checkBox->setStyleSheet(css);
+
+            checkBox->setChecked(true);
+            connect(checkBox, &QCheckBox::toggled, series, &QLineSeries::setVisible);
+        }
+        controlWidgetLayout->addWidget(checkBox, 0);
     }
 }
 
