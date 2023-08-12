@@ -1,12 +1,17 @@
-QT       += core gui charts virtualkeyboard
-
-greaterThan(QT_MAJOR_VERSION, 5.15): QT += widgets
+greaterThan(QT_MAJOR_VERSION, 5.15): \
+QT += \
+    core \
+    gui \
+    widgets \
+    charts \
+    virtualkeyboard
 
 CONFIG += c++17
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+DEFINES += #QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+QT_DISABLE_DEPRECATED_BEFORE=0x051500
 
 SOURCES += \
     appcentralwidget.cpp \
