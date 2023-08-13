@@ -11,9 +11,14 @@
 #include <array>
 #include <deque>
 
+#include <list>
+
 class Phasor : public QObject {
     Q_OBJECT
 public:
+    template <class T>
+    using ListType = std::list<T>;
+
     /// Public Types
     struct Value {
         qreal phaseAngle;
@@ -21,9 +26,9 @@ public:
         qint64 timeStamp;
     };
     struct Value_SOA {
-        std::deque<qreal> phaseAngles;
-        std::deque<qreal> magnitudes;
-        std::deque<qint64> timestamps;
+        ListType<qreal> phaseAngles;
+        ListType<qreal> magnitudes;
+        ListType<qint64> timestamps;
     };
     enum ModeOfOperation {
         Random,
@@ -47,7 +52,7 @@ public:
     /// Public Member Functions
     void add(const Value& value);
     void clear();
-    std::deque<Value> values() const;
+    ListType<Value> values() const;
     Value_SOA values_SOA() const;
 
     /// Public Static Member Variables
@@ -78,9 +83,9 @@ private:
     static QMetaObject::Connection m_connection;
 
     /// Private member variables
-    std::deque<qreal> m_phaseAngles;
-    std::deque<qreal> m_magnitudes;
-    std::deque<qint64> m_timestamps;
+    ListType<qreal> m_phaseAngles;
+    ListType<qreal> m_magnitudes;
+    ListType<qint64> m_timestamps;
 };
 
 #endif /// PHASOR_H

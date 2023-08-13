@@ -73,11 +73,13 @@ void Phasor::add(const Value& value) {
     m_phaseAngles.push_back(value.phaseAngle);
     m_magnitudes.push_back(value.magnitude);
     m_timestamps.push_back(value.timeStamp);
-    while ((qsizetype)m_phaseAngles.size() > m_capacity) {
+
+    if ((qsizetype)m_phaseAngles.size() > m_capacity) {
         m_phaseAngles.pop_front();
         m_magnitudes.pop_front();
-        m_timestamps.pop_back();
+        m_timestamps.pop_front();
     }
+
     emit newValueAdded(value);
 }
 
@@ -87,17 +89,26 @@ void Phasor::clear() {
     m_timestamps.clear();
 }
 
-std::deque<Phasor::Value> Phasor::values() const {
-    std::deque<Phasor::Value> list;
-    for (int i = 0; i < (int)m_phaseAngles.size(); ++i) {
-        list.push_back({m_phaseAngles[i], m_magnitudes[i], m_timestamps[i]});
+Phasor::ListType<Phasor::Value> Phasor::values() const {
+    Phasor::ListType<Phasor::Value> list;
+    auto it_phaseAngle = m_phaseAngles.begin();
+    auto it_magnitude = m_magnitudes.begin();
+    auto it_timestamp = m_timestamps.begin();
+
+    while (it_phaseAngle != m_phaseAngles.end()) {
+        list.push_back(Phasor::Value{*it_phaseAngle, *it_magnitude, *it_timestamp});
+
+        ++it_phaseAngle;
+        ++it_magnitude;
+        ++it_timestamp;
     }
+
     return list;
 }
 
 Phasor::Value_SOA Phasor::values_SOA() const {
-    std::deque<qreal> phaseAngles(m_phaseAngles.begin(), m_phaseAngles.end());
-    std::deque<qreal> magnitudes(m_magnitudes.begin(), m_magnitudes.end());
-    std::deque<qint64> timestamps(m_timestamps.begin(), m_timestamps.end());
+    Phasor::ListType<qreal> phaseAngles(m_phaseAngles.begin(), m_phaseAngles.end());
+    Phasor::ListType<qreal> magnitudes(m_magnitudes.begin(), m_magnitudes.end());
+    Phasor::ListType<qint64> timestamps(m_timestamps.begin(), m_timestamps.end());
     return {phaseAngles, magnitudes, timestamps};
 }
