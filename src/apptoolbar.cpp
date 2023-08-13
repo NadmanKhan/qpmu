@@ -26,7 +26,7 @@ AppToolBar::AppToolBar() {
     m_openControlAct->setCheckable(true);
     m_openControlAct->setChecked(false);
     m_openControlAct->setEnabled(false);
-    connect(m_openControlAct, &QAction::triggered, dw, &QDockWidget::setVisible);
+    connect(m_openControlAct, &QAction::toggled, dw, &QDockWidget::setVisible);
     addAction(m_openControlAct);
 }
 
@@ -37,8 +37,10 @@ AppToolBar* AppToolBar::ptr() {
     return m_ptr;
 }
 
-void AppToolBar::setControlWidget(QWidget* controlWidget) {
-    auto dw = AppDockWidget::ptr();
-    dw->setWidget(controlWidget);
-    m_openControlAct->setEnabled(controlWidget != nullptr);
+void AppToolBar::setControlEnabled(bool enabled) {
+    m_openControlAct->setEnabled(enabled);
+}
+
+void AppToolBar::setControlChecked(bool checked) {
+    m_openControlAct->setChecked(checked);
 }

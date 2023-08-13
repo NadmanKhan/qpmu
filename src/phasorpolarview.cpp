@@ -1,37 +1,9 @@
 #include "phasorpolarview.h"
 
 PhasorPolarView::PhasorPolarView(QWidget* parent)
-    : QChartView(parent) {
+    : AbstractPhasorView(new QPolarChart(), parent) {
 
-    hide();
-
-    auto chart = new QPolarChart();
-    setChart(chart);
-    setRenderHint(QPainter::Antialiasing, true);
-
-    chart->setAnimationOptions(QChart::NoAnimation);
-    chart->legend()->hide();
-    chart->setTheme(QChart::ChartThemeBlueIcy);
-
-    auto controlWidget = new QWidget();
-    controlWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    auto controlWidgetLayout = new QVBoxLayout();
-    controlWidget->setLayout(controlWidgetLayout);
-
-    auto cw = AppCentralWidget::ptr();
-    auto tb = AppToolBar::ptr();
-    connect(cw,
-            &AppCentralWidget::currentChanged,
-            tb,
-            [this, cw, tb, controlWidget](int index) {
-                if (cw->widget(index) == this) {
-                    // this is the active widget
-                    tb->setControlWidget(controlWidget);
-                } else {
-                    // this is NOT the active widget
-                    tb->setControlWidget(nullptr);
-                }
-            });
+    auto chart = qobject_cast<QPolarChart*>(this->chart());
 
     auto axisAngular = new QCategoryAxis(this);
     axisAngular->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
@@ -56,6 +28,7 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
             series->append(toPointF(values.back()));
         }
 
+        series->setName(phasor->label);
         series->setPen(QPen(QBrush(phasor->color), 2.0));
         series->attachAxis(axisAngular);
         series->attachAxis(axisRadial);
@@ -64,7 +37,7 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
             phasor,
             &Phasor::newValueAdded,
             this,
-            [series](const Phasor::Value& v) {
+            [this, series](const Phasor::Value& v) {
                 if (series->count() == 1) {
                     series->append(toPointF(v));
                 } else {
@@ -72,26 +45,11 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
                 }
             });
 
-        auto checkBox = new QCheckBox(phasor->label, controlWidget);
-        {
-            auto css = QString(
-                           "QCheckBox::indicator {"
-                           "    background-color: %1;"
-                           "}"
-                           "QCheckBox::indicator:checked {"
-                           "    border-image: url(:/images/view.png) 0 0 0 0 stretch stretch;"
-                           "}")
-                           .arg(series->pen().color().name(QColor::HexRgb));
-            checkBox->setStyleSheet(css);
-
-            checkBox->setChecked(true);
-            connect(checkBox, &QCheckBox::toggled, series, &QLineSeries::setVisible);
-        }
-        controlWidgetLayout->addWidget(checkBox, 0);
+        addSeriesToControl(series);
     }
 }
 
-QPointF PhasorPolarView::toPointF(const Phasor::Value& value) {
+QPointF PhasorPolarView::toPointF(const Phasor::Value& value) const {
     return {toAngleOnAxisF(value.phaseAngle * 360.0), value.magnitude};
 }
 

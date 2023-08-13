@@ -15,7 +15,8 @@ public:
     static AppToolBar* ptr();
 
 public slots:
-    void setControlWidget(QWidget* controlWidget);
+    void setControlEnabled(bool enabled);
+    void setControlChecked(bool checked);
 
 private:
     AppToolBar();

@@ -1,37 +1,9 @@
 #include "phasorwaveview.h"
 
 PhasorWaveView::PhasorWaveView(QWidget* parent)
-    : QChartView(parent) {
+    : AbstractPhasorView(new QChart(), parent) {
 
-    hide();
-
-    auto chart = new QChart();
-    setChart(chart);
-    setRenderHint(QPainter::Antialiasing, true);
-
-    chart->setAnimationOptions(QChart::NoAnimation);
-    chart->legend()->hide();
-    chart->setTheme(QChart::ChartThemeBlueIcy);
-
-    auto controlWidget = new QWidget();
-    controlWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    auto controlWidgetLayout = new QVBoxLayout();
-    controlWidget->setLayout(controlWidgetLayout);
-
-    auto cw = AppCentralWidget::ptr();
-    auto tb = AppToolBar::ptr();
-    connect(cw,
-            &AppCentralWidget::currentChanged,
-            tb,
-            [this, cw, tb, controlWidget](int index) {
-                if (cw->widget(index) == this) {
-                    // this is the active widget
-                    tb->setControlWidget(controlWidget);
-                } else {
-                    // this is NOT the active widget
-                    tb->setControlWidget(nullptr);
-                }
-            });
+    auto chart = this->chart();
 
     auto axisX = new QValueAxis();
     axisX->setTickCount(Phasor::capacity() + 1);
@@ -52,42 +24,27 @@ PhasorWaveView::PhasorWaveView(QWidget* parent)
         auto series = new QLineSeries(this);
         chart->addSeries(series);
 
-        series->setName(phasor->name);
+        series->setName(phasor->label);
         series->setPen(QPen(QBrush(phasor->color), 2.0));
         series->attachAxis(axisX);
         series->attachAxis(axisY);
 
-        for (auto v : values) series->append(toPoint(v));
+        for (auto v : values) series->append(toPointF(v));
         connect(
             phasor,
             &Phasor::newValueAdded,
             this,
-            [series, axisX, rangeWidthX, minValue](const Phasor::Value& v) {
+            [this, series, axisX, rangeWidthX, minValue](const Phasor::Value& v) {
                 auto maxX = v.timeStamp;
                 auto minX = qMax(minValue.timeStamp, maxX - rangeWidthX);
                 axisX->setRange(minX, maxX);
-                series->append(toPoint(v));
+                series->append(toPointF(v));
             });
 
-        auto checkBox = new QCheckBox(phasor->label, controlWidget);
-        {
-            auto css = QString(
-                           "QCheckBox::indicator {"
-                           "    background-color: %1;"
-                           "}"
-                           "QCheckBox::indicator:checked {"
-                           "    border-image: url(:/images/view.png) 0 0 0 0 stretch stretch;"
-                           "}")
-                           .arg(series->pen().color().name(QColor::HexRgb));
-            checkBox->setStyleSheet(css);
-
-            checkBox->setChecked(true);
-            connect(checkBox, &QCheckBox::toggled, series, &QLineSeries::setVisible);
-        }
-        controlWidgetLayout->addWidget(checkBox, 0);
+        addSeriesToControl(series);
     }
 }
 
-QPointF PhasorWaveView::toPoint(const Phasor::Value& value) {
+QPointF PhasorWaveView::toPointF(const Phasor::Value& value) const {
     return {(qreal)value.timeStamp, value.magnitude};
 }

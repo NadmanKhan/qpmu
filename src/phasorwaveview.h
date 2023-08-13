@@ -1,9 +1,9 @@
 #ifndef PHASORWAVEVIEW_H
 #define PHASORWAVEVIEW_H
 
-#include "appcentralwidget.h"
+#include "abstractphasorview.h"
+#include "appdockwidget.h"
 #include "phasor.h"
-#include "apptoolbar.h"
 
 #include <QCheckBox>
 #include <QFrame>
@@ -13,17 +13,14 @@
 #include <QWidget>
 #include <QtCharts>
 
-class PhasorWaveView : public QChartView {
+class PhasorWaveView : public AbstractPhasorView {
     Q_OBJECT
 
 public:
     PhasorWaveView(QWidget* parent = nullptr);
 
-signals:
-    void visibilityChanged(bool visible);
-
 private:
-    static QPointF toPoint(const Phasor::Value& value);
+    QPointF toPointF(const Phasor::Value& value) const override;
 };
 
 #endif // PHASORWAVEVIEW_H
