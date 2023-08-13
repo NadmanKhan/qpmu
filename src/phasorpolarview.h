@@ -1,22 +1,23 @@
 #ifndef PHASORPOLARVIEW_H
 #define PHASORPOLARVIEW_H
 
-#include "appcentralwidget.h"
-#include "apptoolbar.h"
+#include "abstractphasorview.h"
+#include "appdockwidget.h"
 #include "phasor.h"
 
 #include <QLineSeries>
 #include <QWidget>
 #include <QtCharts>
 
-class PhasorPolarView : public QChartView {
+class PhasorPolarView : public AbstractPhasorView {
     Q_OBJECT
 
 public:
     PhasorPolarView(QWidget* parent = nullptr);
 
 private:
-    static QPointF toPointF(const Phasor::Value& value);
+    QPointF toPointF(const Phasor::Value& value) const override;
+
     static constexpr qint32 normal(qint32 angle);
     static constexpr qreal normalF(qreal angle);
     static constexpr qint32 toAngleOnAxis(qint32 angleActual);

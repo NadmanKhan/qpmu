@@ -1,10 +1,12 @@
-greaterThan(QT_MAJOR_VERSION, 5.15): \
+
 QT += \
     core \
     gui \
     widgets \
     charts \
     virtualkeyboard
+
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
@@ -14,6 +16,7 @@ DEFINES += #QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs dep
 QT_DISABLE_DEPRECATED_BEFORE=0x051500
 
 SOURCES += \
+    abstractphasorview.cpp \
     appcentralwidget.cpp \
     appdockwidget.cpp \
     appmainmenu.cpp \
@@ -26,6 +29,7 @@ SOURCES += \
     phasorwaveview.cpp
 
 HEADERS += \
+    abstractphasorview.h \
     appcentralwidget.h \
     appdockwidget.h \
     appmainmenu.h \
