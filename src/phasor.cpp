@@ -10,13 +10,13 @@ qint64 Phasor::m_currTime = 0;
 QMetaObject::Connection Phasor::m_connection;
 
 std::array<Phasor* const, 7> Phasor::phasors = {
-    new Phasor("IA", "IA", Qt::red),
-    new Phasor("IB", "IB", Qt::green),
-    new Phasor("IC", "IC", Qt::blue),
-    new Phasor("IN", "IN", Qt::yellow),
-    new Phasor("VA", "VA", Qt::darkRed),
-    new Phasor("VB", "VB", Qt::darkGreen),
-    new Phasor("VC", "VC", Qt::darkBlue)};
+    new Phasor("IA", "IA", Phasor::Current, Qt::red),
+    new Phasor("IB", "IB", Phasor::Current, Qt::green),
+    new Phasor("IC", "IC", Phasor::Current, Qt::blue),
+    new Phasor("IN", "IN", Phasor::Current, Qt::yellow),
+    new Phasor("VA", "VA", Phasor::Voltage, Qt::darkRed),
+    new Phasor("VB", "VB", Phasor::Voltage, Qt::darkGreen),
+    new Phasor("VC", "VC", Phasor::Voltage, Qt::darkBlue)};
 
 void Phasor::setup(
     qreal maxAmplitude,
@@ -46,8 +46,8 @@ void Phasor::setup(
     m_timer.start(interval);
 }
 
-Phasor::Phasor(QString name, QString label, QColor color, QString unit)
-    : name(name), label(label), color(color), unit(unit) {}
+Phasor::Phasor(QString name, QString label, Phasor::Type type, QColor color, QString unit)
+    : name(name), label(label), type(type), color(color), unit(unit) {}
 
 qreal Phasor::random(qreal low, qreal high) {
     return low + (QRandomGenerator::global()->generateDouble() * (high - low));

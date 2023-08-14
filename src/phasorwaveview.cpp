@@ -41,7 +41,7 @@ PhasorWaveView::PhasorWaveView(QWidget* parent)
                 series->append(toPointF(v));
             });
 
-        addSeriesToControl(series);
+        addSeriesToControl(series, phasor->type);
     }
 }
 

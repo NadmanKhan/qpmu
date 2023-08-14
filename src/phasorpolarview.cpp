@@ -5,6 +5,8 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
 
     auto chart = qobject_cast<QPolarChart*>(this->chart());
 
+    /// create axes
+
     auto axisAngular = new QCategoryAxis(this);
     axisAngular->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
     axisAngular->setRange(0, 360);
@@ -17,6 +19,8 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
     auto axisRadial = new QValueAxis(this);
     axisRadial->setRange(0, 300);
     chart->addAxis(axisRadial, QPolarChart::PolarOrientationRadial);
+
+    /// create series and add points
 
     for (auto phasor : Phasor::phasors) {
         auto series = new QLineSeries(this);
@@ -45,7 +49,7 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
                 }
             });
 
-        addSeriesToControl(series);
+        addSeriesToControl(series, phasor->type);
     }
 }
 
