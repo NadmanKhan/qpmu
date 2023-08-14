@@ -17,7 +17,7 @@ AppStatusBar::AppStatusBar() {
     addPermanentWidget(m_dateLabel);
 }
 
-QLabel *AppStatusBar::makeLabel() {
+QLabel* AppStatusBar::makeLabel() {
     auto label = new QLabel();
 
     auto font = label->font();

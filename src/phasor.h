@@ -9,8 +9,6 @@
 #include <QTimer>
 
 #include <array>
-#include <deque>
-
 #include <list>
 
 class Phasor : public QObject {
@@ -20,6 +18,10 @@ public:
     using ListType = std::list<T>;
 
     /// Public Types
+    enum Type {
+        Voltage,
+        Current
+    };
     struct Value {
         qreal phaseAngle;
         qreal magnitude;
@@ -30,13 +32,14 @@ public:
         ListType<qreal> magnitudes;
         ListType<qint64> timestamps;
     };
+
     enum ModeOfOperation {
         Random,
         Live
     };
 
     /// Public Constructors
-    Phasor(QString name, QString label, QColor color, QString unit = "");
+    Phasor(QString name, QString label, Type type, QColor color, QString unit = "");
 
     /// Public Static Member Functions
     static void setup(
@@ -61,6 +64,7 @@ public:
     /// Public Member Variables (constants)
     const QString name;
     const QString label;
+    const Type type;
     const QColor color;
     const QString unit;
 

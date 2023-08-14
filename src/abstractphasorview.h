@@ -5,6 +5,8 @@
 #include "apptoolbar.h"
 #include "phasor.h"
 
+#include <QPair>
+#include <QList>
 #include <QVBoxLayout>
 #include <QtCharts>
 
@@ -17,11 +19,12 @@ public:
 
 protected:
     virtual QPointF toPointF(const Phasor::Value& value) const = 0;
-    void addSeriesToControl(QXYSeries* series);
+    void addSeriesToControl(QXYSeries* series, Phasor::Type phasorType);
 
-private:    
+private:
     QWidget* m_controlWidget;
     QVBoxLayout* m_controlLayout;
+    QList<QPair<QCheckBox*, Phasor::Type>> m_controlCheckBoxes;
 
     AppToolBar* tb;
     AppDockWidget* dw;
