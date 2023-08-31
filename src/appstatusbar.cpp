@@ -21,7 +21,8 @@ QLabel* AppStatusBar::makeLabel() {
     auto label = new QLabel();
 
     auto font = label->font();
-    font.setFamilies({"Courier", "Roboto Mono", "Source Code Pro", "Consolas"});
+//    font.setFamilies({"Courier", "Roboto Mono", "Source Code Pro", "Consolas"});
+    font.setFamily("Courier, 'Roboto Mono', 'Source Code Pro', Consolas");
     label->setFont(font);
 
     auto palette = label->palette();
