@@ -11,17 +11,14 @@ PhasorWaveView::PhasorWaveView(QWidget* parent)
     chart->addAxis(axisX, Qt::AlignBottom);
 
     auto axisY = new QValueAxis();
-    axisY->setRange(-Phasor::maxAmplitude(), +Phasor::maxAmplitude());
+    axisY->setRange(0, +Phasor::maxAmplitude());
     chart->addAxis(axisY, Qt::AlignLeft);
 
-    auto rangeWidthX = Phasor::interval() * Phasor::capacity();
+    auto rangeWidthX = 1000000000LL;
 
     for (int i = 0; i < (int)Phasor::phasors.size(); ++i) {
         const auto phasor = Phasor::phasors[i];
-        auto values = phasor->values();
-        auto minValue = values.front();
-
-        auto series = new QLineSeries(this);
+        auto series = new QSplineSeries(this);
         chart->addSeries(series);
 
         series->setName(phasor->label);
@@ -29,14 +26,13 @@ PhasorWaveView::PhasorWaveView(QWidget* parent)
         series->attachAxis(axisX);
         series->attachAxis(axisY);
 
-        for (auto v : values) series->append(toPointF(v));
         connect(
             phasor,
             &Phasor::newValueAdded,
             this,
-            [this, series, axisX, rangeWidthX, minValue](const Phasor::Value& v) {
+            [this, series, axisX, rangeWidthX](const Phasor::Value& v) {
                 auto maxX = v.timeStamp;
-                auto minX = qMax(minValue.timeStamp, maxX - rangeWidthX);
+                auto minX = maxX - rangeWidthX;
                 axisX->setRange(minX, maxX);
                 series->append(toPointF(v));
             });

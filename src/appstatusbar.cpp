@@ -22,7 +22,7 @@ QLabel* AppStatusBar::makeLabel() {
 
     auto font = label->font();
 //    font.setFamilies({"Courier", "Roboto Mono", "Source Code Pro", "Consolas"});
-    font.setFamily("Courier, 'Roboto Mono', 'Source Code Pro', Consolas");
+    font.setFamily("Courier, 'Source Code Pro', Consolas, 'Roboto Mono'");
     label->setFont(font);
 
     auto palette = label->palette();
@@ -40,6 +40,6 @@ AppStatusBar* AppStatusBar::ptr() {
 
 void AppStatusBar::updateDateTime() {
     auto dateTime = QDateTime::currentDateTime();
-    m_dateLabel->setText(dateTime.date().toString());
-    m_timeLabel->setText(dateTime.time().toString());
+    m_dateLabel->setText(dateTime.date().toString(Qt::TextDate));
+    m_timeLabel->setText(dateTime.time().toString(Qt::TextDate));
 }
