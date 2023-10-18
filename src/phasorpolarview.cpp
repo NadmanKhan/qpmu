@@ -17,7 +17,7 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
     chart->addAxis(axisAngular, QPolarChart::PolarOrientationAngular);
 
     auto axisRadial = new QValueAxis(this);
-    axisRadial->setRange(0, 300);
+    axisRadial->setRange(0, 20);
     chart->addAxis(axisRadial, QPolarChart::PolarOrientationRadial);
 
     /// create series and add points
@@ -26,16 +26,12 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
         auto series = new QLineSeries(this);
         chart->addSeries(series);
 
-        auto values = phasor->values();
-        series->append(0.0, 0.0);
-        if (values.size()) {
-            series->append(toPointF(values.back()));
-        }
-
         series->setName(phasor->label);
         series->setPen(QPen(QBrush(phasor->color), 2.0));
         series->attachAxis(axisAngular);
         series->attachAxis(axisRadial);
+
+        series->append(0.0, 0.0);
 
         connect(
             phasor,

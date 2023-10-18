@@ -13,6 +13,9 @@
 #include <QWidget>
 #include <QtCharts>
 
+#include <iostream>
+using std::cout;
+
 class PhasorWaveView : public AbstractPhasorView {
     Q_OBJECT
 

@@ -7,15 +7,17 @@
 #include <QRandomGenerator>
 #include <QString>
 #include <QTimer>
+#include <QProcess>
+#include <QTextStream>
+#include <QDebug>
 
 #include <array>
-#include <list>
+#include <iostream>
+using std::cout;
 
 class Phasor : public QObject {
     Q_OBJECT
 public:
-    template <class T>
-    using ListType = std::list<T>;
 
     /// Public Types
     enum Type {
@@ -26,11 +28,6 @@ public:
         qreal phaseAngle;
         qreal magnitude;
         qint64 timeStamp;
-    };
-    struct Value_SOA {
-        ListType<qreal> phaseAngles;
-        ListType<qreal> magnitudes;
-        ListType<qint64> timestamps;
     };
 
     enum ModeOfOperation {
@@ -43,20 +40,14 @@ public:
 
     /// Public Static Member Functions
     static void setup(
+        Phasor::ModeOfOperation mode = Phasor::mode(),
         qreal maxAmplitude = Phasor::maxAmplitude(),
         qsizetype capacity = Phasor::capacity(),
-        qint64 interval = Phasor::interval(),
-        Phasor::ModeOfOperation mode = Phasor::mode());
+        qint64 interval = Phasor::interval());
     static qreal maxAmplitude();
     static qsizetype capacity();
     static qint64 interval();
     static ModeOfOperation mode();
-
-    /// Public Member Functions
-    void add(const Value& value);
-    void clear();
-    ListType<Value> values() const;
-    Value_SOA values_SOA() const;
 
     /// Public Static Member Variables
     static std::array<Phasor* const, 7> phasors;
@@ -68,8 +59,10 @@ public:
     const QColor color;
     const QString unit;
 
+private slots:
+    void addValue(const Value& value);
+
 signals:
-    /// Signals
     void newValueAdded(const Value& value);
 
 private:
@@ -82,14 +75,10 @@ private:
     static qint64 m_interval;
     static ModeOfOperation m_mode;
     static QTimer m_timer;
+    static QProcess* m_process;
     static qint64 m_currTime;
     static QRandomGenerator m_rng;
     static QMetaObject::Connection m_connection;
-
-    /// Private member variables
-    ListType<qreal> m_phaseAngles;
-    ListType<qreal> m_magnitudes;
-    ListType<qint64> m_timestamps;
 };
 
 #endif /// PHASOR_H
