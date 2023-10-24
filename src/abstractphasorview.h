@@ -3,12 +3,14 @@
 
 #include "appdockwidget.h"
 #include "apptoolbar.h"
-#include "phasor.h"
+#include "pmu.h"
 
 #include <QPair>
 #include <QList>
 #include <QVBoxLayout>
 #include <QtCharts>
+#include <QXYSeries>
+#include <QVarLengthArray>
 
 class AbstractPhasorView : public QChartView {
     Q_OBJECT
@@ -17,17 +19,23 @@ public:
 
     ~AbstractPhasorView();
 
+    static constexpr qsizetype MaxWindowLen = 30;
+
 protected:
-    virtual QPointF toPointF(const Phasor::Value& value) const = 0;
-    void addSeriesToControl(QXYSeries* series, Phasor::Type phasorType);
+    void addSeriesToControl(QXYSeries* series, PMU::PhasorType phasorType);
+    AppToolBar* tb;
+    AppDockWidget* dw;
+    PMU* pmu;
+    QVarLengthArray<QXYSeries*, PMU::NumChannels> m_series;
+    QVarLengthArray<QList<QPointF>, PMU::NumChannels> m_pointsWindow;
+
+protected slots:
+    void virtual addSample(const PMU::Sample& sample) = 0;
 
 private:
     QWidget* m_controlWidget;
     QVBoxLayout* m_controlLayout;
-    QList<QPair<QCheckBox*, Phasor::Type>> m_controlCheckBoxes;
-
-    AppToolBar* tb;
-    AppDockWidget* dw;
+    QList<QPair<QCheckBox*, PMU::PhasorType>> m_controlCheckBoxes;
 
     // QWidget interface
 private:

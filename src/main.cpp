@@ -1,19 +1,20 @@
 #include "appmainwindow.h"
-#include "phasor.h"
 
 #include <QApplication>
 #include <QDebug>
+#include <QCommandLineParser>
+#include <QCommandLineOption>
 
 #include <iostream>
-using std::cout;
 
 int main(int argc, char *argv[])
 {
-    qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
-    QApplication app(argc, argv);
+    for (int i = 0; i < argc; ++i) {
+        std::cout << argv[i] << " ";
+    }
+    std::cout << "\n";
 
-    qDebug() << "args:\n";
-    Phasor::setup(Phasor::Live);
+    QApplication app(argc, argv);
 
     auto mainWindow = AppMainWindow::ptr();
     mainWindow->show();

@@ -37,7 +37,7 @@ AbstractPhasorView::AbstractPhasorView(QChart* chart, QWidget* parent)
     allVoltagesCheckBox->setStyleSheet(cssTemplateWhite);
     connect(allVoltagesCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
         for (auto& x : m_controlCheckBoxes) {
-            if (x.second == Phasor::Voltage) x.first->setChecked(checked);
+            if (x.second == PMU::Voltage) x.first->setChecked(checked);
         }
     });
     m_controlLayout->addWidget(allVoltagesCheckBox, 1);
@@ -47,13 +47,14 @@ AbstractPhasorView::AbstractPhasorView(QChart* chart, QWidget* parent)
     allCurrentsCheckBox->setStyleSheet(cssTemplateWhite);
     connect(allCurrentsCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
         for (auto& x : m_controlCheckBoxes) {
-            if (x.second == Phasor::Current) x.first->setChecked(checked);
+            if (x.second == PMU::Current) x.first->setChecked(checked);
         }
     });
     m_controlLayout->addWidget(allCurrentsCheckBox, 1);
 
     tb = AppToolBar::ptr();
     dw = AppDockWidget::ptr();
+    pmu = PMU::ptr();
 }
 
 AbstractPhasorView::~AbstractPhasorView() {
@@ -61,7 +62,7 @@ AbstractPhasorView::~AbstractPhasorView() {
     delete m_controlWidget;
 }
 
-void AbstractPhasorView::addSeriesToControl(QXYSeries* series, Phasor::Type phasorType) {
+void AbstractPhasorView::addSeriesToControl(QXYSeries* series, PMU::PhasorType phasorType) {
     auto checkBox = new QCheckBox(series->name(), this);
 
     auto css = QString(cssTemplateColorful)
@@ -73,6 +74,11 @@ void AbstractPhasorView::addSeriesToControl(QXYSeries* series, Phasor::Type phas
 
     m_controlCheckBoxes.append(qMakePair(checkBox, phasorType));
     m_controlLayout->addWidget(checkBox, 0);
+
+    for (int i = 0; i < (int)PMU::NumChannels; ++i) {
+        m_series.emplace_back(nullptr);
+        m_pointsWindow.emplace_back(QList<QPointF>{});
+    }
 }
 
 void AbstractPhasorView::showEvent([[maybe_unused]] QShowEvent* event) {

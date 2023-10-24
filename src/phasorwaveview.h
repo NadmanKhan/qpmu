@@ -3,7 +3,6 @@
 
 #include "abstractphasorview.h"
 #include "appdockwidget.h"
-#include "phasor.h"
 
 #include <QCheckBox>
 #include <QFrame>
@@ -23,7 +22,13 @@ public:
     PhasorWaveView(QWidget* parent = nullptr);
 
 private:
-    QPointF toPointF(const Phasor::Value& value) const override;
+    QValueAxis* m_axisX;
+    QValueAxis* m_axisY;
+
+    // AbstractPhasorView interface
+protected slots:
+
+    void addSample(const PMU::Sample &sample) override;
 };
 
 #endif // PHASORWAVEVIEW_H
