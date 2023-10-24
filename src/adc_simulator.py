@@ -23,7 +23,7 @@ if __name__ == '__main__':
         curr_ns = time.time_ns()
         ts = curr_ns - init_ns
         delta = ts - prev_ts
-        print(f'ch0={ch0:5}, ch1={ch1:5}, ch2={ch2:5}, ch3={ch3:5}, ch4={ch4:5}, ch5={ch5:5}, ts={ts:12}, delta={delta:6}')
+        print(f'ch0={ch0:5}, ch1={ch1:5}, ch2={ch2:5}, ch3={ch3:5}, ch4={ch4:5}, ch5={ch5:5}, ts={ts:12}, delta={delta:6},')
         prev_ts = ts
 
 

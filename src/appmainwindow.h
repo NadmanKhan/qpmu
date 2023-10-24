@@ -8,6 +8,7 @@
 #include "apptoolbar.h"
 #include "phasorwaveview.h"
 #include "phasorpolarview.h"
+#include "pmu.h"
 
 #include <QMainWindow>
 

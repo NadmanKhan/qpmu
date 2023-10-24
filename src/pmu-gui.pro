@@ -23,9 +23,10 @@ SOURCES += \
     apptoolbar.cpp \
     main.cpp \
     appmainwindow.cpp \
-    phasor.cpp \
     phasorpolarview.cpp \
-    phasorwaveview.cpp
+    phasorwaveview.cpp \
+    pmu.cpp \
+    rawdatareader.cpp
 
 HEADERS += \
     abstractphasorview.h \
@@ -35,9 +36,10 @@ HEADERS += \
     appmainwindow.h \
     appstatusbar.h \
     apptoolbar.h \
-    phasor.h \
     phasorpolarview.h \
-    phasorwaveview.h
+    phasorwaveview.h \
+    pmu.h \
+    rawdatareader.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

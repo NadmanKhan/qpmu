@@ -1,4 +1,5 @@
 #include "phasorpolarview.h"
+#include <iostream>
 
 PhasorPolarView::PhasorPolarView(QWidget* parent)
     : AbstractPhasorView(new QPolarChart(), parent) {
@@ -17,63 +18,61 @@ PhasorPolarView::PhasorPolarView(QWidget* parent)
     chart->addAxis(axisAngular, QPolarChart::PolarOrientationAngular);
 
     auto axisRadial = new QValueAxis(this);
-    axisRadial->setRange(0, 20);
     chart->addAxis(axisRadial, QPolarChart::PolarOrientationRadial);
 
     /// create series and add points
 
-    for (auto phasor : Phasor::phasors) {
-        auto series = new QLineSeries(this);
-        chart->addSeries(series);
+    for (int i = 0; i < (int)PMU::NumChannels; ++i) {
+        auto s = new QLineSeries(this);
+        chart->addSeries(s);
 
-        series->setName(phasor->label);
-        series->setPen(QPen(QBrush(phasor->color), 2.0));
-        series->attachAxis(axisAngular);
-        series->attachAxis(axisRadial);
+        s->setName(PMU::names[i]);
+        s->setPen(QPen(QBrush(PMU::colors[i]), 2.0));
+        s->attachAxis(axisAngular);
+        s->attachAxis(axisRadial);
+        addSeriesToControl(s, PMU::types[i]);
+        s->append(0.0, 0.0);
+        s->append(0.0, 0.0);
+        m_series[i] = s;
+    }
 
-        series->append(0.0, 0.0);
+    connect(pmu, &PMU::readySample, this, &PhasorPolarView::addSample);
+}
 
-        connect(
-            phasor,
-            &Phasor::newValueAdded,
-            this,
-            [this, series](const Phasor::Value& v) {
-                if (series->count() == 1) {
-                    series->append(toPointF(v));
-                } else {
-                    series->replace(1, toPointF(v));
-                }
-            });
-
-        addSeriesToControl(series, phasor->type);
+void PhasorPolarView::addSample(const PMU::Sample &sample)
+{
+    for (int i = 0; i < (int)PMU::NumChannels; ++i) {
+        auto [an, mg] = sample.toPolar(i);
+        an = toDegrees(an);
+        m_series[i]->replace(m_series[i]->count() - 1, {normalF(an), mg});
     }
 }
 
-QPointF PhasorPolarView::toPointF(const Phasor::Value& value) const {
-    return {toAngleOnAxisF(value.phaseAngle * 360.0), value.magnitude};
+constexpr qreal PhasorPolarView::toDegrees(qreal angle_rad) {
+    return angle_rad * (180.0 / M_PI);
 }
 
-constexpr qint32 PhasorPolarView::normal(qint32 angle) {
-    return ((angle % 360) + 360) % 360;
+constexpr qint32 PhasorPolarView::normal(qint32 angle_deg) {
+    return ((angle_deg % 360) + 360) % 360;
 }
 
-constexpr qreal PhasorPolarView::normalF(qreal angle) {
-    angle = fmod(angle, 360.0);
-    return angle + ((angle < 0.0) * 360.0);
+constexpr qreal PhasorPolarView::normalF(qreal angle_deg) {
+    angle_deg = fmod(angle_deg, 360.0);
+    return angle_deg + ((angle_deg < 0.0) * 360.0);
 }
 
-constexpr qint32 PhasorPolarView::toAngleOnAxis(qint32 angleActual) {
-    return normal(-angleActual - 90);
+constexpr qint32 PhasorPolarView::toAngleOnAxis(qint32 angleActual_deg) {
+    return normal(-angleActual_deg - 90);
 }
 
-constexpr qreal PhasorPolarView::toAngleOnAxisF(qreal angleActual) {
-    return normalF(-angleActual - 90);
+constexpr qreal PhasorPolarView::toAngleOnAxisF(qreal angleActual_deg) {
+    return normalF(-angleActual_deg - 90);
 }
 
-constexpr qint32 PhasorPolarView::toAngleActual(qint32 angleOnAxis) {
-    return normal(-angleOnAxis + 90);
+constexpr qint32 PhasorPolarView::toAngleActual(qint32 angleOnAxis_deg) {
+    return normal(-angleOnAxis_deg + 90);
 }
 
-constexpr qreal PhasorPolarView::toAngleActualF(qreal angleOnAxis) {
-    return normalF(-angleOnAxis + 90.0);
+constexpr qreal PhasorPolarView::toAngleActualF(qreal angleOnAxis_deg) {
+    return normalF(-angleOnAxis_deg + 90.0);
 }
