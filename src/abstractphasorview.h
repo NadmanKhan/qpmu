@@ -29,9 +29,6 @@ protected:
     QVarLengthArray<QXYSeries*, PMU::NumChannels> m_series;
     QVarLengthArray<QList<QPointF>, PMU::NumChannels> m_pointsWindow;
 
-protected slots:
-    void virtual addSample(const PMU::Sample& sample) = 0;
-
 private:
     QWidget* m_controlWidget;
     QVBoxLayout* m_controlLayout;

@@ -24,10 +24,8 @@ private:
     static constexpr qint32 toAngleActual(qint32 angleOnAxis_deg);
     static constexpr qreal toAngleActualF(qreal angleOnAxis_deg);
 
-    // AbstractPhasorView interface
-protected slots:
-
-    void addSample(const PMU::Sample &sample) override;
+private slots:
+    void addSample(const PMU::Sample &sample);
 };
 
 #endif // PHASORPOLARVIEW_H
