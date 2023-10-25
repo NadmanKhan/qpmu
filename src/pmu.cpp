@@ -36,10 +36,9 @@ PMU *PMU::ptr()
 {
     if (m_ptr == nullptr)  {
         auto args = QApplication::arguments();
-        Q_ASSERT(args.size() >= 3);
+        Q_ASSERT(args.size() >= 2);
         QString cmd = args[1];
-        QStringList args_new = {args[2]};
-        m_ptr = new PMU(cmd, args_new);
+        m_ptr = new PMU(cmd, args.sliced(2));
     }
     return m_ptr;
 }
