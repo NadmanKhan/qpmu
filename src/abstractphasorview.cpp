@@ -76,8 +76,8 @@ void AbstractPhasorView::addSeriesToControl(QXYSeries* series, PMU::PhasorType p
     m_controlLayout->addWidget(checkBox, 0);
 
     for (int i = 0; i < (int)PMU::NumChannels; ++i) {
-        m_series.emplace_back(nullptr);
-        m_pointsWindow.emplace_back(QList<QPointF>{});
+        m_series.push_back(nullptr);
+        m_pointsWindow.push_back(QList<QPointF>{});
     }
 }
 
