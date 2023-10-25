@@ -19,7 +19,7 @@ public:
 
     ~AbstractPhasorView();
 
-    static constexpr qsizetype MaxWindowLen = 30;
+    static constexpr qsizetype MaxWindowLen = 20;
 
 protected:
     void addSeriesToControl(QXYSeries* series, PMU::PhasorType phasorType);
