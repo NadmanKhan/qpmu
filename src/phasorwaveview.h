@@ -25,10 +25,8 @@ private:
     QValueAxis* m_axisX;
     QValueAxis* m_axisY;
 
-    // AbstractPhasorView interface
-protected slots:
-
-    void addSample(const PMU::Sample &sample) override;
+private slots:
+    void addSample(const PMU::Sample &sample);
 };
 
 #endif // PHASORWAVEVIEW_H

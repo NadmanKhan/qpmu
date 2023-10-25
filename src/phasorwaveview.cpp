@@ -45,7 +45,9 @@ void PhasorWaveView::addSample(const PMU::Sample &sample)
     qreal maxY = std::numeric_limits<qreal>::min();
 
     for (int i = 0; i < (int)PMU::NumChannels; ++i) {
-        for (const auto& [x, y] : m_pointsWindow[i]) {
+        for (const auto& point : m_pointsWindow[i]) {
+            qreal x = point.x();
+            qreal y = point.y();
             minX = qMin(minX, x);
             maxX = qMax(maxX, x);
             minY = qMin(minY, y);

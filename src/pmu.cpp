@@ -35,10 +35,12 @@ PMU* PMU::m_ptr = nullptr;
 PMU *PMU::ptr()
 {
     if (m_ptr == nullptr)  {
-        auto args = QApplication::arguments();
-        Q_ASSERT(args.size() >= 2);
-        QString cmd = args[1];
-        m_ptr = new PMU(cmd, args.sliced(2));
+        auto appArgs = QApplication::arguments();
+        Q_ASSERT(appArgs.size() >= 2);
+        auto cmd = appArgs[1];
+        QStringList args;
+        for (int i = 2; i < (int)appArgs.size(); ++i) args << appArgs[i];
+        m_ptr = new PMU(cmd, args);
     }
     return m_ptr;
 }
