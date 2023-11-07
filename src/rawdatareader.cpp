@@ -72,7 +72,6 @@ void RawDataReader::readStandardOutput()
         }
     }
 
-    std::cout << m_results.size() << "\n";
     sendData();
 }
 

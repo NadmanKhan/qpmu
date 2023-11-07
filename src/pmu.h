@@ -37,16 +37,20 @@ public:
     struct Sample {
         std::array<qreal, PMU::NumChannels> values;
         quint64 ts;
+
         QPair<quint64, qreal> toRectangular(qsizetype i) const;
         QPair<qreal, qreal> toPolar(qsizetype i) const;
     };
 
 private:
-    QThread m_thread;
     static PMU* m_ptr;
+    static constexpr qsizetype BufferSize = 50;
+    QThread m_thread;
+    Sample sampleBuffer[BufferSize];
+    qsizetype sbufIndex = 0;
 
 public slots:
-    void resultsToSamples(const RawDataReader::ResultList& results);
+    void collectReadings(const RawDataReader::ResultList& results);
 
 signals:
     void readySample(const Sample& sample);

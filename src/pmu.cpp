@@ -53,7 +53,7 @@ PMU::PMU(const QString &cmd,
     auto dataReader = new RawDataReader(cmd, args, this);
     dataReader->moveToThread(&m_thread);
     connect(&m_thread, &QThread::finished, dataReader, &QObject::deleteLater);
-    connect(dataReader, &RawDataReader::dataReady, this, &PMU::resultsToSamples);
+    connect(dataReader, &RawDataReader::dataReady, this, &PMU::collectReadings);
 }
 
 PMU::~PMU()
@@ -62,7 +62,7 @@ PMU::~PMU()
     m_thread.wait();
 }
 
-void PMU::resultsToSamples(const RawDataReader::ResultList &results)
+void PMU::collectReadings(const RawDataReader::ResultList &results)
 {
     for (const auto& result : results) {
         Sample s;
@@ -70,7 +70,30 @@ void PMU::resultsToSamples(const RawDataReader::ResultList &results)
             s.values[i] = result.ch[i];
         }
         s.ts = result.ts;
-        emit readySample(s);
+
+        if (sbufIndex == PMU::BufferSize) {
+            Sample avg = Sample{
+              .values = {},
+              .ts = 0,
+            };
+            /// accumulate
+            for (int i = 0; i < (int)sbufIndex; ++i) {
+                for (int j = 0; j < (int)PMU::NumChannels; ++j) {
+                    avg.values[j] += sampleBuffer[i].values[j];
+                }
+                avg.ts += sampleBuffer[i].ts;
+            }
+            /// divide
+            for (int i = 0; i < (int)PMU::NumChannels; ++i) {
+                avg.values[i] /= PMU::BufferSize;
+            }
+            avg.ts /= PMU::BufferSize;
+            sbufIndex = 0;
+
+            emit readySample(std::move(avg));
+        }
+
+        sampleBuffer[sbufIndex++] = s;
     }
 }
 

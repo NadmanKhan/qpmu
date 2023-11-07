@@ -13,7 +13,7 @@ if __name__ == '__main__':
     init_ns = time.time_ns()
     prev_ts = 0
     while True:
-        time.sleep(1 / 20)
+        time.sleep(1 / 200)
         ch0 = random.randint(0, 10)
         ch1 = random.randint(0, 10)
         ch2 = random.randint(0, 10)
