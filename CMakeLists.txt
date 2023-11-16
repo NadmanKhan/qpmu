@@ -26,6 +26,8 @@ add_executable(QPMU sources/main.cpp
         sources/AdcSampleModel.h
         sources/App.cpp
         sources/App.h
+        sources/SignalInfo.cpp
+        sources/SignalInfo.h
 )
 
 target_link_libraries(QPMU

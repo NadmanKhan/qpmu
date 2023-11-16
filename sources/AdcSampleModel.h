@@ -7,12 +7,20 @@
 
 #include <array>
 
+#include <QList>
 #include <QMetaType>
 #include <QMap>
+#include <QMutex>
 #include <QObject>
+#include <QPointF>
 #include <QtNetwork>
+#include <QtCharts>
+#include <QValueAxis>
 
-using AdcSampleVector = std::array<quint64, 8>; // 6 signals + 1 timestamp + 1 delta
+#include "SignalInfo.h"
+
+// 6 signals + 1 timestamp + 1 delta
+using AdcSampleVector = std::array<quint64, 8>;
 Q_DECLARE_METATYPE(AdcSampleVector)
 
 class AdcSampleModel: public QObject
@@ -20,28 +28,30 @@ class AdcSampleModel: public QObject
 Q_OBJECT
 
 public:
-    static constexpr uint_fast16_t WindowSize = 1000;
+    static constexpr qsizetype WindowSize = 100;
 
     explicit AdcSampleModel(QObject *parent = nullptr);
 
 private:
     QTcpSocket *socket = nullptr;
-    QList<quint64> valuesX = {};
-    QList<quint64> valuesY = {};
-    QMap<quint64, uint_fast16_t> countX = {};
-    QMap<quint64, uint_fast16_t> countY = {};
+    QList<quint64> valuesX;
+    QList<quint64> valuesY;
+    QMap<quint64, uint_fast16_t> countX;
+    QMap<quint64, uint_fast16_t> countY;
+    QMutex mutex;
+
+    // Series points
+    std::array<QList<QPointF>, 6> seriesPoints = {};
 
     void add(const AdcSampleVector &v);
 
+public slots:
+    void updateSeriesAndAxes(const std::array<QSplineSeries *, NumSignals> &series,
+                             QtCharts::QValueAxis *axisX,
+                             QtCharts::QValueAxis *axisY);
+
 private slots:
     void read();
-
-signals:
-    void dataReady(AdcSampleVector vector,
-                   qreal minX,
-                   qreal maxX,
-                   qreal minY,
-                   qreal maxY);
 };
 
 #endif //ADCSAMPLEMODEL_H

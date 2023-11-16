@@ -8,18 +8,26 @@ WaveformView::WaveformView(QWidget *parent)
     chart = new QChart();
     chart->legend()->hide();
 
-    axisX = new QValueAxis;
+    axisX = new QValueAxis(this);
     axisX->setLabelFormat("%g");
     axisX->setTitleText(QStringLiteral("Time (ns)"));
+    axisX->setTickCount(11);
+    axisX->setRange(0, 100);
     chart->addAxis(axisX, Qt::AlignBottom);
 
-    axisY = new QValueAxis;
+    axisY = new QValueAxis(this);
     axisY->setTitleText(QStringLiteral("Value"));
+    axisY->setTickCount(11);
+    axisY->setRange(0, 600);
     chart->addAxis(axisY, Qt::AlignLeft);
 
-    for (auto &s: series) {
+    for (qsizetype i = 0; i < 6; ++i) {
+        auto &s = series[i];
         s = new QSplineSeries;
+        s->setName(signalInfos[i].nameAsHtml());
+        s->setPen(QPen(signalInfos[i].color, 2));
         s->setUseOpenGL(true);
+
         chart->addSeries(s);
         s->attachAxis(axisX);
         s->attachAxis(axisY);
@@ -28,21 +36,16 @@ WaveformView::WaveformView(QWidget *parent)
     setChart(chart);
 
     auto app = qobject_cast<App *>(QApplication::instance());
-    Q_ASSERT(connect(app->adcSampleModel(), &AdcSampleModel::dataReady,
-                     this, &WaveformView::updateSeries));
+    adcSampleModel = app->adcSampleModel();
+
+    connect(&timer, &QTimer::timeout, this, &WaveformView::updateSeries);
+    timer.setInterval(200);
+    timer.start();
 }
 
-void WaveformView::updateSeries(AdcSampleVector vector,
-                                qreal minX,
-                                qreal maxX,
-                                qreal minY,
-                                qreal maxY)
+void WaveformView::updateSeries()
 {
-    auto x = static_cast<qreal>(vector[6]);
-    for (int i = 0; i < 6; ++i) {
-        series[i]->append(x, static_cast<qreal>(vector[i]));
-    }
-    qDebug() << "minX" << minX << "maxX" << maxX << "minY" << minY << "maxY" << maxY;
-    axisX->setRange(minX, maxX);
-    axisY->setRange(minY, maxY);
+    adcSampleModel->updateSeriesAndAxes(series, axisX, axisY);
+    qDebug() << axisX->min() << " " << axisX->max();
+    qDebug() << axisY->min() << " " << axisY->max();
 }
