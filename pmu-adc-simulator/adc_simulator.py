@@ -6,7 +6,7 @@ from typing import Iterable
 FREQUENCY = 50  # Hz
 I_MAX = 14  # A
 V_MAX = 240  # V
-SAMPLING_RATE = 1000_000  # Hz = 1 MHz
+SAMPLING_RATE = 1_200  # Hz (samples per cycle)
 
 
 class Signal:

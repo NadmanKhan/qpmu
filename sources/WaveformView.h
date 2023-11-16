@@ -4,8 +4,10 @@
 #include <array>
 
 #include <QtCharts>
+#include <QTimer>
 
 #include "App.h"
+#include "SignalInfo.h"
 #include "WithDock.h"
 
 class WaveformView: public QChartView, public WithDock
@@ -20,13 +22,11 @@ private:
     QChart *chart = nullptr;
     QValueAxis *axisX = nullptr;
     QValueAxis *axisY = nullptr;
+    AdcSampleModel *adcSampleModel = nullptr;
+    QTimer timer;
 
 private slots:
-    void updateSeries(AdcSampleVector vector,
-                      qreal minX,
-                      qreal maxX,
-                      qreal minY,
-                      qreal maxY);
+    void updateSeries();
 };
 
 
