@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.26)
-project(QPMU)
+project(qpmu)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
@@ -14,8 +14,9 @@ find_package(Qt5 COMPONENTS
         Charts
         REQUIRED)
 
-add_executable(QPMU sources/main.cpp
+add_executable(qpmu
         icons.qrc
+        sources/main.cpp
         sources/MainWindow.cpp
         sources/MainWindow.h
         sources/WithDock.cpp
@@ -30,7 +31,7 @@ add_executable(QPMU sources/main.cpp
         sources/SignalInfo.h
 )
 
-target_link_libraries(QPMU
+target_link_libraries(qpmu
         Qt5::Core
         Qt5::Gui
         Qt5::Widgets

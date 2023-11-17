@@ -2,6 +2,8 @@
 
 MainWindow::MainWindow()
 {
+    setWindowTitle("QPMU");
+
     // Create a stacked widget to hold the pages of the application
     {
         setCentralWidget(stackedWidget = new QStackedWidget(this));
