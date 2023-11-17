@@ -9,6 +9,7 @@
 #include <QMutex>
 #include <QObject>
 #include <QPointF>
+#include <QProcessEnvironment>
 #include <QtNetwork>
 #include <QtCharts>
 #include <QValueAxis>
@@ -18,6 +19,8 @@
 // 6 signals + 1 timestamp + 1 delta
 using AdcSampleVector = std::array<quint64, 8>;
 Q_DECLARE_METATYPE(AdcSampleVector)
+
+using PointsVector = std::array<QList<QPointF>, 6>;
 
 class AdcSampleModel: public QObject
 {
@@ -41,10 +44,13 @@ private:
 
     void add(const AdcSampleVector &v);
 
-public slots:
-    void updateSeries(const std::array<QSplineSeries *, NumSignals> &series,
-                      QtCharts::QValueAxis *axisX,
-                      QtCharts::QValueAxis *axisY);
+public:
+
+    void getWaveformData(std::array<QList<QPointF>, 6> &seriesPoints,
+                         qreal &minX,
+                         qreal &maxX,
+                         qreal &minY,
+                         qreal &maxY);
 
 private slots:
     void read();

@@ -4,15 +4,20 @@ import socket
 import os
 from adc_simulator import ADC
 
-
-HOST = os.getenv("PMU_ADC_SIMULATOR_HOST", '127.0.0.1')
-PORT = os.getenv("PMU_ADC_SIMULATOR_PORT", 12345)
+HOST = os.getenv("PMU_ADC_HOST", '-')
+PORT = os.getenv("PMU_ADC_PORT", '-')
 
 
 if __name__ == "__main__":
+    if HOST == '-' or PORT == '-':
+        print("Please set the PMU_ADC_HOST and PMU_ADC_PORT environment variables.")
+        exit(1)
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-        server_socket.bind((HOST, PORT))
+        server_socket.bind((HOST, int(PORT)))
         server_socket.listen(2)
+
+        print(f'QPMU ADC server listening on {HOST}:{PORT}...')
 
         adc = ADC()
 
