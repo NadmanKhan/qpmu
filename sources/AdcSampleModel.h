@@ -1,7 +1,3 @@
-//
-// Created by nadman on 11/15/23.
-//
-
 #ifndef ADCSAMPLEMODEL_H
 #define ADCSAMPLEMODEL_H
 
@@ -46,9 +42,9 @@ private:
     void add(const AdcSampleVector &v);
 
 public slots:
-    void updateSeriesAndAxes(const std::array<QSplineSeries *, NumSignals> &series,
-                             QtCharts::QValueAxis *axisX,
-                             QtCharts::QValueAxis *axisY);
+    void updateSeries(const std::array<QSplineSeries *, NumSignals> &series,
+                      QtCharts::QValueAxis *axisX,
+                      QtCharts::QValueAxis *axisY);
 
 private slots:
     void read();

@@ -1,6 +1,4 @@
-'''
-A simple server that sends data from the ADC simulator to a connected client.
-'''
+# A simple server that sends data from the ADC simulator to a connected client.
 
 import socket
 import os

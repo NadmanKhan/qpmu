@@ -60,9 +60,9 @@ void AdcSampleModel::add(const AdcSampleVector &v)
     }
 }
 
-void AdcSampleModel::updateSeriesAndAxes(const std::array<QSplineSeries *, NumSignals> &series,
-                                         QtCharts::QValueAxis *axisX,
-                                         QtCharts::QValueAxis *axisY)
+void AdcSampleModel::updateSeries(const std::array<QSplineSeries *, NumSignals> &series,
+                                  QtCharts::QValueAxis *axisX,
+                                  QtCharts::QValueAxis *axisY)
 {
     QMutexLocker locker(&mutex);
     axisX->setRange((countX.firstKey() + countX.lastKey()) / 2, countX.lastKey());
