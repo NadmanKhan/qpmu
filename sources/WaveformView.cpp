@@ -32,6 +32,7 @@ WaveformView::WaveformView(QWidget *parent)
     }
 
     setChart(chart);
+    setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
     auto app = qobject_cast<App *>(QApplication::instance());
     adcSampleModel = app->adcSampleModel();
