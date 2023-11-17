@@ -15,7 +15,7 @@ find_package(Qt5 COMPONENTS
         REQUIRED)
 
 add_executable(qpmu
-        icons.qrc
+        resources/icons.qrc
         sources/main.cpp
         sources/MainWindow.cpp
         sources/MainWindow.h
