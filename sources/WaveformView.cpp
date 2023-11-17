@@ -45,7 +45,7 @@ WaveformView::WaveformView(QWidget *parent)
 
 void WaveformView::updateSeries()
 {
-    adcSampleModel->updateSeriesAndAxes(series, axisX, axisY);
+    adcSampleModel->updateSeries(series, axisX, axisY);
     qDebug() << axisX->min() << " " << axisX->max();
     qDebug() << axisY->min() << " " << axisY->max();
 }

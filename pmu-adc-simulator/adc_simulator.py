@@ -1,3 +1,6 @@
+# ADC Simulator. Update the global constants to change the parameters' default
+# values of the ADC class.
+
 import time
 import math
 from typing import Iterable
