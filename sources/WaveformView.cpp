@@ -47,9 +47,9 @@ void WaveformView::updateSeries()
     PointsVector seriesPoints;
     qreal minX, maxX, minY, maxY;
     adcSampleModel->getWaveformData(seriesPoints, minX, maxX, minY, maxY);
-    axisX->setRange(minX, maxX);
-    axisY->setRange(minY, maxY);
     for (int i = 0; i < 6; ++i) {
         series[i]->replace(seriesPoints[i]);
     }
+    axisX->setRange(minX, maxX);
+    axisY->setRange(minY, maxY);
 }
