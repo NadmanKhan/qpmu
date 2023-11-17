@@ -12,13 +12,11 @@ WaveformView::WaveformView(QWidget *parent)
     axisX->setLabelFormat("%g");
     axisX->setTitleText(QStringLiteral("Time (ns)"));
     axisX->setTickCount(11);
-    axisX->setRange(0, 100);
     chart->addAxis(axisX, Qt::AlignBottom);
 
     axisY = new QValueAxis(this);
     axisY->setTitleText(QStringLiteral("Value"));
     axisY->setTickCount(11);
-    axisY->setRange(0, 600);
     chart->addAxis(axisY, Qt::AlignLeft);
 
     for (qsizetype i = 0; i < 6; ++i) {
@@ -45,7 +43,12 @@ WaveformView::WaveformView(QWidget *parent)
 
 void WaveformView::updateSeries()
 {
-    adcSampleModel->updateSeries(series, axisX, axisY);
-    qDebug() << axisX->min() << " " << axisX->max();
-    qDebug() << axisY->min() << " " << axisY->max();
+    PointsVector seriesPoints;
+    qreal minX, maxX, minY, maxY;
+    adcSampleModel->getWaveformData(seriesPoints, minX, maxX, minY, maxY);
+    axisX->setRange(minX, maxX);
+    axisY->setRange(minY, maxY);
+    for (int i = 0; i < 6; ++i) {
+        series[i]->replace(seriesPoints[i]);
+    }
 }

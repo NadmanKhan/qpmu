@@ -6,7 +6,13 @@ AdcSampleModel::AdcSampleModel(QObject *parent)
     socket = new QTcpSocket(this);
     Q_ASSERT(connect(socket, &QTcpSocket::readyRead,
                      this, &AdcSampleModel::read));
-    socket->connectToHost(QHostAddress::LocalHost, 12345);
+    auto env = QProcessEnvironment::systemEnvironment();
+    auto host = env.value("PMU_ADC_HOST", "-");
+    auto port = env.value("PMU_ADC_PORT", "-");
+    if (host == "-" || port == "-") {
+        qFatal("PMU_ADC_HOST or PMU_ADC_PORT not set");
+    }
+    socket->connectToHost(host, port.toUShort());
 }
 
 void AdcSampleModel::read()
@@ -60,15 +66,16 @@ void AdcSampleModel::add(const AdcSampleVector &v)
     }
 }
 
-void AdcSampleModel::updateSeries(const std::array<QSplineSeries *, NumSignals> &series,
-                                  QtCharts::QValueAxis *axisX,
-                                  QtCharts::QValueAxis *axisY)
+void AdcSampleModel::getWaveformData(std::array<QList<QPointF>, 6> &seriesPoints,
+                                     qreal &minX,
+                                     qreal &maxX,
+                                     qreal &minY,
+                                     qreal &maxY)
 {
     QMutexLocker locker(&mutex);
-    axisX->setRange((countX.firstKey() + countX.lastKey()) / 2, countX.lastKey());
-    axisY->setRange(countY.firstKey(), countY.lastKey());
-    for (int i = 0; i < 6; ++i) {
-        series[i]->replace(seriesPoints[i]);
-    }
-    qDebug() << countX.size() << " " << countY.size();
+    minX = countX.firstKey();
+    maxX = countX.lastKey();
+    minY = countY.firstKey();
+    maxY = countY.lastKey();
+    seriesPoints = this->seriesPoints;
 }
