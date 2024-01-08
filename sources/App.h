@@ -2,10 +2,17 @@
 #define APP_H
 
 #include <QApplication>
+#include <QCommandLineParser>
+#include <QCommandLineOption>
+#include <QDir>
 #include <QMetaType>
+#include <QSettings>
 #include <QThread>
 
-#include "AdcSampleModel.h"
+// forward declaration
+class AdcDataModel;
+
+#include "AdcDataModel.h"
 
 class App: public QApplication
 {
@@ -14,13 +21,14 @@ Q_OBJECT
 public:
     explicit App(int &argc, char **argv);
 
-
 private:
+    QSettings *m_settings = nullptr;
     QThread *m_modelThread = nullptr;
-    AdcSampleModel *m_adcSampleModel = nullptr;
+    AdcDataModel *m_adcDataModel = nullptr;
 
 public:
-    [[nodiscard]] AdcSampleModel *adcSampleModel() const;
+    [[nodiscard]] AdcDataModel *adcDataModel() const;
+    [[nodiscard]] QSettings *settings();
 };
 
 

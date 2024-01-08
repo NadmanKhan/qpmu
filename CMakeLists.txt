@@ -23,8 +23,8 @@ add_executable(qpmu
         sources/WithDock.h
         sources/WaveformView.cpp
         sources/WaveformView.h
-        sources/AdcSampleModel.cpp
-        sources/AdcSampleModel.h
+        sources/AdcDataModel.cpp
+        sources/AdcDataModel.h
         sources/App.cpp
         sources/App.h
         sources/SignalInfo.cpp

@@ -22,7 +22,7 @@ private:
     QChart *chart = nullptr;
     QValueAxis *axisX = nullptr;
     QValueAxis *axisY = nullptr;
-    AdcSampleModel *adcSampleModel = nullptr;
+    AdcDataModel *adcSampleModel = nullptr;
     QTimer timer;
 
 private slots:
