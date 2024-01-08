@@ -33,23 +33,28 @@ if __name__ == "__main__":
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-        server_socket.bind((HOST, int(PORT)))
-        server_socket.listen(2)
+    while 1:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+                server_socket.bind((HOST, int(PORT)))
+                server_socket.listen(2)
 
-        print(f'QPMU ADC server listening on {HOST}:{PORT}...')
+                print(f'QPMU ADC server listening on {HOST}:{PORT}...')
 
-        conn, addr = server_socket.accept()
+                conn, addr = server_socket.accept()
 
-        with conn:
-            print("Connection from: " + str(addr))
+                with conn:
+                    print("Connection from: " + str(addr))
 
-            while True:
-                line = adc_process.stdout.readline()
-                if not line:
-                    break
+                    while True:
+                        line = adc_process.stdout.readline()
+                        if not line:
+                            break
 
-                data = line.decode().strip()
+                        data = line.decode().strip()
 
-                print("Sending data: " + data)
-                conn.send(data.encode())
+                        print("Sending data: " + data)
+                        conn.send(data.encode())
+        except:
+            print("Connection error. Retrying...")
+            continue
