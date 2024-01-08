@@ -1,3 +1,6 @@
+# Application settings
+settings.ini
+
 # From https://github.com/github/gitignore/blob/main/Qt.gitignore:
 
 # C++ objects and libs

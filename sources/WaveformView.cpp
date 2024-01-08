@@ -35,10 +35,12 @@ WaveformView::WaveformView(QWidget *parent)
     setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
     auto app = qobject_cast<App *>(QApplication::instance());
-    adcSampleModel = app->adcSampleModel();
+    adcSampleModel = app->adcDataModel();
 
     connect(&timer, &QTimer::timeout, this, &WaveformView::updateSeries);
-    timer.setInterval(200);
+    const auto &settings = app->settings();
+    auto interval = settings->value("waveform_view/update_interval_ms", "50").toInt();
+    timer.setInterval(interval);
     timer.start();
 }
 

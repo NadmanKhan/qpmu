@@ -1,19 +1,19 @@
-#ifndef ADCSAMPLEMODEL_H
-#define ADCSAMPLEMODEL_H
+#ifndef ADCDATAMODEL_H
+#define ADCDATAMODEL_H
 
 #include <array>
 
 #include <QList>
 #include <QMetaType>
-#include <QMap>
 #include <QMutex>
 #include <QObject>
 #include <QPointF>
-#include <QProcessEnvironment>
+#include <QSettings>
 #include <QtNetwork>
-#include <QtCharts>
 #include <QValueAxis>
+#include <QHostAddress>
 
+#include "App.h"
 #include "SignalInfo.h"
 
 // 6 signals + 1 timestamp + 1 delta
@@ -22,17 +22,15 @@ Q_DECLARE_METATYPE(AdcSampleVector)
 
 using PointsVector = std::array<QList<QPointF>, 6>;
 
-class AdcSampleModel: public QObject
+class AdcDataModel: public QObject
 {
 Q_OBJECT
-
 public:
-    static constexpr qsizetype WindowSize = 100;
-
-    explicit AdcSampleModel(QObject *parent = nullptr);
+    explicit AdcDataModel(QObject *parent = nullptr);
 
 private:
     QTcpSocket *socket = nullptr;
+    quint32 m_bufferSize;
     QList<quint64> valuesX;
     QList<quint64> valuesY;
     QMap<quint64, uint_fast16_t> countX;
@@ -45,15 +43,16 @@ private:
     void add(const AdcSampleVector &v);
 
 public:
-
     void getWaveformData(std::array<QList<QPointF>, 6> &seriesPoints,
                          qreal &minX,
                          qreal &maxX,
                          qreal &minY,
                          qreal &maxY);
 
+    [[nodiscard]] quint32 bufferSize() const;
+
 private slots:
     void read();
 };
 
-#endif //ADCSAMPLEMODEL_H
+#endif //ADCDATAMODEL_H

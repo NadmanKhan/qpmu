@@ -1,23 +1,35 @@
+import os
 import subprocess
 import socket
-import os
 import sys
+import configparser
 
+config = configparser.ConfigParser()
 
-HOST = os.getenv("PMU_ADC_HOST", '-')
-PORT = os.getenv("PMU_ADC_PORT", '-')
+config_file = './qpmu.ini'
+
+if os.getenv('QPMU_CONFIG'):
+    config_file = os.getenv('QPMU_CONFIG')
+
+if not os.path.isfile(config_file):
+    print('Please create a qpmu.ini file.')
+    exit(1)
+
+config.read(config_file)
+
+HOST = config['adc_address']['host']
+PORT = config['adc_address']['port']
 
 if __name__ == "__main__":
-    if HOST == '-' or PORT == '-':
-        print("Please set the PMU_ADC_HOST and PMU_ADC_PORT environment variables.")
+    if not HOST or not PORT:
+        print('Please write the adc/host and adc/port settings in settings.ini.')
         exit(1)
 
-    if len(sys.argv) != 2:
-        print("Please provide the path to the ADC process.")
+    if len(sys.argv) < 2:
+        print("Please provide the ADC program path and arguments.")
         exit(1)
-    
-    adc_process_path = sys.argv[1]
-    adc_process = subprocess.Popen(adc_process_path,
+
+    adc_process = subprocess.Popen(sys.argv[1:],
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
 
