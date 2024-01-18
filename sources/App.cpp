@@ -3,54 +3,58 @@
 App::App(int &argc, char **argv)
     : QApplication(argc, argv)
 {
-    // register meta types
-    // --------------------------------------------------
+    // Register meta types
+    // ------------------------------------------------------------------------
 
     (void) qRegisterMetaType<AdcSampleVector>("AdcSampleVector");
 
-    // set application information
-    // --------------------------------------------------
+    // Set application information
+    // ------------------------------------------------------------------------
 
     QApplication::setOrganizationName("CPS Lab - NSU");
     QApplication::setApplicationName("QPMU");
     QApplication::setApplicationVersion("0.1.0");
 
-    // parse command line
-    // --------------------------------------------------
+    // Get config path: read environment variables or parse command line
+    // ------------------------------------------------------------------------
 
-    QString configPath = QDir().dirName() + "/qpmu.ini";
+    QString configPath = QDir().dirName() + "/qpmu.ini"; // default config path
 
+    // Get the config path from environment variable if it exists
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    if (env.contains("QPMU_CONFIG")) {
-        configPath = env.value("QPMU_CONFIG");
+    if (env.contains("QPMU_CONFIG_PATH")) {
+        configPath = env.value("QPMU_CONFIG_PATH");
     }
 
     QCommandLineParser parser;
     parser.setApplicationDescription("QPMU is a GUI application for "
                                      "PMU control and data visualization.");
-    parser.addHelpOption();
-    parser.addVersionOption();
-    auto configFileOption = QCommandLineOption(QStringList() << "C" << "config",
-                                               "Path to config file.",
-                                               "path",
-                                               configPath);
+    parser.addHelpOption(); // --help
+    auto configFileOption = QCommandLineOption(QStringList() << "C"
+                                                             << "config",
+                                               "Path to config file.", "path",
+                                               configPath); // -C, --config
     parser.addOption(configFileOption);
     parser.process(*this);
 
-    configPath = parser.value(configFileOption);
-    qDebug() << "config path: " << configPath;
+    // Get the config path from command line if it exists
+    if (parser.isSet(configFileOption)) {
+        configPath = parser.value(configFileOption);
+    }
 
-    // settings
-    // --------------------------------------------------
+    qDebug() << "Config path: " << configPath;
+
+    // Settings
+    // ------------------------------------------------------------------------
 
     m_settings = new QSettings(configPath, QSettings::IniFormat);
     m_settings->sync();
-    qDebug() << "settings: " << m_settings->allKeys();
+    qDebug() << "Config settings: " << m_settings->allKeys();
 
-    // model
-    // --------------------------------------------------
+    // Dat model
+    // ------------------------------------------------------------------------
 
-    m_modelThread = new QThread();
+    m_modelThread  = new QThread();
     m_adcDataModel = new AdcDataModel();
     m_adcDataModel->moveToThread(m_modelThread);
     Q_ASSERT(connect(m_modelThread, &QThread::finished,

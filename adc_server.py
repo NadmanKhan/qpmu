@@ -8,11 +8,13 @@ config = configparser.ConfigParser()
 
 config_file = './qpmu.ini'
 
-if os.getenv('QPMU_CONFIG'):
-    config_file = os.getenv('QPMU_CONFIG')
+if os.getenv('QPMU_CONFIG_PATH'):
+    config_file = os.getenv('QPMU_CONFIG_PATH')
 
 if not os.path.isfile(config_file):
-    print('Please create a qpmu.ini file.')
+    print('The config file does not exist. Please create a config file named qpmu.ini \
+          in the current directory, or set the QPMU_CONFIG_PATH environment variable to the \
+          path of the config file.')
     exit(1)
 
 config.read(config_file)
@@ -22,7 +24,7 @@ PORT = config['adc_address']['port']
 
 if __name__ == "__main__":
     if not HOST or not PORT:
-        print('Please write the adc/host and adc/port settings in settings.ini.')
+        print('Please write the adc_address/host and adc_address/port settings in the config file')
         exit(1)
 
     if len(sys.argv) < 2:
@@ -33,28 +35,24 @@ if __name__ == "__main__":
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
 
-    while 1:
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-                server_socket.bind((HOST, int(PORT)))
-                server_socket.listen(2)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+        server_socket.bind((HOST, int(PORT)))
+        server_socket.listen(2)
 
-                print(f'QPMU ADC server listening on {HOST}:{PORT}...')
+        print(f'QPMU ADC server listening on {HOST}:{PORT}...')
 
-                conn, addr = server_socket.accept()
+        conn, addr = server_socket.accept()
 
-                with conn:
-                    print("Connection from: " + str(addr))
+        with conn:
+            print("Connection from: " + str(addr))
 
-                    while True:
-                        line = adc_process.stdout.readline()
-                        if not line:
-                            break
+            while True:
+                line = adc_process.stdout.readline()
+                if not line:
+                    break
 
-                        data = line.decode().strip()
+                data = line.decode().strip()
 
-                        print("Sending data: " + data)
-                        conn.send(data.encode())
-        except:
-            print("Connection error. Retrying...")
-            continue
+                print("Sending data: " + data)
+                conn.send(data.encode())
+                

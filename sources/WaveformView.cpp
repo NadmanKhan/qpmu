@@ -5,30 +5,33 @@ WaveformView::WaveformView(QWidget *parent)
 {
     setWindowTitle("Waveforms");
     hide();
+
     chart = new QChart();
     chart->legend()->hide();
 
+    // X axis
     axisX = new QValueAxis(this);
     axisX->setLabelFormat("%g");
     axisX->setTitleText(QStringLiteral("Time (ns)"));
     axisX->setTickCount(11);
     chart->addAxis(axisX, Qt::AlignBottom);
 
+    // Y axis
     axisY = new QValueAxis(this);
     axisY->setTitleText(QStringLiteral("Value"));
     axisY->setTickCount(11);
     chart->addAxis(axisY, Qt::AlignLeft);
 
+    // Series
     for (qsizetype i = 0; i < 6; ++i) {
-        auto &s = series[i];
-        s = new QSplineSeries;
-        s->setName(signalInfos[i].nameAsHtml());
-        s->setPen(QPen(signalInfos[i].color, 2));
-        s->setUseOpenGL(true);
+        series[i] = new QSplineSeries;
+        series[i]->setName(signalInfos[i].nameAsHtml());
+        series[i]->setPen(QPen(signalInfos[i].color, 2));
+        series[i]->setUseOpenGL(true);
 
-        chart->addSeries(s);
-        s->attachAxis(axisX);
-        s->attachAxis(axisY);
+        chart->addSeries(series[i]);
+        series[i]->attachAxis(axisX);
+        series[i]->attachAxis(axisY);
     }
 
     setChart(chart);
@@ -46,7 +49,7 @@ WaveformView::WaveformView(QWidget *parent)
 
 void WaveformView::updateSeries()
 {
-    PointsVector seriesPoints;
+    std::array<QList<QPointF>, 6> seriesPoints;
     qreal minX, maxX, minY, maxY;
     adcSampleModel->getWaveformData(seriesPoints, minX, maxX, minY, maxY);
     for (int i = 0; i < 6; ++i) {

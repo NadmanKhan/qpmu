@@ -38,6 +38,3 @@ target_link_libraries(qpmu
         Qt5::Network
         Qt5::Charts
 )
-
-add_subdirectory(includes)
-
