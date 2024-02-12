@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include <QLineEdit>
 
 MainWindow::MainWindow()
 {
@@ -44,6 +45,15 @@ MainWindow::MainWindow()
 
     waveformView = new WaveformView(this);
     navigateTo(waveformView);
+
+    auto testInputWidget = new QWidget(this);
+    auto testInputLayout = new QVBoxLayout(testInputWidget);
+    auto testInputLabel = new QLabel("Test Input", testInputWidget);
+    testInputLayout->addWidget(testInputLabel);
+    auto testInputField = new QLineEdit(testInputWidget);
+    testInputLayout->addWidget(testInputField);
+    testInputLayout->addStretch(1);
+    navigateTo(testInputWidget);
 }
 
 void MainWindow::goBack()

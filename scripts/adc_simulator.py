@@ -147,8 +147,8 @@ class ADCSample:
         for i in range(6):
             key, value = tokens[i].split('=')
             assert key.strip() == f'ch{i}'
-            vlaue = value.strip()
-            assert vlaue.isdigit()
+            value = value.strip()
+            assert value.isdigit()
             ch[i] = int(value)
 
         kv_ts = tokens[-2].split('=')

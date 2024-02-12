@@ -12,7 +12,7 @@
 
 class WaveformView: public QChartView, public WithDock
 {
-Q_OBJECT
+Q_OBJECT Q_INTERFACES(WithDock)
 
 public:
     explicit WaveformView(QWidget *parent = nullptr);
