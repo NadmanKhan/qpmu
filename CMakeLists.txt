@@ -12,6 +12,7 @@ find_package(Qt5 COMPONENTS
         Widgets
         Network
         Charts
+        VirtualKeyboard
         REQUIRED)
 
 add_executable(qpmu
@@ -37,4 +38,7 @@ target_link_libraries(qpmu
         Qt5::Widgets
         Qt5::Network
         Qt5::Charts
+        Qt5::VirtualKeyboard
 )
+
+configure_file(scripts/adc_simulator.py ${CMAKE_CURRENT_BINARY_DIR}/adc_simulator.py COPYONLY)

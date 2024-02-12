@@ -7,8 +7,9 @@
 #include <QMetaType>
 #include <QMutex>
 #include <QObject>
-
+#include <QIODevice>
 #include <QPointF>
+#include <QProcess>
 #include <QSettings>
 #include <QtNetwork>
 #include <QValueAxis>
@@ -35,15 +36,15 @@ public:
 
 private:
     /**
-     * @brief The socket for receiving data from the ADC.
+     * @brief The ioDevice for receiving data from the ADC.
      */
-    QTcpSocket* socket = nullptr;
+    QIODevice* ioDevice = nullptr;
 
     /**
      * @brief Size of the buffer for storing ADC data.
      * Retrieved from the settings.
      */
-    quint32 m_bufferSize;
+    quint32 m_bufferLength;
 
     /**
      * @brief Sequentially stored timestamp values in buffer, 1 per ADC sample.
@@ -83,7 +84,7 @@ private:
      * @brief Add a single ADC sample to the buffer.
      * @param v The ADC sample vector.
      */
-    void add_sample(const AdcSampleVector& v);
+    void addSample(const AdcSampleVector& v);
 
 public:
     /**
@@ -104,12 +105,12 @@ public:
      * @brief Public method for retrieving the size of the buffer.
      * @return The size of the buffer.
      */
-    [[nodiscard]] quint32 bufferSize() const;
+    [[nodiscard]] quint32 bufferLength() const;
 
 private slots:
 
     /**
-     * @brief Slot for handling the socket's `readyRead()` signal.
+     * @brief Slot for handling the ioDevice's `readyRead()` signal.
      */
     void read();
 };

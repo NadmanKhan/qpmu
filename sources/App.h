@@ -9,10 +9,9 @@
 #include <QSettings>
 #include <QThread>
 
-// forward declaration
-class AdcDataModel;
-
 #include "AdcDataModel.h"
+
+class AdcDataModel; // forward declaration
 
 class App: public QApplication
 {

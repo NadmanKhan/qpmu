@@ -7,44 +7,64 @@ AdcDataModel::AdcDataModel(QObject *parent)
     // Retrieve and validate settings values from the App instance
     // -------------------------------------------------------------
 
-    const auto& app      = qobject_cast<App*>(QApplication::instance());
+    const auto &app = qobject_cast<App *>(QApplication::instance());
     const auto &settings = app->settings();
 
-    auto adcHostStr = settings->value("adc_address/host", "-").toString();
-    if (adcHostStr == "-") {
-        qFatal("adc_address/host is not set");
+    if (!settings->contains("adc/type")) {
+        qFatal("adc/type is not set");
     }
-    auto adcPortStr = settings->value("adc_address/port", "-").toString();
-    if (adcPortStr == "-") {
-        qFatal("adc_address/port is not set");
-    }
-    auto adcSampleBufferSizeStr = settings->value("adc_data/buffer_size", "-").toString();
-    if (adcSampleBufferSizeStr == "-") {
-        qFatal("adc_data/buffer_size is not set");
-    }
-    bool ok = false;
-    auto adcPort = adcPortStr.toUShort(&ok);
-    if (!ok) {
-        qFatal("adc_address/port is not a number");
-    }
-    auto adcHost = QHostAddress(adcHostStr);
-    if (adcHost.isNull()) {
-        qFatal("adc/host is not a valid IP address");
-    }
-    m_bufferSize = adcSampleBufferSizeStr.toUInt(&ok);
-    if (!ok) {
-        qFatal("adc_data/buffer_size is not a number");
+    if (!settings->contains("adc/buffer_length")) {
+        qFatal("adc/buffer_length is not set");
     }
 
-    // Initialize the socket and connect to it
-    // -------------------------------------------------------------
+    auto adcType = settings->value("adc/type");
+    m_bufferLength = settings->value("adc/buffer_length").toUInt();
 
-    socket = new QTcpSocket(this);
+    if (adcType == QStringLiteral("socket")) {
+        ioDevice = new QTcpSocket(this);
+        Q_ASSERT(connect(ioDevice, &QTcpSocket::readyRead,
+                         this, &AdcDataModel::read));
 
-    Q_ASSERT(connect(socket, &QTcpSocket::readyRead,
-                     this, &AdcDataModel::read));
+        if (!settings->contains("adc/socket_host")) {
+            qFatal("adc/socket_host is not set");
+        }
+        if (!settings->contains("adc/socket_port")) {
+            qFatal("adc/socket_port is not set");
+        }
 
-    socket->connectToHost(adcHost, adcPort);
+        auto host = settings->value("adc/socket_host").toString();
+        auto port = settings->value("adc/socket_port").toUInt();
+        qobject_cast<QTcpSocket *>(ioDevice)->connectToHost(host, port);
+
+    } else if (adcType == QStringLiteral("file")) {
+        ioDevice = new QFile(settings->value("adc/file_path").toString(), this);
+        if (!ioDevice->open(QIODevice::ReadOnly)) {
+            qFatal("Cannot open file");
+        }
+        Q_ASSERT(connect(ioDevice, &QFile::readyRead,
+                         this, &AdcDataModel::read));
+
+    } else if (adcType == QStringLiteral("program")) {
+        auto process = new QProcess(this);
+        auto programPath = settings->value("adc/program_path").toString();
+        auto programArgs = settings->value("adc/program_args").toStringList();
+        if (programArgs.last().isEmpty()) {
+            programArgs.removeLast();
+        }
+        Q_ASSERT(connect(process, &QProcess::readyRead,
+                         this, &AdcDataModel::read));
+        ioDevice = process;
+        connect(process, &QProcess::readyReadStandardError, [process]() {
+            qFatal("Program error: %s", process->readAllStandardError().data());
+        });
+        qDebug() << "Starting program: " << programPath << programArgs;
+        process->start(programPath, programArgs);
+        process->waitForStarted(-1);
+        qDebug() << "Program started: " << programPath << programArgs;
+
+    } else {
+        qFatal("adc/type is not valid");
+    }
 }
 
 /// This implmentation for parsing the ADC data is made to be as fast as
@@ -52,24 +72,26 @@ AdcDataModel::AdcDataModel(QObject *parent)
 /// Each sample is in the form:
 /// "ch0={value},ch1={value},ch2={value},ch3={value},ch4={value},ch5={value},ts={value},delta={value},\n"
 /// where {value} is an unsigned decimal integer.
-void AdcDataModel::read() {
-    QByteArray bytes       = socket->readAll();
+void AdcDataModel::read()
+{
+    QByteArray bytes = ioDevice->readAll();
     AdcSampleVector vector = {}; // current vector
-    quint64 value          = 0;  // current value
-    char prv               = 0;  // previous byte
-    int index              = 0;  // index of the current value in vector
+    quint64 value = 0;  // current value
+    char prv = 0;  // previous byte
+    int index = 0;  // index of the current value in vector
 
-    for (char ch : bytes) {
+    for (char ch: bytes) {
         if (ch == ',') {
             // end of a value. store it and reset value.
             vector[index] = value;
-            value         = 0;
-            index         = (index + 1) & 7; // % 8
+            value = 0;
+            index = (index + 1) & 7; // % 8
             if (index == 0) {
                 // end of a line
-                add_sample(vector);
+                addSample(vector);
             }
-        } else if (isdigit(ch) && prv != 'h') {
+        }
+        else if (isdigit(ch) && prv != 'h') {
             // if we found a digit and the previous byte is not 'h' of "ch"
             // (meaning it's not a channel index), then append the digit to the
             // value.
@@ -79,7 +101,8 @@ void AdcDataModel::read() {
     }
 }
 
-void AdcDataModel::add_sample(const AdcSampleVector& v) {
+void AdcDataModel::addSample(const AdcSampleVector &v)
+{
     // Append
     // -------------------------------------------------------------
 
@@ -93,7 +116,7 @@ void AdcDataModel::add_sample(const AdcSampleVector& v) {
         seriesPoints[i].append(QPointF(v[6], v[i]));
     }
 
-    if (valuesX.size() > m_bufferSize) {
+    if (valuesX.size() > m_bufferLength) {
         // Remove first
         // -------------------------------------------------------------
 
@@ -115,10 +138,10 @@ void AdcDataModel::add_sample(const AdcSampleVector& v) {
 }
 
 void AdcDataModel::getWaveformData(std::array<QList<QPointF>, 6> &seriesPoints,
-                                     qreal &minX,
-                                     qreal &maxX,
-                                     qreal &minY,
-                                     qreal &maxY)
+                                   qreal &minX,
+                                   qreal &maxX,
+                                   qreal &minY,
+                                   qreal &maxY)
 {
     QMutexLocker locker(&mutex);
 
@@ -126,14 +149,24 @@ void AdcDataModel::getWaveformData(std::array<QList<QPointF>, 6> &seriesPoints,
 
     // Because QMap is a red-black tree, the first and last keys are the least
     // and greatest keys respectively.
-    minX = static_cast<qreal>(countX.firstKey());
-    maxX = static_cast<qreal>(countX.lastKey());
-    minY = static_cast<qreal>(countY.firstKey());
-    maxY = static_cast<qreal>(countY.lastKey());
+
+    if (countX.empty()) {
+        minX = 0;
+        maxX = 100;
+        minY = 0;
+        maxY = 100;
+    }
+    else {
+        minX = static_cast<qreal>(countX.firstKey());
+        maxX = static_cast<qreal>(countX.lastKey());
+        minY = static_cast<qreal>(countY.firstKey());
+        maxY = static_cast<qreal>(countY.lastKey());
+    }
+
     seriesPoints = this->seriesPoints;
 }
 
-quint32 AdcDataModel::bufferSize() const
+quint32 AdcDataModel::bufferLength() const
 {
-    return m_bufferSize;
+    return m_bufferLength;
 }

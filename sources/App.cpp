@@ -4,19 +4,19 @@ App::App(int &argc, char **argv)
     : QApplication(argc, argv)
 {
     // Register meta types
-    // ------------------------------------------------------------------------
+    // -------------------
 
     (void) qRegisterMetaType<AdcSampleVector>("AdcSampleVector");
 
     // Set application information
-    // ------------------------------------------------------------------------
+    // ---------------------------
 
     QApplication::setOrganizationName("CPS Lab - NSU");
     QApplication::setApplicationName("QPMU");
     QApplication::setApplicationVersion("0.1.0");
 
     // Get config path: read environment variables or parse command line
-    // ------------------------------------------------------------------------
+    // -----------------------------------------------------------------
 
     QString configPath = QDir().dirName() + "/qpmu.ini"; // default config path
 
@@ -44,15 +44,14 @@ App::App(int &argc, char **argv)
 
     qDebug() << "Config path: " << configPath;
 
-    // Settings
-    // ------------------------------------------------------------------------
+    // Settings (must be initialize BEFORE data model)
+    // -----------------------------------------------
 
     m_settings = new QSettings(configPath, QSettings::IniFormat);
     m_settings->sync();
-    qDebug() << "Config settings: " << m_settings->allKeys();
 
-    // Dat model
-    // ------------------------------------------------------------------------
+    // Data model
+    // ----------
 
     m_modelThread  = new QThread();
     m_adcDataModel = new AdcDataModel();

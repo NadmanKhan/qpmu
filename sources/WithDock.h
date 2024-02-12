@@ -18,9 +18,6 @@ public:
     virtual ~WithDock();
 
     [[nodiscard]] QDockWidget *dockWidget() const;
-
-private:
-    QDockWidget *dock = nullptr;
 };
 
 Q_DECLARE_METATYPE(WithDock)
