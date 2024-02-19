@@ -1,8 +1,8 @@
-#include "SignalInfo.h"
+#include "SignalInfoModel.h"
 
 #include <utility>
 
-SignalInfo::SignalInfo(const Kind kind,
+SignalInfoModel::SignalInfoModel(const Kind kind,
                        const Phase phase,
                        QColor color,
                        QObject *parent)
@@ -11,17 +11,17 @@ SignalInfo::SignalInfo(const Kind kind,
 
 }
 
-QString SignalInfo::name() const
+QString SignalInfoModel::name() const
 {
     return QStringLiteral("%1%2").arg(toString(kind), toString(phase));
 }
 
-QString SignalInfo::nameAsHtml() const
+QString SignalInfoModel::nameAsHtml() const
 {
     return QStringLiteral("%1<sub>%2</sub>").arg(toString(kind), toString(phase));
 }
 
-QString SignalInfo::toString(SignalInfo::Kind kind)
+QString SignalInfoModel::toString(SignalInfoModel::Kind kind)
 {
     switch (kind) {
         case Current:
@@ -32,7 +32,7 @@ QString SignalInfo::toString(SignalInfo::Kind kind)
     return {};
 }
 
-QString SignalInfo::toString(SignalInfo::Phase phase)
+QString SignalInfoModel::toString(SignalInfoModel::Phase phase)
 {
     switch (phase) {
         case PhaseA:

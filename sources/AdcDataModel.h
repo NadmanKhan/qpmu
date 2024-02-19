@@ -16,7 +16,7 @@
 #include <QHostAddress>
 
 #include "App.h"
-#include "SignalInfo.h"
+#include "SignalInfoModel.h"
 
 /**
  * @brief The AdcSampleVector struct containing

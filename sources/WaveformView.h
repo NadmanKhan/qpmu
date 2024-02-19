@@ -7,12 +7,11 @@
 #include <QTimer>
 
 #include "App.h"
-#include "SignalInfo.h"
-#include "WithDock.h"
+#include "SignalInfoModel.h"
 
-class WaveformView: public QChartView, public WithDock
+class WaveformView: public QChartView
 {
-Q_OBJECT Q_INTERFACES(WithDock)
+Q_OBJECT
 
 public:
     explicit WaveformView(QWidget *parent = nullptr);

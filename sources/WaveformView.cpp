@@ -1,7 +1,7 @@
 #include "WaveformView.h"
 
 WaveformView::WaveformView(QWidget *parent)
-    : WithDock(true), QChartView(parent)
+    : QChartView(parent)
 {
     setWindowTitle("Waveforms");
     hide();

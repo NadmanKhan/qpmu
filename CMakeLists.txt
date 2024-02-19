@@ -20,16 +20,16 @@ add_executable(qpmu
         sources/main.cpp
         sources/MainWindow.cpp
         sources/MainWindow.h
-        sources/WithDock.cpp
-        sources/WithDock.h
         sources/WaveformView.cpp
         sources/WaveformView.h
         sources/AdcDataModel.cpp
         sources/AdcDataModel.h
         sources/App.cpp
         sources/App.h
-        sources/SignalInfo.cpp
-        sources/SignalInfo.h
+        sources/SignalInfoModel.cpp
+        sources/SignalInfoModel.h
+        sources/VisibilityControlView.cpp
+        sources/VisibilityControlView.h
 )
 
 target_link_libraries(qpmu
