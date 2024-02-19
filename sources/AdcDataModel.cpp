@@ -36,15 +36,17 @@ AdcDataModel::AdcDataModel(QObject *parent)
         auto port = settings->value("adc/socket_port").toUInt();
         qobject_cast<QTcpSocket *>(ioDevice)->connectToHost(host, port);
 
-    } else if (adcType == QStringLiteral("file")) {
+    }
+    else if (adcType == QStringLiteral("file")) {
+        qDebug() << "Opening file: " << settings->value("adc/file_path").toString();
         ioDevice = new QFile(settings->value("adc/file_path").toString(), this);
-        if (!ioDevice->open(QIODevice::ReadOnly)) {
+        if (!ioDevice->open(QIODevice::ReadOnly | QIODevice::Text)) {
             qFatal("Cannot open file");
         }
-        Q_ASSERT(connect(ioDevice, &QFile::readyRead,
-                         this, &AdcDataModel::read));
-
-    } else if (adcType == QStringLiteral("program")) {
+        // QFile does not emit readyRead signal
+        read();
+    }
+    else if (adcType == QStringLiteral("program")) {
         auto process = new QProcess(this);
         auto programPath = settings->value("adc/program_path").toString();
         auto programArgs = settings->value("adc/program_args").toStringList();
@@ -54,7 +56,8 @@ AdcDataModel::AdcDataModel(QObject *parent)
         Q_ASSERT(connect(process, &QProcess::readyRead,
                          this, &AdcDataModel::read));
         ioDevice = process;
-        connect(process, &QProcess::readyReadStandardError, [process]() {
+        connect(process, &QProcess::readyReadStandardError, [process]()
+        {
             qFatal("Program error: %s", process->readAllStandardError().data());
         });
         qDebug() << "Starting program: " << programPath << programArgs;
@@ -62,7 +65,8 @@ AdcDataModel::AdcDataModel(QObject *parent)
         process->waitForStarted(-1);
         qDebug() << "Program started: " << programPath << programArgs;
 
-    } else {
+    }
+    else {
         qFatal("adc/type is not valid");
     }
 }

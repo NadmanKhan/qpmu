@@ -46,27 +46,18 @@ MainWindow::MainWindow()
     waveformView = new WaveformView(this);
     navigateTo(waveformView);
 
-    auto testInputWidget = new QWidget(this);
-    auto testInputLayout = new QVBoxLayout(testInputWidget);
-    auto testInputLabel = new QLabel("Test Input", testInputWidget);
-    testInputLayout->addWidget(testInputLabel);
-    auto testInputField = new QLineEdit(testInputWidget);
-    testInputLayout->addWidget(testInputField);
-    testInputLayout->addStretch(1);
-    navigateTo(testInputWidget);
+//    auto testInputWidget = new QWidget(this);
+//    auto testInputLayout = new QVBoxLayout(testInputWidget);
+//    auto testInputLabel = new QLabel("Test Input", testInputWidget);
+//    testInputLayout->addWidget(testInputLabel);
+//    auto testInputField = new QLineEdit(testInputWidget);
+//    testInputLayout->addWidget(testInputField);
+//    testInputLayout->addStretch(1);
+//    navigateTo(testInputWidget);
 }
 
 void MainWindow::goBack()
 {
-    // If the current widget has a dock widget, remove it from the main window
-    auto currentWidget = dynamic_cast<WithDock *>(stackedWidget->currentWidget());
-    if (currentWidget) {
-        auto dockWidget = currentWidget->dockWidget();
-        if (dockWidget) {
-            removeDockWidget(dockWidget);
-            toolBar->removeAction(dockWidget->toggleViewAction());
-        }
-    }
     // Go back to the previous widget
     auto index = stackedWidget->currentIndex();
     Q_ASSERT(index > 0);
@@ -76,15 +67,6 @@ void MainWindow::goBack()
 
 void MainWindow::navigateTo(QWidget *widget)
 {
-    // If the current widget has a dock widget, remove it from the main window
-    auto currentWidget = dynamic_cast<WithDock *>(stackedWidget->currentWidget());
-    if (currentWidget) {
-        auto dockWidget = currentWidget->dockWidget();
-        if (dockWidget) {
-            removeDockWidget(dockWidget);
-            toolBar->removeAction(dockWidget->toggleViewAction());
-        }
-    }
     // Add the new widget to the main window
     stackedWidget->addWidget(widget);
     stackedWidget->setCurrentWidget(widget);
@@ -99,32 +81,10 @@ void MainWindow::handleWidgetChanged(int index)
     else {
         goBackAction->setEnabled(true);
     }
-    // If the widget has a dock widget, add it to the main window
-    auto widget = stackedWidget->widget(index);
-    auto withDock = dynamic_cast<WithDock *>(widget);
-    if (withDock) {
-        statusBar()->showMessage(widget->windowTitle(), 2000);
-        auto dockWidget = withDock->dockWidget();
-        if (dockWidget) {
-            dockWidget->setFloating(false);
-            addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
-            dockWidget->hide();
-            auto action = dockWidget->toggleViewAction();
-            toolBar->addAction(action);
-        }
-    }
 }
 
 void MainWindow::handleWidgetRemoved(int index)
 {
-    auto widget = qobject_cast<WithDock *>(stackedWidget->widget(index));
-    if (widget) {
-        auto dockWidget = widget->dockWidget();
-        if (dockWidget) {
-            removeDockWidget(dockWidget);
-            toolBar->removeAction(dockWidget->toggleViewAction());
-        }
-    }
 }
 
 void MainWindow::handleTimeout()
