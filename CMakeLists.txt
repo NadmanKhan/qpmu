@@ -42,3 +42,4 @@ target_link_libraries(qpmu
 )
 
 configure_file(scripts/adc_simulator.py ${CMAKE_CURRENT_BINARY_DIR}/adc_simulator.py COPYONLY)
+configure_file(qpmu.ini ${CMAKE_CURRENT_BINARY_DIR}/qpmu.ini COPYONLY)
