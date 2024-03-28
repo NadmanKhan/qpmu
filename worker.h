@@ -47,10 +47,9 @@ private:
 
     std::array<ADCSample, N> sampleBuffer = {};
     std::array<std::array<std::complex<double>, N>, 6> phasorBuffer = {};
-    uint64_t tsDeltaSum = 0;
     char prevByte = 0;
-    int bufferInnerIndex = 0;
-    int bufferOuterIndex = 0;
+    int bufCol = 0;
+    int bufRow = 0;
 };
 
 #endif // WORKER_H

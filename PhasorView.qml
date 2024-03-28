@@ -1,10 +1,11 @@
 import QtQuick 2.0
-import QtCharts 2.15
+import QtCharts 2.0
 
 PolarChartView {
     id: chart
     visible: true
     anchors.fill: parent
+    antialiasing: true
     property alias axisAngular: axisAngular
     property alias axisRadial: axisRadial
     CategoryAxis {

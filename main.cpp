@@ -31,7 +31,6 @@ int main(int argc, char *argv[])
 
     Worker worker(&adc);
 
-    adc.start();
     worker.start();
 
     engine.rootContext()->setContextProperty("worker", &worker);

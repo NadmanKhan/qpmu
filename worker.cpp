@@ -14,6 +14,8 @@ Worker::Worker(QIODevice *adc)
 {
     assert(m_adc != nullptr);
 
+    m_adc->moveToThread(this);
+
     for (int i = 0; i < 6; ++i) {
         fft_in[i] = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * N);
         fft_out[i] = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * N);
@@ -40,6 +42,9 @@ Worker::~Worker()
 
 void Worker::run()
 {
+    if (auto asProcess = qobject_cast<QProcess *>(m_adc)) {
+        asProcess->start();
+    }
     while (m_adc->waitForReadyRead(-1)) {
         read();
     }
@@ -51,8 +56,8 @@ void Worker::read()
         if (ch == '=') {
             switch (prevByte) {
             case 'o':
-                // seq_no
-                bufferInnerIndex = 0;
+                // "seq_no"
+                bufCol = 0;
                 break;
             case '0':
             case '1':
@@ -60,25 +65,22 @@ void Worker::read()
             case '3':
             case '4':
             case '5':
-                // ch{n}
-                bufferInnerIndex = 1 + (prevByte - '0');
+                // "ch{n}"
+                bufCol = 1 + (prevByte - '0');
                 break;
             case 's':
-                // ts
-                bufferInnerIndex = 7;
+                // "ts"
+                bufCol = 7;
                 break;
             case 'a':
-                // delta
-                bufferInnerIndex = 8;
-                // subtract from tsDeltaSum
-                QMutexLocker locker(&mutex);
-                tsDeltaSum -= sampleBuffer[bufferOuterIndex][8];
+                // "delta"
+                bufCol = 8;
                 break;
             }
-            sampleBuffer[bufferOuterIndex][bufferInnerIndex] = 0;
-        } else if (isdigit(ch)) {
-            sampleBuffer[bufferOuterIndex][bufferInnerIndex] *= 10;
-            sampleBuffer[bufferOuterIndex][bufferInnerIndex] += (ch - '0');
+            sampleBuffer[bufRow][bufCol] = 0;
+        } else if (isdigit(ch) && prevByte != 'h') {
+            sampleBuffer[bufRow][bufCol] *= 10;
+            sampleBuffer[bufRow][bufCol] += (ch - '0');
         } else if (ch == '\n') {
 
             // compute phasor
@@ -86,11 +88,11 @@ void Worker::read()
             // 1. fill fft_in
             for (int i = 0; i < 6; ++i) {
                 double max_value = 0;
-                int index = (bufferOuterIndex + 1) % N;
+                int bufIdx = (bufRow + 1) % N;
                 for (int j = 0; j < N; ++j) {
-                    fft_in[i][j][0] = sampleBuffer[index][1 + i];
+                    fft_in[i][j][0] = sampleBuffer[bufIdx][1 + i];
                     max_value = std::max(max_value, fft_in[i][j][0]);
-                    index = (index + 1) % N;
+                    bufIdx = (bufIdx + 1) % N;
                 }
                 auto half_max = max_value / 2;
                 for (int j = 0; j < N; ++j) {
@@ -122,47 +124,42 @@ void Worker::read()
                         phasor = p;
                     }
                 }
-                phasorBuffer[i][bufferOuterIndex] = phasor;
+                phasorBuffer[i][bufRow] = phasor;
             }
 
-            // 4. add to tsDeltaSum for frequency computation.
-            // the previous value at `sampleBuffer[bufferOuterIndex][8]`
-            // has already been subtracted.
-            tsDeltaSum = sampleBuffer[bufferOuterIndex][8];
-
-            for (int i = 0; i < 9; ++i) {
-                if (i == 0) {
-                    cout << "seq_no";
-                } else if (i <= 6) {
-                    cout << "ch" << i - 1;
-                } else if (i == 7) {
-                    cout << "ts";
-                } else {
-                    cout << "delta";
-                }
-                cout << "=";
-                if (1 <= i && i <= 6) {
-                    cout << std::setw(4) << std::right;
-                }
-                cout << sampleBuffer[bufferOuterIndex][i] << ",";
-                if (!(1 <= i && i <= 6)) {
-                    cout << "\t";
-                }
-            }
-            cout << "\n";
+//            for (int i = 0; i < 9; ++i) {
+//                if (i == 0) {
+//                    cout << "seq_no";
+//                } else if (i <= 6) {
+//                    cout << "ch" << i - 1;
+//                } else if (i == 7) {
+//                    cout << "ts";
+//                } else {
+//                    cout << "delta";
+//                }
+//                cout << "=";
+//                if (1 <= i && i <= 6) {
+//                    cout << std::setw(4) << std::right;
+//                }
+//                cout << sampleBuffer[bufferOuterIndex][i] << ",";
+//                if (!(1 <= i && i <= 6)) {
+//                    cout << "\t";
+//                }
+//            }
+//            cout << "\n";
 
             for (int i = 0; i < 6; ++i) {
-                auto phasor = phasorBuffer[i][bufferOuterIndex];
-                QPointF point = {(std::arg(phasor) * factorRadToDeg) + 180,
+                auto phasor = phasorBuffer[i][bufRow];
+                QPointF point = {(std::arg(phasor) * factorRadToDeg),
                                  std::abs(phasor) / N};
-                cout << std::fixed << std::setprecision(5);
+                cout << std::fixed << std::setprecision(1);
                 cout << i << ":("
-                     << std::setw(10) << std::right << point.x() << ","
-                     << std::setw(10) << std::right << point.y() << ") ";
+                     << std::setw(7) << std::right << point.x() << ","
+                     << std::setw(7) << std::right << point.y() << ") ";
             }
             cout << "\n";
 
-            bufferOuterIndex = (bufferOuterIndex + 1) % N;
+            bufRow = (bufRow + 1) % N;
         }
 
         prevByte = ch;
@@ -196,32 +193,35 @@ void Worker::updatePoints(const QList<QLineSeries *> &series, const QString& dat
 {
     if (dataType == QStringLiteral("phasor")) {
         QMutexLocker locker(&mutex);
-        int at = (bufferOuterIndex - 1 + N) % N;
+        int at = (bufRow - 1 + N) % N;
         for (int i = 0; i < series.size(); ++i) {
             auto phasor = phasorBuffer[i][at];
-            QPointF point = {(std::arg(phasor) * factorRadToDeg) + 180,
+            QPointF point = {(std::arg(phasor) * factorRadToDeg),
                              std::abs(phasor) / N};
-            series[i]->replace(QVector<QPointF>{{0, 0}, point});
+            point.setX(fmod(450 - point.x(), 360));
+            series[i]->replace(QVector<QPointF>{QPointF{0, 0}, point});
         }
 
     } else if (dataType == QStringLiteral("waveform")) {
         QMutexLocker locker(&mutex);
-        auto frequency = tsDeltaSum / (double)N;
-        qDebug() << "freq: " << frequency;
-        int at = (bufferOuterIndex - 1 + N) % N;
+        int at = (bufRow - 1 + N) % N;
+        auto frequency = (std::abs(std::arg(phasorBuffer[0][at]) -
+                std::arg(phasorBuffer[0][(at + N - 1) % N]))
+                / sampleBuffer[at][8]) * (1e6 / (2 * pi));
         for (int i = 0; i < series.size(); ++i) {
             auto phasor = phasorBuffer[i][at];
             auto phaseAngle = std::arg(phasor);
-            auto amplitude = std::abs(phasor);
+            auto amplitude = std::abs(phasor) / N;
             // we have (frequency, amplitude, phaseAngle)
-            // construct the sinusoid (cosine function)
-            // and show it over 0.1 second interval at 0.005 second quanta
-            const int n = 50;
-            const double delta = 0.1 / n;
+            // to reconstruct the sinusoid (cosine function)
+            // and show it over a 100 ms period quantized at 1 ms intervals
+            const int n = 100;
+            const double delta = 1;
+            const double tfactor = 0.001; // because ms
             QVector<QPointF> points(n + 1);
             for (int ti = 0; ti < points.size(); ++ti) {
                 double t = ti * delta;
-                auto xt = amplitude * cos(2 * pi * frequency * t + phaseAngle);
+                auto xt = amplitude * cos(2 * pi * frequency * (t * tfactor) + phaseAngle);
                 points[ti] = QPointF(t, xt);
             }
             series[i]->replace(points);

@@ -6,7 +6,7 @@ import QtQml.Models 2.1
 
 Row {
     property string dataType
-    property alias chart: chartLoader.item
+    property ChartView chart
     property ValueAxis axisTime: null
     property ValueAxis axisVoltage: null
     property ValueAxis axisCurrent: null
@@ -71,6 +71,7 @@ Row {
         height: parent.height
         source: (dataType === "phasor") ? "PhasorView.qml" : "WaveformView.qml"
         onLoaded: {
+            chart = chartLoader.item
             if (dataType === "phasor") {
                 axisAngular = chart.axisAngular
                 axisRadial = chart.axisRadial
@@ -79,6 +80,8 @@ Row {
                 axisVoltage = chart.axisVoltage
                 axisCurrent = chart.axisCurrent
             }
+            console.log(chart)
+            refreshTimer.start()
         }
     }
 
@@ -115,9 +118,9 @@ Row {
 
     Timer {
         id: refreshTimer
-        interval: 20
+        interval: 10 // ms
+        running: false
         repeat: true
-        running: true
         onTriggered: {
             worker.updatePoints(seriesList, dataType)
             if (dataType !== "phasor") {
@@ -136,10 +139,10 @@ Row {
                         }
                     }
                 }
-                axisVoltage.min = -vMax
-                axisVoltage.max = +vMax
                 axisCurrent.min = -iMax
                 axisCurrent.max = +iMax
+                axisVoltage.min = -vMax
+                axisVoltage.max = +vMax
             }
         }
     }

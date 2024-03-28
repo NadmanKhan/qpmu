@@ -5,6 +5,7 @@ ChartView {
     id: chart
     visible: true
     anchors.fill: parent
+    antialiasing: true
     property alias axisTime: axisTime
     property alias axisVoltage: axisVoltage
     property alias axisCurrent: axisCurrent
@@ -17,23 +18,23 @@ ChartView {
     ValueAxis {
         id: axisTime
         min: 0
-        max: 0.1
-        tickCount: 19
-        titleText: "Time (s)"
+        max: 100
+        tickCount: 21
+        titleText: "Time (ms)"
     }
 
     ValueAxis {
         id: axisVoltage
         min: -100
         max: +100
-        tickCount: 9
+        tickCount: 11
         titleText: "Voltage (V)"
     }
     ValueAxis {
         id: axisCurrent
         min: -20
         max: +20
-        tickCount: 9
-        titleText: "Current (I)"
+        tickCount: 11
+        titleText: "Current (A)"
     }
 }

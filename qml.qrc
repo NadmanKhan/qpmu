@@ -1,6 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>GridMenu.qml</file>
         <file>InputField.qml</file>
         <file>Monitor.qml</file>
         <file>PhasorView.qml</file>
