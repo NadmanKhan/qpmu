@@ -5,7 +5,7 @@
 
 #include <QQmlEngine>
 #include "worker.h"
-
+#include "mainwindow.h"
 
 int main(int argc, char *argv[])
 {
@@ -16,25 +16,36 @@ int main(int argc, char *argv[])
 #endif
     QApplication app(argc, argv);
 
-    QQmlApplicationEngine engine;
+    //    QQmlApplicationEngine engine;
 
-    const QUrl url(QStringLiteral("qrc:/main.qml"));
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-                     &app, [url](QObject *obj, const QUrl &objUrl) {
-        if (!obj && url == objUrl)
-            QCoreApplication::exit(-1);
-    }, Qt::QueuedConnection);
+    //    const QUrl url(QStringLiteral("qrc:/main.qml"));
+    //    QObject::connect(
+    //            &engine, &QQmlApplicationEngine::objectCreated, &app,
+    //            [url](QObject *obj, const QUrl &objUrl) {
+    //                if (!obj && url == objUrl)
+    //                    QCoreApplication::exit(-1);
+    //            },
+    //            Qt::QueuedConnection);
+
+    //    QProcess adc;
+    //    adc.setProgram("python3");
+    //    adc.setArguments(QStringList() << "adc_simulator.py");
+
+    //    Worker worker(&adc);
+
+    //    worker.start();
+
+    //    engine.rootContext()->setContextProperty("worker", &worker);
+    //    engine.load(url);
 
     QProcess adc;
     adc.setProgram("python3");
     adc.setArguments(QStringList() << "adc_simulator.py");
+    auto worker = new Worker(&adc);
 
-    Worker worker(&adc);
-
-    worker.start();
-
-    engine.rootContext()->setContextProperty("worker", &worker);
-    engine.load(url);
+    MainWindow window(worker);
+    worker->start();
+    window.show();
 
     return app.exec();
 }

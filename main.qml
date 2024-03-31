@@ -35,7 +35,7 @@ ApplicationWindow {
             properties: "{\"dataType\":\"waveform\"}"
         }
         ListElement {
-            label: "Phasor"
+            label: "Phasors"
             componentUrl: "Monitor.qml"
             iconUrl: "images/polar-chart.png"
             properties: "{\"dataType\":\"phasor\"}"
@@ -43,7 +43,7 @@ ApplicationWindow {
     }
     Monitor {
         anchors.fill: parent
-        dataType: "phasor"
+        dataType: "wave"
     }
 
     //    StackView {

@@ -4,6 +4,8 @@
 import time
 import math
 from typing import Iterable
+import argparse
+import socket
 
 
 FREQUENCY = 50  # Hz
@@ -144,7 +146,7 @@ class ADCSample:
         ts={self.ts},\tdelta={self.delta},\n'
         """
 
-        return f'seq_no={self.seq_no},\tch0={self.ch[0]:4}, ch1={self.ch[1]:4}, ch2={self.ch[2]:4}, ch3={self.ch[3]:4}, ch4={self.ch[4]:4}, ch5={self.ch[5]:4}, ts={self.ts},\tdelta={self.delta},\n'
+        return f"seq_no={self.seq_no},\tch0={self.ch[0]:4}, ch1={self.ch[1]:4}, ch2={self.ch[2]:4}, ch3={self.ch[3]:4}, ch4={self.ch[4]:4}, ch5={self.ch[5]:4}, ts={self.ts},\tdelta={self.delta},\n"
 
 
 class ADC:
@@ -201,9 +203,10 @@ class ADC:
         A generator that yields `ADCSample` objects at the given sampling rate.
         """
         seq_no = 0
-        prev_ts = time.time_ns() // 1000 # previous timestamp, required to calculate `delta`
-        sleep_seconds  = 1 / self.samples_per_second - (950 - 833) * 10**-6
-        print(sleep_seconds)
+        prev_ts = (
+            time.time_ns() // 1000
+        )  # previous timestamp, required to calculate `delta`
+        sleep_seconds = 1 / self.samples_per_second - (950 - 833) * 10**-6
 
         while True:
             time.sleep(sleep_seconds)
@@ -218,6 +221,35 @@ class ADC:
 
 
 if __name__ == "__main__":
+
     adc = ADC()
-    for sample in adc.samples():
-        print(sample, end='')
+
+    # Write to one of the following:
+    # 1. stdout
+    # 2. a TCP socket
+    # 3. a UDP socket
+
+    parser = argparse.ArgumentParser(description="ADC Simulator")
+    parser.add_argument("--tcp", type=int, default=0, help="TCP port number")
+    parser.add_argument("--udp", type=int, default=0, help="UDP port number")
+    args = parser.parse_args()
+
+    if args.tcp != 0:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("localhost", args.tcp))
+            sock.listen()
+            conn, addr = sock.accept()
+            with conn:
+                for sample in adc.samples():
+                    conn.sendall(str(sample).encode())
+
+    elif args.udp != 0:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            addr = ("localhost", args.udp)
+            sock.bind(addr)
+            for sample in adc.samples():
+                sock.sendto(str(sample).encode(), addr)
+
+    else:
+        for sample in adc.samples():
+            print(sample, end="")

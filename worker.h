@@ -12,6 +12,7 @@
 #include <fftw3.h>
 
 #include <complex>
+#include <cmath>
 
 constexpr double pi = 3.14159265358979323846264338;
 constexpr double factorRadToDeg = 180 / pi;
@@ -35,8 +36,11 @@ public:
 public slots:
     void read();
 
-    Q_INVOKABLE QVariantList seriesInfoList(const QString &dataType);
+    Q_INVOKABLE QVariantList seriesInfoList();
     Q_INVOKABLE void updatePoints(const QList<QLineSeries *> &series, const QString &dataType);
+    Q_INVOKABLE QVariantMap getParameters();
+
+    Q_INVOKABLE void getPhasors(QList<std::complex<double>> &out_phasors, double &out_frequency);
 
 private:
     QMutex mutex;

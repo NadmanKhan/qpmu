@@ -4,31 +4,29 @@
 #include <iomanip>
 using std::cout;
 
-std::complex<double> to_complex(fftw_complex v) {
+std::complex<double> to_complex(fftw_complex v)
+{
     return std::complex<double>(v[0], v[1]);
 }
 
-Worker::Worker(QIODevice *adc)
-    : QThread(),
-      m_adc(adc)
+Worker::Worker(QIODevice *adc) : QThread(), m_adc(adc)
 {
     assert(m_adc != nullptr);
 
     m_adc->moveToThread(this);
 
     for (int i = 0; i < 6; ++i) {
-        fft_in[i] = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * N);
-        fft_out[i] = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * N);
+        fft_in[i] = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * N);
+        fft_out[i] = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * N);
         for (int j = 0; j < N; ++j) {
             // zero out
             fft_in[i][j][0] = 0;
             fft_in[i][j][1] = 0;
         }
-        fft_plans[i] = fftw_plan_dft_1d(N, fft_in[i], fft_out[i],
-                                       FFTW_FORWARD, FFTW_ESTIMATE);
+        fft_plans[i] = fftw_plan_dft_1d(N, fft_in[i], fft_out[i], FFTW_FORWARD, FFTW_ESTIMATE);
     }
 
-//    connect(m_adc, &QIODevice::readyRead, this, &Worker::read);
+    //    connect(m_adc, &QIODevice::readyRead, this, &Worker::read);
 }
 
 Worker::~Worker()
@@ -100,7 +98,6 @@ void Worker::read()
                 }
             }
 
-
             // 2. execute fft_plans
             for (int i = 0; i < 6; ++i) {
                 fftw_execute(fft_plans[i]);
@@ -111,11 +108,11 @@ void Worker::read()
             // 3. extract the phasor from fft_out and write it to buffer
 
             for (int i = 0; i < 6; ++i) {
-//                std::complex<double> phasor = 0;
-//                for (int j = 0; j < N; ++j) {
-//                    phasor += to_complex(fft_out[i][j]);
-//                }
-//                phasorBuffer[i][bufferOuterIndex] = phasor;
+                //                std::complex<double> phasor = 0;
+                //                for (int j = 0; j < N; ++j) {
+                //                    phasor += to_complex(fft_out[i][j]);
+                //                }
+                //                phasorBuffer[i][bufferOuterIndex] = phasor;
                 std::complex<double> phasor = 0;
                 double maxMag = 0;
                 for (int j = 0; j < N; ++j) {
@@ -127,35 +124,33 @@ void Worker::read()
                 phasorBuffer[i][bufRow] = phasor;
             }
 
-//            for (int i = 0; i < 9; ++i) {
-//                if (i == 0) {
-//                    cout << "seq_no";
-//                } else if (i <= 6) {
-//                    cout << "ch" << i - 1;
-//                } else if (i == 7) {
-//                    cout << "ts";
-//                } else {
-//                    cout << "delta";
-//                }
-//                cout << "=";
-//                if (1 <= i && i <= 6) {
-//                    cout << std::setw(4) << std::right;
-//                }
-//                cout << sampleBuffer[bufferOuterIndex][i] << ",";
-//                if (!(1 <= i && i <= 6)) {
-//                    cout << "\t";
-//                }
-//            }
-//            cout << "\n";
+            //            for (int i = 0; i < 9; ++i) {
+            //                if (i == 0) {
+            //                    cout << "seq_no";
+            //                } else if (i <= 6) {
+            //                    cout << "ch" << i - 1;
+            //                } else if (i == 7) {
+            //                    cout << "ts";
+            //                } else {
+            //                    cout << "delta";
+            //                }
+            //                cout << "=";
+            //                if (1 <= i && i <= 6) {
+            //                    cout << std::setw(4) << std::right;
+            //                }
+            //                cout << sampleBuffer[bufferOuterIndex][i] << ",";
+            //                if (!(1 <= i && i <= 6)) {
+            //                    cout << "\t";
+            //                }
+            //            }
+            //            cout << "\n";
 
             for (int i = 0; i < 6; ++i) {
                 auto phasor = phasorBuffer[i][bufRow];
-                QPointF point = {(std::arg(phasor) * factorRadToDeg),
-                                 std::abs(phasor) / N};
+                QPointF point = { (std::arg(phasor) * factorRadToDeg), std::abs(phasor) / N };
                 cout << std::fixed << std::setprecision(1);
-                cout << i << ":("
-                     << std::setw(7) << std::right << point.x() << ","
-                     << std::setw(7) << std::right << point.y() << ") ";
+                cout << i << ":(" << std::setw(7) << std::right << point.x() << "," << std::setw(7)
+                     << std::right << point.y() << ") ";
             }
             cout << "\n";
 
@@ -166,14 +161,14 @@ void Worker::read()
     }
 }
 
-
-QVariantList Worker::seriesInfoList(const QString& dataType)
+QVariantList Worker::seriesInfoList()
 {
     QVariantList res;
     for (int i = 0; i < 3; ++i) {
         QVariantMap item;
         item[QStringLiteral("name")] = QStringLiteral("V") + char('A' + i);
-        item[QStringLiteral("color")] = std::array<QString, 3>{"#ff0000", "#00ff00", "#0000ff"}[i];
+        item[QStringLiteral("color")] =
+                std::array<QString, 3>{ "#ff0000", "#00ff00", "#0000ff" }[i];
         item[QStringLiteral("visible")] = true;
         item[QStringLiteral("type")] = QStringLiteral("voltage");
         res << item;
@@ -181,7 +176,8 @@ QVariantList Worker::seriesInfoList(const QString& dataType)
     for (int i = 0; i < 3; ++i) {
         QVariantMap item;
         item[QStringLiteral("name")] = QStringLiteral("I") + char('A' + i);
-        item[QStringLiteral("color")] = std::array<QString, 3>{"#ffff00", "#00ffff", "#ff00ff"}[i];
+        item[QStringLiteral("color")] =
+                std::array<QString, 3>{ "#ffff00", "#00ffff", "#ff00ff" }[i];
         item[QStringLiteral("visible")] = true;
         item[QStringLiteral("type")] = QStringLiteral("current");
         res << item;
@@ -189,25 +185,25 @@ QVariantList Worker::seriesInfoList(const QString& dataType)
     return res;
 }
 
-void Worker::updatePoints(const QList<QLineSeries *> &series, const QString& dataType)
+void Worker::updatePoints(const QList<QLineSeries *> &series, const QString &dataType)
 {
-    if (dataType == QStringLiteral("phasor")) {
+    if (dataType == QStringLiteral("polar")) {
         QMutexLocker locker(&mutex);
         int at = (bufRow - 1 + N) % N;
         for (int i = 0; i < series.size(); ++i) {
             auto phasor = phasorBuffer[i][at];
-            QPointF point = {(std::arg(phasor) * factorRadToDeg),
-                             std::abs(phasor) / N};
+            QPointF point = { (std::arg(phasor) * factorRadToDeg), std::abs(phasor) / N };
             point.setX(fmod(450 - point.x(), 360));
-            series[i]->replace(QVector<QPointF>{QPointF{0, 0}, point});
+            series[i]->replace(QVector<QPointF>{ QPointF{ 0, 0 }, point });
         }
 
     } else if (dataType == QStringLiteral("waveform")) {
         QMutexLocker locker(&mutex);
         int at = (bufRow - 1 + N) % N;
-        auto frequency = (std::abs(std::arg(phasorBuffer[0][at]) -
-                std::arg(phasorBuffer[0][(at + N - 1) % N]))
-                / sampleBuffer[at][8]) * (1e6 / (2 * pi));
+        auto frequency = (std::abs(std::arg(phasorBuffer[0][at])
+                                   - std::arg(phasorBuffer[0][(at + N - 1) % N]))
+                          / sampleBuffer[at][8])
+                * (1e6 / (2 * pi));
         for (int i = 0; i < series.size(); ++i) {
             auto phasor = phasorBuffer[i][at];
             auto phaseAngle = std::arg(phasor);
@@ -226,6 +222,40 @@ void Worker::updatePoints(const QList<QLineSeries *> &series, const QString& dat
             }
             series[i]->replace(points);
         }
+    }
+}
+
+QVariantMap Worker::getParameters()
+{
+    QMutexLocker locker(&mutex);
+    int at = (bufRow - 1 + N) % N;
+    QVariantMap res;
+    res["frequency"] =
+            (std::abs(std::arg(phasorBuffer[0][at]) - std::arg(phasorBuffer[0][(at + N - 1) % N]))
+             / sampleBuffer[at][8])
+            * (1e6 / (2 * pi));
+    QVariantList phasors;
+    for (int i = 0; i < 6; ++i) {
+        auto phasor = phasorBuffer[i][at];
+        QVariantMap phasorMap;
+        phasorMap["phaseAngle"] = std::arg(phasor);
+        phasorMap["amplitude"] = std::abs(phasor) / N;
+        phasors.append(phasorMap);
+    }
+    res["phasors"] = phasors;
+    return res;
+}
+
+void Worker::getPhasors(QList<std::complex<double>> &out_phasors, double &out_frequency)
+{
+    QMutexLocker locker(&mutex);
+    int at = (bufRow - 1 + N) % N;
+    out_frequency =
+            (std::abs(std::arg(phasorBuffer[0][at]) - std::arg(phasorBuffer[0][(at + N - 1) % N]))
+             / sampleBuffer[at][8])
+            * (1e6 / (2 * pi));
+    for (int i = 0; i < 6; ++i) {
+        out_phasors[i] = phasorBuffer[i][at];
     }
 }
 

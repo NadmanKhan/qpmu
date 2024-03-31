@@ -8,18 +8,24 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Widgets Charts Quick REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Widgets Charts Quick REQUIRED)
 
 set(PROJECT_SOURCES
-        worker.h
-        worker.cpp
-        main.cpp
-        qml.qrc
-        icons.qrc
+    mainwindow.h
+    mainwindow.cpp
+    phasorview.h
+    phasorview.cpp
+    waveformview.h
+    waveformview.cpp
+    worker.h
+    worker.cpp
+    main.cpp
+    qml.qrc
+    icons.qrc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -63,4 +69,4 @@ if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(qpmu)
 endif()
 
-configure_file(adc_simulator.py adc_simulator.py COPYONLY)
+configure_file(backend/adc_simulator.py adc_simulator.py COPYONLY)
