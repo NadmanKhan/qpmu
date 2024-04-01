@@ -40,7 +40,7 @@ public slots:
     Q_INVOKABLE void updatePoints(const QList<QLineSeries *> &series, const QString &dataType);
     Q_INVOKABLE QVariantMap getParameters();
 
-    Q_INVOKABLE void getPhasors(QList<std::complex<double>> &out_phasors, double &out_frequency);
+    Q_INVOKABLE void getPhasors(std::array<std::complex<double>, 6> &out_phasors, double &out_frequency);
 
 private:
     QMutex mutex;

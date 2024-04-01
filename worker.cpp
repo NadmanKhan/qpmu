@@ -145,14 +145,15 @@ void Worker::read()
             //            }
             //            cout << "\n";
 
-            for (int i = 0; i < 6; ++i) {
-                auto phasor = phasorBuffer[i][bufRow];
-                QPointF point = { (std::arg(phasor) * factorRadToDeg), std::abs(phasor) / N };
-                cout << std::fixed << std::setprecision(1);
-                cout << i << ":(" << std::setw(7) << std::right << point.x() << "," << std::setw(7)
-                     << std::right << point.y() << ") ";
-            }
-            cout << "\n";
+            //            for (int i = 0; i < 6; ++i) {
+            //                auto phasor = phasorBuffer[i][bufRow];
+            //                QPointF point = { (std::arg(phasor) * factorRadToDeg),
+            //                std::abs(phasor) / N }; cout << std::fixed << std::setprecision(1);
+            //                cout << i << ":(" << std::setw(7) << std::right << point.x() << "," <<
+            //                std::setw(7)
+            //                     << std::right << point.y() << ") ";
+            //            }
+            //            cout << "\n";
 
             bufRow = (bufRow + 1) % N;
         }
@@ -246,7 +247,7 @@ QVariantMap Worker::getParameters()
     return res;
 }
 
-void Worker::getPhasors(QList<std::complex<double>> &out_phasors, double &out_frequency)
+void Worker::getPhasors(std::array<std::complex<double>, 6> &out_phasors, double &out_frequency)
 {
     QMutexLocker locker(&mutex);
     int at = (bufRow - 1 + N) % N;

@@ -21,7 +21,8 @@ private slots:
     void updateSeries();
 
 private:
-    QList<QLineSeries *> m_series;
+    QList<QLineSeries *> m_lineSeries;
+    QList<QScatterSeries *> m_scatterSeries;
     Worker *m_worker;
 };
 
