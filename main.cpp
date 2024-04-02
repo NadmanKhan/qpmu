@@ -5,7 +5,10 @@
 
 #include <QQmlEngine>
 #include "worker.h"
-#include "mainwindow.h"
+#include "main_window.h"
+
+#include <iostream>
+#include <iomanip>
 
 int main(int argc, char *argv[])
 {
@@ -15,6 +18,8 @@ int main(int argc, char *argv[])
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
     QApplication app(argc, argv);
+
+    std::cout << std::fixed << std::setprecision(2);
 
     //    QQmlApplicationEngine engine;
 
@@ -45,6 +50,7 @@ int main(int argc, char *argv[])
 
     MainWindow window(worker);
     worker->start();
+    window.resize(1000, 800);
     window.show();
 
     return app.exec();

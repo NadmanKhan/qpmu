@@ -1,5 +1,5 @@
-#ifndef WAVEFORMVIEW_H
-#define WAVEFORMVIEW_H
+#ifndef WAVEFORM_VIEW_H
+#define WAVEFORM_VIEW_H
 
 #include <QChartView>
 #include <QObject>
@@ -13,4 +13,4 @@ public:
     WaveformView();
 };
 
-#endif // WAVEFORMVIEW_H
+#endif // WAVEFORM_VIEW_H

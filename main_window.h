@@ -1,5 +1,5 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef MAIN_WINDOW_H
+#define MAIN_WINDOW_H
 
 #include <QMainWindow>
 #include <QIcon>
@@ -9,7 +9,7 @@
 #include <QStackedWidget>
 
 #include "worker.h"
-#include "phasorview.h"
+#include "phasor_view.h"
 #include <QProcess>
 
 class MainWindow : public QMainWindow
@@ -24,4 +24,4 @@ private:
     QStackedWidget *m_stack = nullptr;
 };
 
-#endif // MAINWINDOW_H
+#endif // MAIN_WINDOW_H
