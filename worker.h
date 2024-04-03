@@ -14,6 +14,8 @@
 #include <complex>
 #include <cmath>
 
+#include "signal_info_model.h"
+
 constexpr double pi = 3.14159265358979323846264338;
 constexpr double factorRadToDeg = 180 / pi;
 using ADCSample = std::array<uint64_t, 9>;
@@ -40,7 +42,8 @@ public slots:
     Q_INVOKABLE void updatePoints(const QList<QLineSeries *> &series, const QString &dataType);
     Q_INVOKABLE QVariantMap getParameters();
 
-    Q_INVOKABLE void getPhasors(std::array<std::complex<double>, 6> &out_phasors, double &out_frequency);
+    Q_INVOKABLE void getEstimations(std::array<std::complex<double>, nsignals> &out_phasors,
+                                    std::array<std::complex<double>, nsignals> &out_frequencies);
 
 private:
     QMutex mutex;

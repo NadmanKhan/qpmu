@@ -247,15 +247,16 @@ QVariantMap Worker::getParameters()
     return res;
 }
 
-void Worker::getPhasors(std::array<std::complex<double>, 6> &out_phasors, double &out_frequency)
+void Worker::getEstimations(std::array<std::complex<double>, nsignals> &out_phasors,
+                            std::array<std::complex<double>, nsignals> &out_frequencies)
 {
     QMutexLocker locker(&mutex);
     int at = (bufRow - 1 + N) % N;
-    out_frequency =
-            (std::abs(std::arg(phasorBuffer[0][at]) - std::arg(phasorBuffer[0][(at + N - 1) % N]))
-             / sampleBuffer[at][8])
-            * (1e6 / (2 * pi));
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < nsignals; ++i) {
+        out_frequencies[i] = (std::abs(std::arg(phasorBuffer[i][at])
+                                       - std::arg(phasorBuffer[i][(at + N - 1) % N]))
+                              / sampleBuffer[at][8])
+                * (1e6 / (2 * pi));
         out_phasors[i] = phasorBuffer[i][at];
     }
 }

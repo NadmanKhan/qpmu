@@ -23,7 +23,7 @@ set(PROJECT_SOURCES
     waveform_view.cpp
     worker.h
     worker.cpp
-    signal_list_model.h
+    signal_info_model.h
     main.cpp
     qml.qrc
     icons.qrc
