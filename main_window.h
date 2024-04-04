@@ -10,6 +10,7 @@
 
 #include "worker.h"
 #include "phasor_view.h"
+#include "waveform_view.h"
 #include <QProcess>
 
 class MainWindow : public QMainWindow

@@ -30,6 +30,7 @@ private:
     QList<QVector<QPointF>> m_listLineSeriesPoints;
     QTableWidget *m_table;
     Worker *m_worker;
+    QTimer m_timer;
 };
 
 #endif // PHASOR_VIEW_H

@@ -2,6 +2,8 @@
 
 PhasorView::PhasorView(Worker *worker, QWidget *parent) : QWidget(parent), m_worker(worker)
 {
+    assert(worker != nullptr);
+
     auto axisAngular = new QCategoryAxis();
     axisAngular->setStartValue(0);
     axisAngular->setRange(0, 360);
@@ -41,8 +43,8 @@ PhasorView::PhasorView(Worker *worker, QWidget *parent) : QWidget(parent), m_wor
     m_table->setHorizontalHeaderLabels({ QStringLiteral("Signal"), QStringLiteral("Amplitude"),
                                          QStringLiteral("Phase diff.") });
     m_table->setColumnWidth(0, 45);
-    m_table->setColumnWidth(1, 70);
-    m_table->setColumnWidth(2, 70);
+    m_table->setColumnWidth(1, 80);
+    m_table->setColumnWidth(2, 80);
     m_table->setMinimumWidth(m_table->horizontalHeader()->length()
                              + m_table->verticalHeader()->width());
     m_table->setMaximumWidth(m_table->minimumWidth());
@@ -54,20 +56,21 @@ PhasorView::PhasorView(Worker *worker, QWidget *parent) : QWidget(parent), m_wor
 
     setLayout(hBoxLayout);
 
-    auto timer = new QTimer(this);
-    timer->setInterval(100);
-    connect(timer, &QTimer::timeout, this, &PhasorView::updateSeries);
+    m_timer.setParent(this);
+    m_timer.setInterval(400);
+    connect(&m_timer, &QTimer::timeout, this, &PhasorView::updateSeries);
 
     for (int i = 0; i < nsignals; ++i) {
-        const auto &[name, color, _type] = listSignalInfoModel[i];
+        const auto &[name, colorHex, _type] = listSignalInfoModel[i];
 
         auto lineSeries = new QLineSeries();
         m_listLineSeries.append(lineSeries);
+        m_listLineSeriesPoints.push_back({});
+
         lineSeries->setName(name);
-        lineSeries->setPen(QPen(QColor(color), 1.5));
+        lineSeries->setPen(QPen(QColor(colorHex), 2.5));
         lineSeries->setUseOpenGL(true);
 
-        m_listLineSeriesPoints.push_back({});
         m_listLineSeriesPoints[i].append({ 0, 0 }); // origin
         m_listLineSeriesPoints[i].append({ 0, 0 }); // tip (to be updated)
         m_listLineSeriesPoints[i].append({ 0, 0 }); // arrow left-arm end (to be updated)
@@ -92,17 +95,17 @@ PhasorView::PhasorView(Worker *worker, QWidget *parent) : QWidget(parent), m_wor
             if (i & 1)
                 tableItem->setBackground(QColor(QStringLiteral("lightGray")));
             m_table->setItem(i, j, tableItem);
-            m_table->setRowHeight(i, 40);
+            m_table->setRowHeight(i, 65);
         }
 
         m_table->item(i, 0)->setText(name);
         m_table->setVerticalHeaderItem(i, new QTableWidgetItem());
-        m_table->verticalHeaderItem(i)->setBackground(QColor(color));
+        m_table->verticalHeaderItem(i)->setBackground(QColor(colorHex));
         m_table->verticalHeaderItem(i)->setSizeHint(QSize(10, 0));
     }
     m_table->horizontalHeader()->hide();
 
-    timer->start();
+    m_timer.start();
 }
 
 constexpr double polarChartAngle(double angle)
@@ -113,7 +116,7 @@ constexpr double polarChartAngle(double angle)
 void PhasorView::updateSeries()
 {
     std::array<std::complex<double>, nsignals> phasors;
-    std::array<std::complex<double>, nsignals> frequencies;
+    std::array<double, nsignals> frequencies;
 
     m_worker->getEstimations(phasors, frequencies);
 

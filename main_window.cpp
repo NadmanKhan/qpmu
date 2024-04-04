@@ -11,16 +11,20 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
     auto btnWaveform = new QPushButton();
     btnWaveform->setIcon(QIcon(":/images/wave-graph.png"));
     gridlayout->addWidget(btnWaveform, 0, 0);
-    auto phasorView = new PhasorView(worker);
+
+    auto waveformView = new WaveformView(worker);
 
     auto btnPhasor = new QPushButton();
     btnPhasor->setIcon(QIcon(":/images/polar-chart.png"));
     gridlayout->addWidget(btnPhasor, 0, 1);
+
+    auto phasorView = new PhasorView(worker);
+
     //    connect(btnPhasor, &QPushButton::clicked,
     //            [&] { m_stack->setCurrentIndex(m_stack->addWidget(phasorView)); });
 
     m_stack->addWidget(firstView);
     setCentralWidget(m_stack);
 
-    setCentralWidget(phasorView);
+    setCentralWidget(waveformView);
 }

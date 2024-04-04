@@ -38,22 +38,18 @@ public:
 public slots:
     void read();
 
-    Q_INVOKABLE QVariantList seriesInfoList();
-    Q_INVOKABLE void updatePoints(const QList<QLineSeries *> &series, const QString &dataType);
-    Q_INVOKABLE QVariantMap getParameters();
-
     Q_INVOKABLE void getEstimations(std::array<std::complex<double>, nsignals> &out_phasors,
-                                    std::array<std::complex<double>, nsignals> &out_frequencies);
+                                    std::array<double, nsignals> &out_frequencies);
 
 private:
     QMutex mutex;
     QIODevice *m_adc;
 
-    std::array<fftw_complex *, 6> fft_in, fft_out;
-    std::array<fftw_plan, 6> fft_plans;
+    std::array<fftw_complex *, nsignals> fft_in, fft_out;
+    std::array<fftw_plan, nsignals> fft_plans;
 
     std::array<ADCSample, N> sampleBuffer = {};
-    std::array<std::array<std::complex<double>, N>, 6> phasorBuffer = {};
+    std::array<std::array<std::complex<double>, N>, nsignals> phasorBuffer = {};
     char prevByte = 0;
     int bufCol = 0;
     int bufRow = 0;
