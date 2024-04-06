@@ -72,8 +72,8 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_listLineSeries.append(lineSeries);
         m_listLineSeriesPoints.push_back({});
 
-        lineSeries->setName(name);
-        lineSeries->setPen(QPen(QColor(colorHex), 2.5));
+        lineSeries->setName(name.data());
+        lineSeries->setPen(QPen(QColor(colorHex.data()), 2.5));
         lineSeries->setUseOpenGL(true);
 
         m_listLineSeriesPoints[i].append({ 0, 0 }); // origin
@@ -103,9 +103,9 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
             m_table->setRowHeight(i, 50);
         }
 
-        m_table->item(i, 0)->setText(name);
+        m_table->item(i, 0)->setText(name.data());
         m_table->setVerticalHeaderItem(i, new QTableWidgetItem());
-        m_table->verticalHeaderItem(i)->setBackground(QColor(colorHex));
+        m_table->verticalHeaderItem(i)->setBackground(QColor(colorHex.data()));
         m_table->verticalHeaderItem(i)->setSizeHint(QSize(10, 0));
     }
 }

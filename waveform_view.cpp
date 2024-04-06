@@ -27,7 +27,6 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     chart->addAxis(m_axisTime, Qt::AlignBottom);
     chart->addAxis(m_axisVoltage, Qt::AlignLeft);
     chart->addAxis(m_axisCurrent, Qt::AlignRight);
-    //    chart->legend()->setAlignment(Qt::AlignLeft);
 
     auto chartView = new QChartView(this);
     chartView->setChart(chart);
@@ -52,8 +51,8 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_listSplineSeries.append(splineSeries);
         m_listSplineSeriesPoints.push_back({});
 
-        splineSeries->setName(name);
-        splineSeries->setPen(QPen(QColor(colorHex), 2));
+        splineSeries->setName(name.data());
+        splineSeries->setPen(QPen(QColor(colorHex.data()), 2));
         splineSeries->setUseOpenGL(true);
 
         chart->addSeries(splineSeries);

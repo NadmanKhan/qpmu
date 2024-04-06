@@ -11,8 +11,8 @@ enum SignalType { SignalTypeVoltage, SignalTypeCurrent };
 
 struct SignalInfoModel
 {
-    const char name[3];
-    const char colorHex[8];
+    std::string_view name;
+    std::string_view colorHex;
     SignalType signalType;
 };
 
