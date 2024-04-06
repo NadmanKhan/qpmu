@@ -1,7 +1,13 @@
 #include "waveform_view.h"
 
-WaveformView::WaveformView(Worker *worker, QWidget *parent) : QWidget(parent), m_worker(worker)
+WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
+    : QWidget(parent), m_worker(worker)
 {
+    assert(updateTimer != nullptr);
+    assert(worker != nullptr);
+
+    hide();
+
     m_axisTime = new QValueAxis();
     m_axisTime->setTitleText(QStringLiteral("Time (ms)"));
     m_axisTime->setRange(0, 100);
@@ -29,13 +35,15 @@ WaveformView::WaveformView(Worker *worker, QWidget *parent) : QWidget(parent), m
     chartView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     chartView->show();
 
-    auto hBoxLayout = new QHBoxLayout(this);
-    hBoxLayout->addWidget(chartView);
-    setLayout(hBoxLayout);
+    auto hbox = new QHBoxLayout(this);
+    hbox->addWidget(chartView);
+    setLayout(hbox);
 
-    m_timer.setParent(this);
-    m_timer.setInterval(400);
-    connect(&m_timer, &QTimer::timeout, this, &WaveformView::updateSeries);
+    // update every 400 ms (2.5 fps)
+    m_timeoutTarget = 400 / updateTimer->interval();
+    Q_ASSERT(m_timeoutTarget > 0);
+    m_timeoutCounter = 0;
+    connect(updateTimer, &QTimer::timeout, this, &WaveformView::update);
 
     for (int i = 0; i < nsignals; ++i) {
         const auto &[name, colorHex, signalType] = listSignalInfoModel[i];
@@ -52,12 +60,15 @@ WaveformView::WaveformView(Worker *worker, QWidget *parent) : QWidget(parent), m
         splineSeries->attachAxis(m_axisTime);
         splineSeries->attachAxis(signalType == SignalTypeVoltage ? m_axisVoltage : m_axisCurrent);
     }
-
-    m_timer.start();
 }
 
-void WaveformView::updateSeries()
+void WaveformView::update()
 {
+    ++m_timeoutCounter;
+    m_timeoutCounter = m_timeoutCounter * bool(m_timeoutCounter != m_timeoutTarget);
+    if (m_timeoutCounter != 0)
+        return;
+
     std::array<std::complex<double>, nsignals> phasors;
     std::array<double, nsignals> frequencies;
 
@@ -90,14 +101,14 @@ void WaveformView::updateSeries()
         m_listSplineSeriesPoints[i].resize(21);
         for (int j = 0; j <= 20; ++j) {
             auto t = j * tDelta * tFactor;
-            auto y = amplitudes[i] * cos(2 * M_PI * frequencies[0] * t + phaseDiffs[i]);
+            auto y = amplitudes[i] * cos(frequencies[0] * t + phaseDiffs[i]);
             m_listSplineSeriesPoints[i][j] = QPointF(j * tDelta, y);
         }
     }
 
     m_axisVoltage->setRange(-vmax, +vmax);
     m_axisCurrent->setRange(-imax, +imax);
-    //    qDebug() << frequencies[0];
+    //    qDebug() << QList<double>(frequencies.begin(), frequencies.end());
     for (int i = 0; i < nsignals; ++i) {
         m_listSplineSeries[i]->replace(m_listSplineSeriesPoints[i]);
     }

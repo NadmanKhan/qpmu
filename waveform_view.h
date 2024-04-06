@@ -15,13 +15,14 @@ class WaveformView : public QWidget
 {
     Q_OBJECT
 public:
-    WaveformView(Worker *worker, QWidget *parent = nullptr);
+    WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
 
 private slots:
-    void updateSeries();
+    void update();
 
 private:
     Worker *m_worker;
+
     QList<QSplineSeries *> m_listSplineSeries;
     QList<QVector<QPointF>> m_listSplineSeriesPoints;
 
@@ -29,7 +30,8 @@ private:
     QValueAxis *m_axisVoltage;
     QValueAxis *m_axisCurrent;
 
-    QTimer m_timer;
+    int m_timeoutCounter;
+    int m_timeoutTarget;
 };
 
 #endif // WAVEFORM_VIEW_H

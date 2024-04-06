@@ -4,7 +4,7 @@
 #include <iomanip>
 using std::cout;
 
-std::complex<double> *to_complex(fftw_complex *v)
+inline std::complex<double> *to_complex(fftw_complex *v)
 {
     return reinterpret_cast<std::complex<double> *>(v);
 }
@@ -116,9 +116,8 @@ void Worker::read()
                 std::complex<double> phasor = 0;
                 double maxMag = 0;
                 for (int j = 0; j < N; ++j) {
-                    auto p = to_complex(&fft_out[i][j]);
-                    if (maxMag < std::abs(*p)) {
-                        phasor = *p;
+                    if (maxMag < std::abs(*to_complex(&fft_out[i][j]))) {
+                        phasor = *to_complex(&fft_out[i][j]);
                     }
                 }
                 phasorBuffer[i][bufRow] = phasor;
@@ -166,12 +165,26 @@ void Worker::getEstimations(std::array<std::complex<double>, nsignals> &out_phas
                             std::array<double, nsignals> &out_frequencies)
 {
     QMutexLocker locker(&mutex);
-    int at = (bufRow - 1 + N) % N;
+    int readIdx = (bufRow - 1 + N) % N;
+    int prevReadIdx = (readIdx - 1 + N) % N;
     for (int i = 0; i < nsignals; ++i) {
-        out_frequencies[i] = (std::abs(std::arg(phasorBuffer[i][at])
-                                       - std::arg(phasorBuffer[i][(at + N - 1) % N]))
-                              / sampleBuffer[at][8])
+        for (int j = prevIndex(bufRow), k = prevIndex(j); k != bufRow;
+             j = prevIndex(j), k = prevIndex(k)) { }
+        out_frequencies[i] = (std::abs(std::arg(phasorBuffer[i][readIdx])
+                                       - std::arg(phasorBuffer[i][prevReadIdx]))
+                              / sampleBuffer[readIdx][8])
                 * (1e6 / (2 * pi));
-        out_phasors[i] = phasorBuffer[i][at];
+
+        out_phasors[i] = phasorBuffer[i][readIdx];
     }
+}
+
+constexpr int Worker::nextIndex(int currIndex)
+{
+    return (currIndex + 1) % N;
+}
+
+constexpr int Worker::prevIndex(int currIndex)
+{
+    return ((currIndex - 1) % N + N) % N;
 }

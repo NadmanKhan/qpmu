@@ -50,7 +50,6 @@ int main(int argc, char *argv[])
 
     MainWindow window(worker);
     worker->start();
-    window.resize(1000, 800);
     window.show();
 
     return app.exec();

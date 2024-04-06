@@ -1,9 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>InputField.qml</file>
-        <file>Monitor.qml</file>
-        <file>PhasorView.qml</file>
-        <file>WaveformView.qml</file>
-        <file>main.qml</file>
-    </qresource>
-</RCC>

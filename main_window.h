@@ -7,11 +7,13 @@
 #include <QLayout>
 #include <QGridLayout>
 #include <QStackedWidget>
+#include <QProcess>
+#include <QLabel>
+#include <QTimer>
 
 #include "worker.h"
 #include "phasor_view.h"
 #include "waveform_view.h"
-#include <QProcess>
 
 class MainWindow : public QMainWindow
 {
@@ -23,6 +25,7 @@ signals:
 
 private:
     QStackedWidget *m_stack = nullptr;
+    QTimer *m_timer;
 };
 
 #endif // MAIN_WINDOW_H

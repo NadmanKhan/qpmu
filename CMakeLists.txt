@@ -25,7 +25,6 @@ set(PROJECT_SOURCES
     worker.cpp
     signal_info_model.h
     main.cpp
-    qml.qrc
     icons.qrc
 )
 

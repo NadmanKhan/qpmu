@@ -32,9 +32,6 @@ public:
 
     static constexpr int N = 24;
 
-    static constexpr double phasorMag(fftw_complex phasor);
-    static constexpr double phasorAng(fftw_complex phasor);
-
 public slots:
     void read();
 
@@ -42,6 +39,9 @@ public slots:
                                     std::array<double, nsignals> &out_frequencies);
 
 private:
+    static constexpr int nextIndex(int currIndex);
+    static constexpr int prevIndex(int currIndex);
+
     QMutex mutex;
     QIODevice *m_adc;
 

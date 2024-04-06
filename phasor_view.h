@@ -20,17 +20,20 @@ class PhasorView : public QWidget
 {
     Q_OBJECT
 public:
-    PhasorView(Worker *worker, QWidget *parent = nullptr);
+    PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
 
 private slots:
-    void updateSeries();
+    void update();
 
 private:
+    Worker *m_worker;
+
     QList<QLineSeries *> m_listLineSeries;
     QList<QVector<QPointF>> m_listLineSeriesPoints;
     QTableWidget *m_table;
-    Worker *m_worker;
-    QTimer m_timer;
+
+    int m_timeoutCounter;
+    int m_timeoutTarget;
 };
 
 #endif // PHASOR_VIEW_H

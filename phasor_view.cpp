@@ -1,8 +1,12 @@
 #include "phasor_view.h"
 
-PhasorView::PhasorView(Worker *worker, QWidget *parent) : QWidget(parent), m_worker(worker)
+PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
+    : QWidget(parent), m_worker(worker)
 {
+    assert(updateTimer != nullptr);
     assert(worker != nullptr);
+
+    hide();
 
     auto axisAngular = new QCategoryAxis();
     axisAngular->setStartValue(0);
@@ -40,8 +44,7 @@ PhasorView::PhasorView(Worker *worker, QWidget *parent) : QWidget(parent), m_wor
     m_table = new QTableWidget(this);
     m_table->setRowCount(nsignals);
     m_table->setColumnCount(3);
-    m_table->setHorizontalHeaderLabels({ QStringLiteral("Signal"), QStringLiteral("Amplitude"),
-                                         QStringLiteral("Phase diff.") });
+    m_table->horizontalHeader()->hide();
     m_table->setColumnWidth(0, 45);
     m_table->setColumnWidth(1, 80);
     m_table->setColumnWidth(2, 80);
@@ -56,9 +59,11 @@ PhasorView::PhasorView(Worker *worker, QWidget *parent) : QWidget(parent), m_wor
 
     setLayout(hBoxLayout);
 
-    m_timer.setParent(this);
-    m_timer.setInterval(400);
-    connect(&m_timer, &QTimer::timeout, this, &PhasorView::updateSeries);
+    // update every 400 ms (2.5 fps)
+    m_timeoutTarget = 400 / updateTimer->interval();
+    Q_ASSERT(m_timeoutTarget > 0);
+    m_timeoutCounter = 0;
+    connect(updateTimer, &QTimer::timeout, this, &PhasorView::update);
 
     for (int i = 0; i < nsignals; ++i) {
         const auto &[name, colorHex, _type] = listSignalInfoModel[i];
@@ -95,7 +100,7 @@ PhasorView::PhasorView(Worker *worker, QWidget *parent) : QWidget(parent), m_wor
             if (i & 1)
                 tableItem->setBackground(QColor(QStringLiteral("lightGray")));
             m_table->setItem(i, j, tableItem);
-            m_table->setRowHeight(i, 65);
+            m_table->setRowHeight(i, 50);
         }
 
         m_table->item(i, 0)->setText(name);
@@ -103,9 +108,6 @@ PhasorView::PhasorView(Worker *worker, QWidget *parent) : QWidget(parent), m_wor
         m_table->verticalHeaderItem(i)->setBackground(QColor(colorHex));
         m_table->verticalHeaderItem(i)->setSizeHint(QSize(10, 0));
     }
-    m_table->horizontalHeader()->hide();
-
-    m_timer.start();
 }
 
 constexpr double polarChartAngle(double angle)
@@ -113,8 +115,13 @@ constexpr double polarChartAngle(double angle)
     return fmod(450 - angle, 360);
 }
 
-void PhasorView::updateSeries()
+void PhasorView::update()
 {
+    ++m_timeoutCounter;
+    m_timeoutCounter = m_timeoutCounter * bool(m_timeoutCounter != m_timeoutTarget);
+    if (m_timeoutCounter != 0)
+        return;
+
     std::array<std::complex<double>, nsignals> phasors;
     std::array<double, nsignals> frequencies;
 
@@ -147,10 +154,11 @@ void PhasorView::updateSeries()
     }
 
     for (int i = 0; i < nsignals; ++i) {
+        m_listLineSeriesPoints[i][0] = { polars[i].x(), 0.015 };
         m_listLineSeriesPoints[i][1] = m_listLineSeriesPoints[i][3] = polars[i];
 
         { // create the arrow: two arms spreading out equal amounts
-            qreal spread = 0.03;
+            qreal spread = 0.02;
             qreal distFromOrigin = polars[i].y() - (2 * spread);
             qreal angle = atan2(spread, distFromOrigin);
             qreal h = distFromOrigin / cos(angle);
