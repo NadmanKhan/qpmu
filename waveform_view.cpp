@@ -86,6 +86,8 @@ void WaveformView::update()
     m_timeoutCounter = m_timeoutCounter * bool(m_timeoutCounter != m_timeoutTarget);
     if (m_timeoutCounter != 0)
         return;
+    if (!isVisible())
+        return;
 
     std::array<std::complex<double>, nsignals> phasors;
     std::array<double, nsignals> frequencies;
