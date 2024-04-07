@@ -54,12 +54,12 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
     for (int i = 0; i < nsignals; ++i) {
         const auto &[nameCStr, colorHexCStr, signalType] = listSignalInfoModel[i];
+        auto name = QString(nameCStr.data());
+        auto color = QColor(colorHexCStr.data());
 
         auto splineSeries = new QSplineSeries();
         m_listSplineSeries.append(splineSeries);
         m_listSplineSeriesPoints.push_back({});
-        auto name = QString(nameCStr.data());
-        auto color = QColor(colorHexCStr.data());
         splineSeries->setName(name);
         splineSeries->setPen(QPen(color, 2));
         splineSeries->setUseOpenGL(true);

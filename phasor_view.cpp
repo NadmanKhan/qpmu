@@ -1,5 +1,23 @@
 #include "phasor_view.h"
 
+QIcon circleIcon(const QColor &color, int size)
+{
+    QPixmap pixmap(size, size);
+    pixmap.fill(Qt::transparent); // Fill the pixmap with transparent color
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // Set the color and draw a solid circle
+    painter.setBrush(color);
+    painter.setPen(Qt::NoPen);
+    painter.drawEllipse(0, 0, size, size);
+
+    painter.end();
+
+    return QIcon(pixmap);
+}
+
 PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     : QWidget(parent), m_worker(worker)
 {
@@ -43,15 +61,8 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
     m_table = new QTableWidget(this);
     m_table->setRowCount(nsignals);
-    m_table->setColumnCount(3);
+    m_table->setColumnCount(2);
     m_table->horizontalHeader()->hide();
-    m_table->setColumnWidth(0, 45);
-    m_table->setColumnWidth(1, 80);
-    m_table->setColumnWidth(2, 80);
-    m_table->setMinimumWidth(m_table->horizontalHeader()->length()
-                             + m_table->verticalHeader()->width());
-    m_table->setMaximumWidth(m_table->minimumWidth());
-    m_table->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
     auto hBoxLayout = new QHBoxLayout();
     hBoxLayout->addWidget(chartView);
@@ -66,21 +77,25 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     connect(updateTimer, &QTimer::timeout, this, &PhasorView::update);
 
     for (int i = 0; i < nsignals; ++i) {
-        const auto &[name, colorHex, _type] = listSignalInfoModel[i];
+        const auto &[nameCStr, colorHexCStr, _type] = listSignalInfoModel[i];
+        auto name = QString(nameCStr.data());
+        auto color = QColor(colorHexCStr.data());
 
         auto lineSeries = new QLineSeries();
         m_listLineSeries.append(lineSeries);
         m_listLineSeriesPoints.push_back({});
 
-        lineSeries->setName(name.data());
-        lineSeries->setPen(QPen(QColor(colorHex.data()), 2.5));
+        lineSeries->setName(name);
+        lineSeries->setPen(QPen(color, 2.5));
         lineSeries->setUseOpenGL(true);
 
+        // Phasor line goes
+        // origin > tip > left-arm > tip > right-arm
         m_listLineSeriesPoints[i].append({ 0, 0 }); // origin
-        m_listLineSeriesPoints[i].append({ 0, 0 }); // tip (to be updated)
-        m_listLineSeriesPoints[i].append({ 0, 0 }); // arrow left-arm end (to be updated)
-        m_listLineSeriesPoints[i].append({ 0, 0 }); // tip (to be updated)
-        m_listLineSeriesPoints[i].append({ 0, 0 }); // arrow right-arm end (to be updated)
+        m_listLineSeriesPoints[i].append({ 0, 0 }); // tip (gets updated)
+        m_listLineSeriesPoints[i].append({ 0, 0 }); // arrow left-arm end (gets updated)
+        m_listLineSeriesPoints[i].append({ 0, 0 }); // tip (gets updated)
+        m_listLineSeriesPoints[i].append({ 0, 0 }); // arrow right-arm end (gets updated)
 
         lineSeries->replace(m_listLineSeriesPoints[i]);
 
@@ -88,26 +103,31 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         lineSeries->attachAxis(axisAngular);
         lineSeries->attachAxis(axisRadial);
 
-        for (int j : { 0, 1, 2 }) {
+        for (int j : { 0, 1 }) {
             auto tableItem = new QTableWidgetItem();
-            if (j == 0)
-                tableItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-            else
-                tableItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignRight);
+            tableItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignRight);
 
             tableItem->setFont(QFont(QStringLiteral("monospace")));
             tableItem->setFlags(Qt::NoItemFlags | Qt::ItemIsEnabled);
             if (i & 1)
                 tableItem->setBackground(QColor(QStringLiteral("lightGray")));
             m_table->setItem(i, j, tableItem);
-            m_table->setRowHeight(i, 50);
         }
-
-        m_table->item(i, 0)->setText(name.data());
-        m_table->setVerticalHeaderItem(i, new QTableWidgetItem());
-        m_table->verticalHeaderItem(i)->setBackground(QColor(colorHex.data()));
-        m_table->verticalHeaderItem(i)->setSizeHint(QSize(10, 0));
+        auto vheader = new QTableWidgetItem(circleIcon(color, 10), name);
+        vheader->setSizeHint(QSize(35, m_table->rowHeight(i)));
+        m_table->setVerticalHeaderItem(i, vheader);
     }
+
+    m_table->setColumnWidth(0, 60);
+    m_table->setColumnWidth(1, 60);
+    int totalWidth = m_table->verticalHeader()->width();
+    for (int i = 0; i < m_table->columnCount(); ++i) {
+        totalWidth += m_table->columnWidth(i);
+    }
+    totalWidth += m_table->verticalScrollBar()->height();
+    m_table->setMinimumWidth(totalWidth);
+    m_table->setMaximumWidth(totalWidth);
+    m_table->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 }
 
 constexpr double polarChartAngle(double angle)
@@ -173,11 +193,11 @@ void PhasorView::update()
         auto phaseDiff = phaseDiffs[i];
         if (phaseDiff > 180)
             phaseDiff -= 360;
-        m_table->item(i, 1)->setText(QString::number(amplitudes[i], 'f', 1)
+        m_table->item(i, 0)->setText(QString::number(amplitudes[i], 'f', 1)
                                      + (listSignalInfoModel[i].signalType == SignalTypeVoltage
                                                 ? QStringLiteral(" V")
                                                 : QStringLiteral(" A")));
-        m_table->item(i, 2)->setText(
+        m_table->item(i, 1)->setText(
                 QStringLiteral("%1").arg(phaseDiff, 0, 'f', 1, QLatin1Char('0'))
                 + QStringLiteral("°"));
         m_listLineSeries[i]->replace(m_listLineSeriesPoints[i]);
