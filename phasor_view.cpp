@@ -107,15 +107,17 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
             auto tableItem = new QTableWidgetItem();
             tableItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignRight);
 
+            tableItem->setFlags(Qt::NoItemFlags);
             tableItem->setFont(QFont(QStringLiteral("monospace")));
-            tableItem->setFlags(Qt::NoItemFlags | Qt::ItemIsEnabled);
+            tableItem->setForeground(QBrush(QColor(QStringLiteral("black"))));
             if (i & 1)
                 tableItem->setBackground(QColor(QStringLiteral("lightGray")));
             m_table->setItem(i, j, tableItem);
         }
-        auto vheader = new QTableWidgetItem(circleIcon(color, 10), name);
-        vheader->setSizeHint(QSize(35, m_table->rowHeight(i)));
-        m_table->setVerticalHeaderItem(i, vheader);
+        auto vheaderItem = new QTableWidgetItem(circleIcon(color, 10), name);
+        vheaderItem->setFlags(Qt::NoItemFlags);
+        vheaderItem->setSizeHint(QSize(35, m_table->rowHeight(i)));
+        m_table->setVerticalHeaderItem(i, vheaderItem);
     }
 
     m_table->setColumnWidth(0, 60);
