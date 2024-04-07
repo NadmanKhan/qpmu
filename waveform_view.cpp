@@ -27,17 +27,18 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     m_axisCurrent->setTickInterval(1);
     m_axisCurrent->setTickType(QValueAxis::TicksDynamic);
 
-    auto chart = new QChart();
-    chart->addAxis(m_axisTime, Qt::AlignBottom);
-    chart->addAxis(m_axisVoltage, Qt::AlignLeft);
-    chart->addAxis(m_axisCurrent, Qt::AlignRight);
-    auto chartLegend = chart->legend();
+    m_chart = new QChart();
+    m_chart->addAxis(m_axisTime, Qt::AlignBottom);
+    m_chart->addAxis(m_axisVoltage, Qt::AlignLeft);
+    m_chart->addAxis(m_axisCurrent, Qt::AlignRight);
+    auto chartLegend = m_chart->legend();
     chartLegend->setMarkerShape(QLegend::MarkerShapeCircle);
 
     auto chartView = new QChartView(this);
-    chartView->setChart(chart);
+    chartView->setChart(m_chart);
     chartView->setRenderHint(QPainter::Antialiasing, true);
     chartView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    chartLegend->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     chartView->show();
 
     auto hbox = new QHBoxLayout(this);
@@ -64,14 +65,18 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         splineSeries->setPen(QPen(color, 2));
         splineSeries->setUseOpenGL(true);
 
-        chart->addSeries(splineSeries);
+        m_chart->addSeries(splineSeries);
         splineSeries->attachAxis(m_axisTime);
         splineSeries->attachAxis(signalType == SignalTypeVoltage ? m_axisVoltage : m_axisCurrent);
 
         auto marker = chartLegend->markers(splineSeries).at(0);
+        auto markerPenVisible = QPen(QBrush(color), 5);
+        auto markerPenNotVisible = QPen(QBrush(colorWhite), 2);
+        marker->setPen(markerPenVisible);
+
         connect(splineSeries, &QSplineSeries::visibleChanged, [=] {
             marker->setVisible(true);
-            marker->setBrush(QBrush(splineSeries->isVisible() ? color : colorWhite));
+            marker->setPen(splineSeries->isVisible() ? markerPenVisible : markerPenNotVisible);
         });
         connect(marker, &QLegendMarker::clicked, [=] {
             auto newIsVisible = !splineSeries->isVisible();

@@ -23,6 +23,7 @@ private slots:
 private:
     Worker *m_worker;
 
+    QChart *m_chart;
     QList<QSplineSeries *> m_listSplineSeries;
     QList<QVector<QPointF>> m_listSplineSeriesPoints;
 
