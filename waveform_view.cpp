@@ -10,8 +10,9 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
     m_axisTime = new QValueAxis();
     m_axisTime->setTitleText(QStringLiteral("Time (ms)"));
-    m_axisTime->setRange(0, 100);
+    m_axisTime->setRange(0, 50);
     m_axisTime->setTickCount(11);
+    m_axisTime->setLabelFormat(QStringLiteral("%.0f"));
 
     m_axisVoltage = new QValueAxis();
     m_axisVoltage->setTitleText(QStringLiteral("Voltage (V)"));
@@ -95,9 +96,9 @@ void WaveformView::update()
         return;
 
     std::array<std::complex<double>, nsignals> phasors;
-    std::array<double, nsignals> frequencies;
+    double frequency;
 
-    m_worker->getEstimations(phasors, frequencies);
+    m_worker->getEstimations(phasors, frequency);
 
     std::array<double, nsignals> phaseDiffs; // in radians
     std::array<double, nsignals> amplitudes;
@@ -120,22 +121,28 @@ void WaveformView::update()
         }
     }
 
-    const qreal tFactor = 1.0 / 1000; // ms
+    const qreal ω = 2 * M_PI * frequency;
+    const qreal factor = ω * (0.001 /* because in ms */);
     const qreal tDelta = 5;
+    const int npoints = 10; // excluding t=0
+
     for (int i = 0; i < nsignals; ++i) {
-        m_listSplineSeriesPoints[i].resize(21);
-        for (int tIndex = 0; tIndex <= 20; ++tIndex) {
-            auto t = tIndex * tDelta * tFactor;
-            auto y = amplitudes[i] * cos(frequencies[0] * t + phaseDiffs[i]);
-            m_listSplineSeriesPoints[i][tIndex] = QPointF(tIndex * tDelta, y);
+        m_listSplineSeriesPoints[i].resize(npoints + (1 /* for t=0 */));
+        m_listSplineSeriesPoints[i][0] = QPointF(0, amplitudes[i] * cos(phaseDiffs[i]));
+        for (int tIndex = 1; tIndex <= npoints; ++tIndex) {
+            auto ωt = tIndex * tDelta * factor;
+            m_listSplineSeriesPoints[i][tIndex] =
+                    QPointF((tIndex * tDelta), amplitudes[i] * cos(ωt + phaseDiffs[i]));
         }
     }
 
+    qDebug() << frequency;
+
+    m_axisTime->setRange(0, npoints * tDelta);
     m_axisVoltage->setRange(-vmax, +vmax);
     m_axisVoltage->setTickInterval(vmax);
     m_axisCurrent->setRange(-imax, +imax);
     m_axisCurrent->setTickInterval(imax);
-    //    qDebug() << QList<double>(frequencies.begin(), frequencies.end());
     for (int i = 0; i < nsignals; ++i) {
         m_listSplineSeries[i]->replace(m_listSplineSeriesPoints[i]);
     }

@@ -36,7 +36,7 @@ public slots:
     void read();
 
     Q_INVOKABLE void getEstimations(std::array<std::complex<double>, nsignals> &out_phasors,
-                                    std::array<double, nsignals> &out_frequencies);
+                                    double &out_frequency);
 
 private:
     static constexpr int nextIndex(int currIndex);
@@ -45,14 +45,15 @@ private:
     QMutex mutex;
     QIODevice *m_adc;
 
-    std::array<fftw_complex *, nsignals> fft_in, fft_out;
-    std::array<fftw_plan, nsignals> fft_plans;
+    std::array<fftw_complex *, nsignals> input, output;
+    std::array<fftw_plan, nsignals> plans;
 
+    ADCSample curSample = {};
     std::array<ADCSample, N> sampleBuffer = {};
     std::array<std::array<std::complex<double>, N>, nsignals> phasorBuffer = {};
     char prevByte = 0;
-    int bufCol = 0;
-    int bufRow = 0;
+    int tokenIndex = 0;
+    int sampleIndex = 0;
 };
 
 #endif // WORKER_H

@@ -147,9 +147,9 @@ void PhasorView::update()
         return;
 
     std::array<std::complex<double>, nsignals> phasors;
-    std::array<double, nsignals> frequencies;
+    double frequency;
 
-    m_worker->getEstimations(phasors, frequencies);
+    m_worker->getEstimations(phasors, frequency);
 
     std::array<double, nsignals> phaseDiffs;
     std::array<double, nsignals> amplitudes;

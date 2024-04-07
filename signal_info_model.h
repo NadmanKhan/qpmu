@@ -22,6 +22,6 @@ constexpr std::array<SignalInfoModel, nsignals> listSignalInfoModel = {
     SignalInfoModel{ "VC", "#00ffff", SignalTypeVoltage },
     SignalInfoModel{ "IA", "#ffdd00", SignalTypeCurrent },
     SignalInfoModel{ "IB", "#0000ff", SignalTypeCurrent },
-    SignalInfoModel{ "IC", "#00ff88", SignalTypeCurrent }
+    SignalInfoModel{ "IC", "#44ff44", SignalTypeCurrent }
 };
 #endif // SIGNAL_LIST_MODEL_H
