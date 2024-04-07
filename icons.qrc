@@ -1,5 +1,4 @@
-<!DOCTYPE RCC>
-<RCC version="1.0">
+<RCC>
     <qresource prefix="/">
         <file>images/view.png</file>
         <file>images/control-panel.png</file>
@@ -7,6 +6,7 @@
         <file>images/return.png</file>
         <file>images/polar-chart.png</file>
         <file>images/wave-graph.png</file>
+        <file>images/waves.png</file>
         <file>images/vector.png</file>
     </qresource>
 </RCC>

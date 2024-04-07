@@ -182,7 +182,7 @@ void PhasorView::update()
         m_listLineSeriesPoints[i][1] = m_listLineSeriesPoints[i][3] = polars[i];
 
         { // create the arrow: two arms spreading out equal amounts
-            qreal spread = 0.02;
+            qreal spread = 0.04;
             qreal distFromOrigin = polars[i].y() - (2 * spread);
             qreal angle = atan2(spread, distFromOrigin);
             qreal h = distFromOrigin / cos(angle);

@@ -54,7 +54,7 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
                                      QStringLiteral(":/images/vector.png"),
                                      new PhasorView(m_timer, worker, this) });
     optionsModel.append(OptionModel{ QStringLiteral("Monitor Waveforms"),
-                                     QStringLiteral(":/images/wave-graph.png"),
+                                     QStringLiteral(":/images/waves.png"),
                                      new WaveformView(m_timer, worker, this) });
 
     const int rowCount = 2;
