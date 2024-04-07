@@ -124,10 +124,10 @@ void WaveformView::update()
     const qreal tDelta = 5;
     for (int i = 0; i < nsignals; ++i) {
         m_listSplineSeriesPoints[i].resize(21);
-        for (int j = 0; j <= 20; ++j) {
-            auto t = j * tDelta * tFactor;
+        for (int tIndex = 0; tIndex <= 20; ++tIndex) {
+            auto t = tIndex * tDelta * tFactor;
             auto y = amplitudes[i] * cos(frequencies[0] * t + phaseDiffs[i]);
-            m_listSplineSeriesPoints[i][j] = QPointF(j * tDelta, y);
+            m_listSplineSeriesPoints[i][tIndex] = QPointF(tIndex * tDelta, y);
         }
     }
 

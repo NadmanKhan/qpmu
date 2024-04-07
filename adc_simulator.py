@@ -167,17 +167,17 @@ class ADC:
             Signal(
                 amplitude=v_max,
                 frequency=frequency,
-                initial_phase=0 * (2 * math.pi / 3) + math.pi / 4,
+                initial_phase=0 * (2 * math.pi / 3) + (15 * math.pi / 180),
             ),
             Signal(
                 amplitude=v_max,
                 frequency=frequency,
-                initial_phase=1 * (2 * math.pi / 3) + math.pi / 4,
+                initial_phase=1 * (2 * math.pi / 3) + (15 * math.pi / 180),
             ),
             Signal(
                 amplitude=v_max,
                 frequency=frequency,
-                initial_phase=2 * (2 * math.pi / 3) + math.pi / 4,
+                initial_phase=2 * (2 * math.pi / 3) + (15 * math.pi / 180),
             ),
             Signal(
                 amplitude=i_max,
