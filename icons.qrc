@@ -7,5 +7,6 @@
         <file>images/return.png</file>
         <file>images/polar-chart.png</file>
         <file>images/wave-graph.png</file>
+        <file>images/vector.png</file>
     </qresource>
 </RCC>

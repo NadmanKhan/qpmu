@@ -51,7 +51,7 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
     using OptionModel = std::tuple<QString, QString, QWidget *>;
     QList<OptionModel> optionsModel;
     optionsModel.append(OptionModel{ QStringLiteral("Monitor Phasors"),
-                                     QStringLiteral(":/images/polar-chart.png"),
+                                     QStringLiteral(":/images/vector.png"),
                                      new PhasorView(m_timer, worker, this) });
     optionsModel.append(OptionModel{ QStringLiteral("Monitor Waveforms"),
                                      QStringLiteral(":/images/wave-graph.png"),
@@ -88,4 +88,24 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
         grid->addLayout(vbox, (i / rowCount), (i % colCount));
         grid->setAlignment(vbox, Qt::AlignCenter);
     }
+
+    auto toolBar = new QToolBar(this);
+    toolBar->setMovable(false);
+    addToolBar(Qt::LeftToolBarArea, toolBar);
+    auto goBackAction =
+            new QAction(QIcon(QStringLiteral(":/images/return.png")), "Go back", toolBar);
+    if (m_stack->currentIndex() < 1) {
+        goBackAction->setEnabled(false);
+    }
+    connect(m_stack, &QStackedWidget::currentChanged,
+            [=](int index) { goBackAction->setEnabled(index >= 1); });
+    connect(goBackAction, &QAction::triggered, [=] {
+        auto idx = m_stack->currentIndex();
+        if (idx <= 0) {
+            return;
+        }
+        m_stack->setCurrentIndex(idx - 1);
+        m_stack->removeWidget(m_stack->widget(idx));
+    });
+    toolBar->addAction(goBackAction);
 }
