@@ -16,17 +16,23 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     m_axisVoltage = new QValueAxis();
     m_axisVoltage->setTitleText(QStringLiteral("Voltage (V)"));
     m_axisVoltage->setRange(-100, 100);
-    m_axisVoltage->setTickCount(11);
+    m_axisVoltage->setTickAnchor(0);
+    m_axisVoltage->setTickInterval(1);
+    m_axisVoltage->setTickType(QValueAxis::TicksDynamic);
 
     m_axisCurrent = new QValueAxis();
     m_axisCurrent->setTitleText(QStringLiteral("Current (I)"));
     m_axisCurrent->setRange(-100, 100);
-    m_axisCurrent->setTickCount(11);
+    m_axisCurrent->setTickAnchor(0);
+    m_axisCurrent->setTickInterval(1);
+    m_axisCurrent->setTickType(QValueAxis::TicksDynamic);
 
     auto chart = new QChart();
     chart->addAxis(m_axisTime, Qt::AlignBottom);
     chart->addAxis(m_axisVoltage, Qt::AlignLeft);
     chart->addAxis(m_axisCurrent, Qt::AlignRight);
+    auto chartLegend = chart->legend();
+    chartLegend->setMarkerShape(QLegend::MarkerShapeCircle);
 
     auto chartView = new QChartView(this);
     chartView->setChart(chart);
@@ -44,20 +50,33 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     m_timeoutCounter = 0;
     connect(updateTimer, &QTimer::timeout, this, &WaveformView::update);
 
+    const auto colorWhite = QColor(QStringLiteral("white"));
+
     for (int i = 0; i < nsignals; ++i) {
-        const auto &[name, colorHex, signalType] = listSignalInfoModel[i];
+        const auto &[nameCStr, colorHexCStr, signalType] = listSignalInfoModel[i];
 
         auto splineSeries = new QSplineSeries();
         m_listSplineSeries.append(splineSeries);
         m_listSplineSeriesPoints.push_back({});
-
-        splineSeries->setName(name.data());
-        splineSeries->setPen(QPen(QColor(colorHex.data()), 2));
+        auto name = QString(nameCStr.data());
+        auto color = QColor(colorHexCStr.data());
+        splineSeries->setName(name);
+        splineSeries->setPen(QPen(color, 2));
         splineSeries->setUseOpenGL(true);
 
         chart->addSeries(splineSeries);
         splineSeries->attachAxis(m_axisTime);
         splineSeries->attachAxis(signalType == SignalTypeVoltage ? m_axisVoltage : m_axisCurrent);
+
+        auto marker = chartLegend->markers(splineSeries).at(0);
+        connect(splineSeries, &QSplineSeries::visibleChanged, [=] {
+            marker->setVisible(true);
+            marker->setBrush(QBrush(splineSeries->isVisible() ? color : colorWhite));
+        });
+        connect(marker, &QLegendMarker::clicked, [=] {
+            auto newIsVisible = !splineSeries->isVisible();
+            splineSeries->setVisible(newIsVisible);
+        });
     }
 }
 
@@ -106,7 +125,9 @@ void WaveformView::update()
     }
 
     m_axisVoltage->setRange(-vmax, +vmax);
+    m_axisVoltage->setTickInterval(vmax);
     m_axisCurrent->setRange(-imax, +imax);
+    m_axisCurrent->setTickInterval(imax);
     //    qDebug() << QList<double>(frequencies.begin(), frequencies.end());
     for (int i = 0; i < nsignals; ++i) {
         m_listSplineSeries[i]->replace(m_listSplineSeriesPoints[i]);
