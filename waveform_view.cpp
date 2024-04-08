@@ -123,8 +123,8 @@ void WaveformView::update()
 
     const qreal ω = 2 * M_PI * frequency;
     const qreal factor = ω * (0.001 /* because in ms */);
-    const qreal tDelta = 5;
-    const int npoints = 10; // excluding t=0
+    const qreal tDelta = 1;
+    const int npoints = 50; // excluding t=0
 
     for (int i = 0; i < nsignals; ++i) {
         m_listSplineSeriesPoints[i].resize(npoints + (1 /* for t=0 */));
@@ -136,7 +136,7 @@ void WaveformView::update()
         }
     }
 
-    qDebug() << frequency;
+    //    qDebug() << frequency;
 
     m_axisTime->setRange(0, npoints * tDelta);
     m_axisVoltage->setRange(-vmax, +vmax);
