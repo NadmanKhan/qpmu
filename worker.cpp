@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <cstring>
 
-using std::cout;
+using std::cout, std::cerr;
 
 inline std::complex<double> *to_complex(fftw_complex *v)
 {
@@ -175,10 +175,31 @@ void Worker::getEstimations(std::array<std::complex<double>, nsignals> &out_phas
     QMutexLocker locker(&mutex);
     int readIdx = prevIndex(sampleIndex);
     int prevReadIdx = prevIndex(readIdx);
-    out_frequency =
-            (std::abs(std::arg(phasorBuffer[0][readIdx]) - std::arg(phasorBuffer[0][prevReadIdx]))
-             / sampleBuffer[readIdx][8])
-            * (1e6 / (2 * pi));
+    double phaseDiff;
+    const auto &y = std::arg(phasorBuffer[0][readIdx]);
+    const auto &x = std::arg(phasorBuffer[0][prevReadIdx]);
+    phaseDiff = std::fmod(x - y + 2 * M_PI, 2 * M_PI);
+    out_frequency = (std::abs(phaseDiff) / sampleBuffer[readIdx][8]) * (1e6 / (2 * M_PI));
+
+    //    if (out_frequency > 60) {
+    //        for (int i = 0; i < N; ++i) {
+    //            cerr << (i == readIdx ? ">>>" : "   ");
+    //            for (int j = 1; j <= 1; ++j) {
+    //                cerr << std::setw(4) << std::right << sampleBuffer[i][j] << " ";
+    //            }
+    //            cerr << "| " << sampleBuffer[i][8];
+    //            cerr << " | ";
+    //            cerr << std::fixed << std::setprecision(2);
+    //            for (int j = 0; j < 1; ++j) {
+    //                cerr << "(" << ((std::arg(phasorBuffer[j][i]) + 2 * M_PI) * 180 / M_PI) << ",
+    //                "
+    //                     << std::abs(phasorBuffer[j][i]) << ") ";
+    //            }
+    //            cerr << "\n";
+    //        }
+    //        cerr << "===\n\n";
+    //    }
+
     for (int i = 0; i < nsignals; ++i) {
         out_phasors[i] = phasorBuffer[i][readIdx];
     }
