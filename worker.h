@@ -36,7 +36,7 @@ public slots:
     void read();
 
     Q_INVOKABLE void getEstimations(std::array<std::complex<double>, nsignals> &out_phasors,
-                                    double &out_frequency);
+                                    double &out_ω);
 
 private:
     static constexpr int nextIndex(int currIndex);

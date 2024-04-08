@@ -96,9 +96,9 @@ void WaveformView::update()
         return;
 
     std::array<std::complex<double>, nsignals> phasors;
-    double frequency;
+    double ω;
 
-    m_worker->getEstimations(phasors, frequency);
+    m_worker->getEstimations(phasors, ω);
 
     std::array<double, nsignals> phaseDiffs; // in radians
     std::array<double, nsignals> amplitudes;
@@ -121,7 +121,7 @@ void WaveformView::update()
         }
     }
 
-    const qreal ω = 2 * M_PI * frequency;
+    //    qDebug() << (ω / (2 * M_PI));
     const qreal factor = ω * (0.001 /* because in ms */);
     const qreal tDelta = 1;
     const int npoints = 50; // excluding t=0
