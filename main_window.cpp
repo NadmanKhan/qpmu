@@ -64,7 +64,7 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
 
         auto button = new QPushButton(this);
         button->setIcon(QIcon(iconUrl));
-        auto size = QSize(120, 120);
+        auto size = QSize(80, 80);
         button->setMinimumSize(size);
         button->setMaximumSize(size);
         button->setIconSize(size * 0.9);
