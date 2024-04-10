@@ -99,16 +99,6 @@ void Worker::read()
                     }
                 }
             }
-            for (int i = 0; i < nsignals; ++i) {
-                double maxValue = 0;
-                for (int j = 0; j < N; ++j) {
-                    maxValue = std::max(maxValue, input[i][j][0]);
-                }
-                auto halfMax = maxValue / 2;
-                for (int j = 0; j < N; ++j) {
-                    input[i][j][0] -= halfMax;
-                }
-            }
 
             // 2. execute fft_plans
             for (int i = 0; i < nsignals; ++i) {
