@@ -50,12 +50,12 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
 
     using OptionModel = std::tuple<QString, QString, QWidget *>;
     QList<OptionModel> optionsModel;
-    optionsModel.append(OptionModel{ QStringLiteral("Monitor Phasors"),
-                                     QStringLiteral(":/images/vector.png"),
-                                     new PhasorView(m_timer, worker, this) });
     optionsModel.append(OptionModel{ QStringLiteral("Monitor Waveforms"),
                                      QStringLiteral(":/images/waves.png"),
                                      new WaveformView(m_timer, worker, this) });
+    optionsModel.append(OptionModel{ QStringLiteral("Monitor Phasors"),
+                                     QStringLiteral(":/images/vector.png"),
+                                     new PhasorView(m_timer, worker, this) });
 
     const int rowCount = 2;
     const int colCount = 2;

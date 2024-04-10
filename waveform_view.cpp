@@ -46,18 +46,11 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     hbox->addWidget(chartView);
     setLayout(hbox);
 
-    // update every 400 ms (2.5 fps)
-    m_timeoutTarget = 400 / updateTimer->interval();
-    Q_ASSERT(m_timeoutTarget > 0);
-    m_timeoutCounter = 0;
-    connect(updateTimer, &QTimer::timeout, this, &WaveformView::update);
-
     const auto colorWhite = QColor(QStringLiteral("white"));
 
     for (int i = 0; i < nsignals; ++i) {
-        const auto &[nameCStr, colorHexCStr, signalType] = listSignalInfoModel[i];
-        auto name = QString(nameCStr.data());
-        auto color = QColor(colorHexCStr.data());
+        auto name = QString(signalInfoList[i].name);
+        auto color = QColor(signalInfoList[i].colorHex);
 
         auto splineSeries = new QSplineSeries();
         m_listSplineSeries.append(splineSeries);
@@ -68,7 +61,8 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
         m_chart->addSeries(splineSeries);
         splineSeries->attachAxis(m_axisTime);
-        splineSeries->attachAxis(signalType == SignalTypeVoltage ? m_axisVoltage : m_axisCurrent);
+        splineSeries->attachAxis(signalInfoList[i].signalType == SignalTypeVoltage ? m_axisVoltage
+                                                                                   : m_axisCurrent);
 
         auto marker = chartLegend->markers(splineSeries).at(0);
         auto markerPenVisible = QPen(QBrush(color), 5);
@@ -84,6 +78,12 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
             splineSeries->setVisible(newIsVisible);
         });
     }
+
+    // update every 400 ms (2.5 fps)
+    m_timeoutTarget = 400 / updateTimer->interval();
+    Q_ASSERT(m_timeoutTarget > 0);
+    m_timeoutCounter = 0;
+    connect(updateTimer, &QTimer::timeout, this, &WaveformView::update);
 }
 
 void WaveformView::update()
@@ -114,7 +114,7 @@ void WaveformView::update()
     qreal vmax = 0;
     qreal imax = 0;
     for (int i = 0; i < nsignals; ++i) {
-        if (listSignalInfoModel[i].signalType == SignalTypeVoltage) {
+        if (signalInfoList[i].signalType == SignalTypeVoltage) {
             vmax = qMax(vmax, amplitudes[i]);
         } else {
             imax = qMax(imax, amplitudes[i]);
@@ -129,14 +129,12 @@ void WaveformView::update()
     for (int i = 0; i < nsignals; ++i) {
         m_listSplineSeriesPoints[i].resize(npoints + (1 /* for t=0 */));
         m_listSplineSeriesPoints[i][0] = QPointF(0, amplitudes[i] * cos(phaseDiffs[i]));
-        for (int tIndex = 1; tIndex <= npoints; ++tIndex) {
-            auto ωt = tIndex * tDelta * factor;
-            m_listSplineSeriesPoints[i][tIndex] =
-                    QPointF((tIndex * tDelta), amplitudes[i] * cos(ωt + phaseDiffs[i]));
+        for (int j = 1; j <= npoints; ++j) {
+            auto ωt = j * tDelta * factor;
+            m_listSplineSeriesPoints[i][j] =
+                    QPointF((j * tDelta), amplitudes[i] * cos(ωt + phaseDiffs[i]));
         }
     }
-
-    //    qDebug() << frequency;
 
     m_axisTime->setRange(0, npoints * tDelta);
     m_axisVoltage->setRange(-vmax, +vmax);

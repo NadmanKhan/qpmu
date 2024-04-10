@@ -1,27 +1,55 @@
-#ifndef SIGNAL_LIST_MODEL_H
-#define SIGNAL_LIST_MODEL_H
+#ifndef SIGNAL_INFO_MODEL_H
+#define SIGNAL_INFO_MODEL_H
 
-#include <QList>
-#include <QString>
-#include <utility>
+#include <string>
 
 constexpr int nsignals = 6;
+constexpr int nphases = 3;
 
 enum SignalType { SignalTypeVoltage, SignalTypeCurrent };
 
-struct SignalInfoModel
+struct SignalInfo
 {
-    std::string_view name;
-    std::string_view colorHex;
+    const char *name;
+    const char *colorHex;
     SignalType signalType;
+    char phaseLetter;
 };
 
-constexpr std::array<SignalInfoModel, nsignals> listSignalInfoModel = {
-    SignalInfoModel{ "VA", "#000000", SignalTypeVoltage },
-    SignalInfoModel{ "VB", "#ff0000", SignalTypeVoltage },
-    SignalInfoModel{ "VC", "#00ffff", SignalTypeVoltage },
-    SignalInfoModel{ "IA", "#ffdd00", SignalTypeCurrent },
-    SignalInfoModel{ "IB", "#0000ff", SignalTypeCurrent },
-    SignalInfoModel{ "IC", "#44ff44", SignalTypeCurrent }
+static constexpr SignalInfo signalInfoList[nsignals] = {
+    SignalInfo{ "VA", "#404040", SignalTypeVoltage, 'A' },
+    SignalInfo{ "VB", "#ff0000", SignalTypeVoltage, 'B' },
+    SignalInfo{ "VC", "#00ffff", SignalTypeVoltage, 'C' },
+    SignalInfo{ "IA", "#eeee00", SignalTypeCurrent, 'A' },
+    SignalInfo{ "IB", "#0000ff", SignalTypeCurrent, 'B' },
+    SignalInfo{ "IC", "#00c000", SignalTypeCurrent, 'C' }
 };
-#endif // SIGNAL_LIST_MODEL_H
+
+static constexpr int phaseIndexPairList[nphases][2] = {
+    { 0, 3 } /* VA, IA */, { 1, 4 } /* VB, IB */, { 2, 5 } /* VC, IC */
+};
+
+static constexpr int signalIndex(const std::string_view &signalName)
+{
+    if (signalName == "VA" || signalName == "va") {
+        return 0;
+    }
+    if (signalName == "VB" || signalName == "vb") {
+        return 1;
+    }
+    if (signalName == "VC" || signalName == "vc") {
+        return 2;
+    }
+    if (signalName == "IA" || signalName == "ia") {
+        return 3;
+    }
+    if (signalName == "IB" || signalName == "ib") {
+        return 4;
+    }
+    if (signalName == "IC" || signalName == "ic") {
+        return 5;
+    }
+    return -1;
+}
+
+#endif // SIGNAL_INFO_MODEL_H

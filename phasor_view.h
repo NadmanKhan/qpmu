@@ -30,7 +30,8 @@ private:
 
     QList<QLineSeries *> m_listLineSeries;
     QList<QVector<QPointF>> m_listLineSeriesPoints;
-    QTableWidget *m_table;
+    QTableWidget *m_table1;
+    QTableWidget *m_table2;
 
     int m_timeoutCounter;
     int m_timeoutTarget;

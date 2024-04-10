@@ -1,5 +1,27 @@
 #include "phasor_view.h"
 
+constexpr double polarChartAngle(double angle)
+{
+    return fmod(450 - angle, 360);
+}
+
+QTableWidgetItem *newCellItem(int row = -1)
+{
+    auto item = new QTableWidgetItem();
+    item->setFlags(Qt::NoItemFlags);
+    item->setForeground(QBrush(QColor(QStringLiteral("black"))));
+    item->setTextAlignment(Qt::AlignVCenter);
+    item->setFont(QFont(QStringLiteral("monospace")));
+    if (row >= 0) {
+        item->setTextAlignment(item->textAlignment() | Qt::AlignRight);
+        if (row & 1) {
+            item->setBackground(QColorConstants::LightGray);
+        }
+    }
+    item->setSizeHint(QSize(65, 25));
+    return item;
+}
+
 QIcon circleIcon(const QColor &color, int size)
 {
     QPixmap pixmap(size, size);
@@ -9,10 +31,29 @@ QIcon circleIcon(const QColor &color, int size)
     painter.setRenderHint(QPainter::Antialiasing);
 
     // Set the color and draw a solid circle
-    painter.setBrush(color);
     painter.setPen(Qt::NoPen);
+    painter.setBrush(color);
     painter.drawEllipse(0, 0, size, size);
+    painter.end();
 
+    return QIcon(pixmap);
+}
+
+QIcon twoColorCircleIcon(const QColor &color1, const QColor &color2, int size)
+{
+    QPixmap pixmap(size, size);
+    pixmap.fill(Qt::transparent); // Fill the pixmap with transparent color
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // Set the color and draw a solid circle
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(color1);
+    painter.drawPie(0, 0, size, size, 90 * 16, 270 * 16);
+    painter.setBrush(color2);
+    painter.drawPie(0, 0, size, size, 0 * 16, -90 * 16);
+    painter.drawPie(0, 0, size, size, 0 * 16, +90 * 16);
     painter.end();
 
     return QIcon(pixmap);
@@ -56,30 +97,40 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     auto chartView = new QChartView(this);
     chartView->setChart(chart);
     chartView->setRenderHint(QPainter::Antialiasing, true);
-    chartView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     chartView->show();
 
-    m_table = new QTableWidget(this);
-    m_table->setRowCount(nsignals);
-    m_table->setColumnCount(2);
-    m_table->horizontalHeader()->hide();
+    m_table1 = new QTableWidget(this);
+    m_table1->setRowCount(nsignals);
+    m_table1->setColumnCount(2);
+    m_table1->horizontalHeader()->hide();
 
-    auto hBoxLayout = new QHBoxLayout();
-    hBoxLayout->addWidget(chartView);
-    hBoxLayout->addWidget(m_table);
+    m_table2 = new QTableWidget(this);
+    m_table2->setRowCount(nphases);
+    m_table2->setColumnCount(1);
+    m_table2->horizontalHeader()->hide();
 
-    setLayout(hBoxLayout);
+    // Clear cell selections because they are unwanted.
+    // Can't find any way to turn them off, hence this workaround.
+    connect(m_table1, &QTableWidget::currentCellChanged,
+            [=](int row, int column) { m_table1->setCurrentCell(-1, -1); });
+    connect(m_table2, &QTableWidget::currentCellChanged,
+            [=](int row, int column) { m_table2->setCurrentCell(-1, -1); });
 
-    // update every 400 ms (2.5 fps)
-    m_timeoutTarget = 400 / updateTimer->interval();
-    Q_ASSERT(m_timeoutTarget > 0);
-    m_timeoutCounter = 0;
-    connect(updateTimer, &QTimer::timeout, this, &PhasorView::update);
+    auto vboxTables = new QVBoxLayout();
+    vboxTables->addWidget(m_table1);
+    vboxTables->addSpacing(6);
+    vboxTables->addWidget(m_table2);
+
+    auto hbox = new QHBoxLayout();
+    setLayout(hbox);
+    hbox->addWidget(chartView, 1);
+    hbox->addLayout(vboxTables, 0);
 
     for (int i = 0; i < nsignals; ++i) {
-        const auto &[nameCStr, colorHexCStr, _type] = listSignalInfoModel[i];
-        auto name = QString(nameCStr.data());
-        auto color = QColor(colorHexCStr.data());
+        auto name = QString(signalInfoList[i].name);
+        auto color = QColor(signalInfoList[i].colorHex);
+
+        // add signal to chart
 
         auto lineSeries = new QLineSeries();
         m_listLineSeries.append(lineSeries);
@@ -103,38 +154,49 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         lineSeries->attachAxis(axisAngular);
         lineSeries->attachAxis(axisRadial);
 
-        for (int j : { 0, 1 }) {
-            auto tableItem = new QTableWidgetItem();
-            tableItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignRight);
+        // add signal to table 1
 
-            tableItem->setFlags(Qt::NoItemFlags);
-            tableItem->setFont(QFont(QStringLiteral("monospace")));
-            tableItem->setForeground(QBrush(QColor(QStringLiteral("black"))));
-            if (i & 1)
-                tableItem->setBackground(QColor(QStringLiteral("lightGray")));
-            m_table->setItem(i, j, tableItem);
-        }
-        auto vheaderItem = new QTableWidgetItem(circleIcon(color, 10), name);
-        vheaderItem->setFlags(Qt::NoItemFlags);
-        vheaderItem->setSizeHint(QSize(35, m_table->rowHeight(i)));
-        m_table->setVerticalHeaderItem(i, vheaderItem);
+        auto vheader = newCellItem();
+        vheader->setIcon(circleIcon(color, 10));
+        vheader->setText(name);
+        m_table1->setVerticalHeaderItem(i, vheader);
+
+        m_table1->setItem(i, 0, newCellItem(i));
+        m_table1->setItem(i, 1, newCellItem(i));
     }
 
-    m_table->setColumnWidth(0, 60);
-    m_table->setColumnWidth(1, 60);
-    int totalWidth = m_table->verticalHeader()->width();
-    for (int i = 0; i < m_table->columnCount(); ++i) {
-        totalWidth += m_table->columnWidth(i);
-    }
-    totalWidth += m_table->verticalScrollBar()->height();
-    m_table->setMinimumWidth(totalWidth);
-    m_table->setMaximumWidth(totalWidth);
-    m_table->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-}
+    for (int i = 0; i < nphases; ++i) {
+        const auto &[vIndex, iIndex] = phaseIndexPairList[i];
+        auto vName = QString(signalInfoList[vIndex].name);
+        auto vColor = QColor(signalInfoList[vIndex].colorHex);
+        auto iName = QString(signalInfoList[iIndex].name);
+        auto iColor = QColor(signalInfoList[iIndex].colorHex);
+        auto phaseLetter = signalInfoList[vIndex].phaseLetter;
+        Q_ASSERT(phaseLetter == signalInfoList[iIndex].phaseLetter);
 
-constexpr double polarChartAngle(double angle)
-{
-    return fmod(450 - angle, 360);
+        auto vheader = newCellItem();
+        vheader->setIcon(twoColorCircleIcon(vColor, iColor, 10));
+        vheader->setText(QStringLiteral("Δθ%1").arg(phaseLetter));
+        m_table2->setVerticalHeaderItem(i, vheader);
+
+        m_table2->setItem(i, 0, newCellItem(i));
+    }
+
+    chartView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_table1->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
+    m_table2->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
+    m_table1->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    m_table1->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    m_table2->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    m_table2->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    m_table1->setFixedHeight(m_table1->verticalHeader()->length() + 2);
+    m_table2->setFixedHeight(m_table2->verticalHeader()->length() + 2);
+
+    // update every 400 ms (2.5 fps)
+    m_timeoutTarget = 400 / updateTimer->interval();
+    Q_ASSERT(m_timeoutTarget > 0);
+    m_timeoutCounter = 0;
+    connect(updateTimer, &QTimer::timeout, this, &PhasorView::update);
 }
 
 void PhasorView::update()
@@ -148,7 +210,6 @@ void PhasorView::update()
 
     std::array<std::complex<double>, nsignals> phasors;
     double ω;
-
     m_worker->getEstimations(phasors, ω);
 
     std::array<double, nsignals> phaseDiffs;
@@ -197,13 +258,18 @@ void PhasorView::update()
         auto phaseDiff = phaseDiffs[i];
         if (phaseDiff > 180)
             phaseDiff -= 360;
-        m_table->item(i, 0)->setText(QString::number(amplitudes[i], 'f', 1)
-                                     + (listSignalInfoModel[i].signalType == SignalTypeVoltage
-                                                ? QStringLiteral(" V")
-                                                : QStringLiteral(" A")));
-        m_table->item(i, 1)->setText(
-                QStringLiteral("%1").arg(phaseDiff, 0, 'f', 1, QLatin1Char('0'))
-                + QStringLiteral("°"));
+        m_table1->item(i, 0)->setText(QString::number(amplitudes[i], 'f', 1)
+                                      + (signalInfoList[i].signalType == SignalTypeVoltage
+                                                 ? QStringLiteral(" V")
+                                                 : QStringLiteral(" A")));
+        m_table1->item(i, 1)->setText(QString::number(phaseDiff, 'f', 1) + QStringLiteral("°"));
         m_listLineSeries[i]->replace(m_listLineSeriesPoints[i]);
+    }
+
+    for (int i = 0; i < nphases; ++i) {
+        const auto &[vIndex, iIndex] = phaseIndexPairList[i];
+        m_table2->item(i, 0)->setText(
+                QString::number(phaseDiffs[iIndex] - phaseDiffs[vIndex], 'f', 1)
+                + QStringLiteral("°"));
     }
 }
