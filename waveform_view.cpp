@@ -22,7 +22,7 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     m_axisVoltage->setTickType(QValueAxis::TicksDynamic);
 
     m_axisCurrent = new QValueAxis();
-    m_axisCurrent->setTitleText(QStringLiteral("Current (I)"));
+    m_axisCurrent->setTitleText(QStringLiteral("Current (A)"));
     m_axisCurrent->setRange(-100, 100);
     m_axisCurrent->setTickAnchor(0);
     m_axisCurrent->setTickInterval(1);

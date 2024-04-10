@@ -18,7 +18,7 @@ QTableWidgetItem *newCellItem(int row = -1)
             item->setBackground(QColorConstants::LightGray);
         }
     }
-    item->setSizeHint(QSize(65, 25));
+    item->setSizeHint(QSize(60, 30));
     return item;
 }
 
