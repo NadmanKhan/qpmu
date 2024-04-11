@@ -46,17 +46,19 @@ void Worker::run()
         asProcess->start();
     }
     while (m_adc->waitForReadyRead(-1)) {
-        read();
+        readAndParse();
     }
 }
 
-void Worker::read()
+void Worker::readAndParse()
 {
     for (char ch : m_adc->readAll()) {
         if (ch == '=') {
             switch (prevByte) {
             case 'o':
-                // "seq_no"
+            case 'm':
+            case 'x':
+                // "*no" or "*num" or "*idx" or "*index"
                 tokenIndex = 0;
                 break;
             case '0':
@@ -84,79 +86,50 @@ void Worker::read()
             curSample[tokenIndex] += (ch - '0');
 
         } else if (ch == '\n') {
-
-            // compute phasor
-
-            // 1. fill fft_in
-            {
-                QMutexLocker locker(&mutex);
-                sampleBuffer[sampleIndex] = curSample;
-                for (int i = 0; i < nsignals; ++i) {
-                    int index = nextIndex(sampleIndex);
-                    for (int j = 0; j < N; ++j) {
-                        input[i][j][0] = sampleBuffer[index][1 + i];
-                        index = nextIndex(index);
-                    }
-                }
-            }
-
-            // 2. execute fft_plans
-            for (int i = 0; i < nsignals; ++i) {
-                fftw_execute(plans[i]);
-            }
-
-            // 3. extract the phasor from fft_out and write it to buffer
-
-            {
-                QMutexLocker locker(&mutex);
-                for (int i = 0; i < nsignals; ++i) {
-                    std::complex<double> phasor = 0;
-                    double maxMag = 0;
-                    for (int j = 0; j < N; ++j) {
-                        if (maxMag < std::abs(*to_complex(&output[i][j]))) {
-                            phasor = *to_complex(&output[i][j]);
-                        }
-                    }
-                    phasorBuffer[i][sampleIndex] = phasor;
-                }
-            }
-
-            //            for (int i = 0; i < 9; ++i) {
-            //                if (i == 0) {
-            //                    cout << "seq_no";
-            //                } else if (i <= 6) {
-            //                    cout << "ch" << i - 1;
-            //                } else if (i == 7) {
-            //                    cout << "ts";
-            //                } else {
-            //                    cout << "delta";
-            //                }
-            //                cout << "=";
-            //                if (1 <= i && i <= 6) {
-            //                    cout << std::setw(4) << std::right;
-            //                }
-            //                cout << sampleBuffer[bufferOuterIndex][i] << ",";
-            //                if (!(1 <= i && i <= 6)) {
-            //                    cout << "\t";
-            //                }
-            //            }
-            //            cout << "\n";
-
-            //            for (int i = 0; i < 6; ++i) {
-            //                auto phasor = phasorBuffer[i][bufRow];
-            //                QPointF point = { (std::arg(phasor) * factorRadToDeg),
-            //                std::abs(phasor) / N }; cout << std::fixed << std::setprecision(1);
-            //                cout << i << ":(" << std::setw(7) << std::right << point.x() << "," <<
-            //                std::setw(7)
-            //                     << std::right << point.y() << ") ";
-            //            }
-            //            cout << "\n";
-
-            sampleIndex = nextIndex(sampleIndex);
+            addCurSample();
         }
 
         prevByte = ch;
     }
+}
+
+void Worker::addCurSample()
+{
+    // 1. fill input
+    {
+        QMutexLocker locker(&mutex);
+        sampleBuffer[sampleIndex] = curSample;
+        for (int i = 0; i < nsignals; ++i) {
+            int index = nextIndex(sampleIndex);
+            for (int j = 0; j < N; ++j) {
+                input[i][j][0] = sampleBuffer[index][1 + i];
+                index = nextIndex(index);
+            }
+        }
+    }
+
+    // 2. execute plans
+    for (int i = 0; i < nsignals; ++i) {
+        fftw_execute(plans[i]);
+    }
+
+    // 3. extract the phasor from output and write it to buffer
+
+    {
+        QMutexLocker locker(&mutex);
+        for (int i = 0; i < nsignals; ++i) {
+            std::complex<double> phasor = 0;
+            double maxMag = 0;
+            for (int j = 0; j < N; ++j) {
+                if (maxMag < std::abs(*to_complex(&output[i][j]))) {
+                    phasor = *to_complex(&output[i][j]);
+                }
+            }
+            phasorBuffer[i][sampleIndex] = phasor;
+        }
+    }
+
+    sampleIndex = nextIndex(sampleIndex);
 }
 
 void Worker::getEstimations(std::array<std::complex<double>, nsignals> &out_phasors, double &out_ω)

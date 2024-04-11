@@ -33,10 +33,13 @@ public:
     static constexpr int N = 24;
 
 public slots:
-    void read();
+    void readAndParse();
 
     Q_INVOKABLE void getEstimations(std::array<std::complex<double>, nsignals> &out_phasors,
                                     double &out_ω);
+
+private slots:
+    void addCurSample();
 
 private:
     static constexpr int nextIndex(int currIndex);
