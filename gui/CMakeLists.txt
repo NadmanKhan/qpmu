@@ -32,8 +32,6 @@ find_package(Qt${QT_VERSION_MAJOR}
     REQUIRED
 )
 
-include_directories(../common/include)
-
 add_subdirectory(../common CMAKE_CURRENT_BINARY_DIR/common)
 
 set(PROJECT_SOURCES
@@ -81,9 +79,6 @@ target_link_libraries(qpmu-gui PRIVATE
     Qt${QT_VERSION_MAJOR}::Charts
     Qt${QT_VERSION_MAJOR}::Quick
     fftw3
-)
-
-target_link_libraries(qpmu-gui PRIVATE
     qpmu-common
 )
 
