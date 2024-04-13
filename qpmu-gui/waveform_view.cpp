@@ -34,6 +34,7 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     m_chart->addAxis(m_axisCurrent, Qt::AlignRight);
     auto chartLegend = m_chart->legend();
     chartLegend->setMarkerShape(QLegend::MarkerShapeCircle);
+    chartLegend->setAlignment(Qt::AlignRight);
 
     auto chartView = new QChartView(this);
     chartView->setChart(m_chart);
@@ -124,7 +125,7 @@ void WaveformView::update()
     //    qDebug() << (ω / (2 * M_PI));
     const qreal factor = ω * (0.001 /* because in ms */);
     const qreal tDelta = 1;
-    const int npoints = 50; // excluding t=0
+    const int npoints = 20; // excluding t=0
 
     for (int i = 0; i < nsignals; ++i) {
         m_listSplineSeriesPoints[i].resize(npoints + (1 /* for t=0 */));
