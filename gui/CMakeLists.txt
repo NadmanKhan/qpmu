@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(qpmu VERSION 0.1 LANGUAGES CXX)
+project(qpmu-gui VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -11,8 +11,30 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Widgets Charts Quick REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Widgets Charts Quick REQUIRED)
+find_package(QT
+    NAMES
+    Qt6
+    Qt5
+    COMPONENTS
+    Core
+    Widgets
+    Charts
+    Quick
+    REQUIRED
+)
+
+find_package(Qt${QT_VERSION_MAJOR}
+    COMPONENTS
+    Core
+    Widgets
+    Charts
+    Quick
+    REQUIRED
+)
+
+include_directories(../common/include)
+
+add_subdirectory(../common CMAKE_CURRENT_BINARY_DIR/common)
 
 set(PROJECT_SOURCES
     src/main_window.h
@@ -23,40 +45,49 @@ set(PROJECT_SOURCES
     src/waveform_view.cpp
     src/worker.h
     src/worker.cpp
-    src/signal_info_model.h
     src/main.cpp
-    img/img.qrc
+    img/.qrc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(qpmu
+    qt_add_executable(qpmu-gui
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
     )
 # Define target properties for Android with Qt 6 as:
-#    set_property(TARGET qpmu APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
+#    set_property(TARGET qpmu-gui APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
 # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 else()
     if(ANDROID)
-        add_library(qpmu SHARED
+        add_library(qpmu-gui SHARED
             ${PROJECT_SOURCES}
         )
 # Define properties for Android with Qt 5 after find_package() calls as:
 #    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
     else()
-        add_executable(qpmu
+        add_executable(qpmu-gui
           ${PROJECT_SOURCES}
         )
     endif()
 endif()
 
-target_compile_definitions(qpmu
-  PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
-target_link_libraries(qpmu
-  PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Charts Qt${QT_VERSION_MAJOR}::Quick fftw3)
+target_compile_definitions(qpmu-gui
+    PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
 
-set_target_properties(qpmu PROPERTIES
+target_link_libraries(qpmu-gui PRIVATE
+    Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Charts
+    Qt${QT_VERSION_MAJOR}::Quick
+    fftw3
+)
+
+target_link_libraries(qpmu-gui PRIVATE
+    qpmu-common
+)
+
+set_target_properties(qpmu-gui PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
@@ -65,7 +96,7 @@ set_target_properties(qpmu PROPERTIES
 )
 
 if(QT_VERSION_MAJOR EQUAL 6)
-    qt_import_qml_plugins(qpmu)
-    qt_finalize_executable(qpmu)
+    qt_import_qml_plugins(qpmu-gui)
+    qt_finalize_executable(qpmu-gui)
 endif()
 

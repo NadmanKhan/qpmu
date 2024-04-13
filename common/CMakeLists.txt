@@ -1,3 +1,8 @@
-cmake_minimum_required(VERSION 3.14)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-project(qpmu-common VERSION 0.1 LANGUAGES CXX)
+set(SOURCES
+)
+
+add_library(qpmu-common STATIC
+    ${SOURCES}
+)
