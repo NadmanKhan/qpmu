@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>control-panel.png</file>
+        <file>meter.png</file>
+        <file>return.png</file>
+        <file>vector.png</file>
+        <file>waves.png</file>
+    </qresource>
+</RCC>

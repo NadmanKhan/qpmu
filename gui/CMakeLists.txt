@@ -15,17 +15,17 @@ find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Widgets Charts Quick REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Widgets Charts Quick REQUIRED)
 
 set(PROJECT_SOURCES
-    main_window.h
-    main_window.cpp
-    phasor_view.h
-    phasor_view.cpp
-    waveform_view.h
-    waveform_view.cpp
-    worker.h
-    worker.cpp
-    signal_info_model.h
-    main.cpp
-    icons.qrc
+    src/main_window.h
+    src/main_window.cpp
+    src/phasor_view.h
+    src/phasor_view.cpp
+    src/waveform_view.h
+    src/waveform_view.cpp
+    src/worker.h
+    src/worker.cpp
+    src/signal_info_model.h
+    src/main.cpp
+    img/img.qrc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -69,4 +69,3 @@ if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(qpmu)
 endif()
 
-configure_file(adc_simulator.py adc_simulator.py COPYONLY)

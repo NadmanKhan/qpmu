@@ -2,6 +2,7 @@
 #define SIGNAL_INFO_MODEL_H
 
 #include <string>
+#include <string_view>
 
 constexpr int nsignals = 6;
 constexpr int nphases = 3;
@@ -29,24 +30,24 @@ static constexpr int phaseIndexPairList[nphases][2] = {
     { 0, 3 } /* VA, IA */, { 1, 4 } /* VB, IB */, { 2, 5 } /* VC, IC */
 };
 
-static constexpr int signalIndex(const std::string_view &signalName)
+static constexpr int index(const std::string_view &name)
 {
-    if (signalName == "VA" || signalName == "va") {
+    if (name == "VA" || name == "va") {
         return 0;
     }
-    if (signalName == "VB" || signalName == "vb") {
+    if (name == "VB" || name == "vb") {
         return 1;
     }
-    if (signalName == "VC" || signalName == "vc") {
+    if (name == "VC" || name == "vc") {
         return 2;
     }
-    if (signalName == "IA" || signalName == "ia") {
+    if (name == "IA" || name == "ia") {
         return 3;
     }
-    if (signalName == "IB" || signalName == "ib") {
+    if (name == "IB" || name == "ib") {
         return 4;
     }
-    if (signalName == "IC" || signalName == "ic") {
+    if (name == "IC" || name == "ic") {
         return 5;
     }
     return -1;

@@ -51,10 +51,10 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
     using OptionModel = std::tuple<QString, QString, QWidget *>;
     QList<OptionModel> optionsModel;
     optionsModel.append(OptionModel{ QStringLiteral("Monitor Waveforms"),
-                                     QStringLiteral(":/images/waves.png"),
+                                     QStringLiteral(":/waves.png"),
                                      new WaveformView(m_timer, worker, this) });
     optionsModel.append(OptionModel{ QStringLiteral("Monitor Phasors"),
-                                     QStringLiteral(":/images/vector.png"),
+                                     QStringLiteral(":/vector.png"),
                                      new PhasorView(m_timer, worker, this) });
 
     const int rowCount = 2;
@@ -92,8 +92,7 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
     auto toolBar = new QToolBar(this);
     toolBar->setMovable(false);
     addToolBar(Qt::LeftToolBarArea, toolBar);
-    auto goBackAction =
-            new QAction(QIcon(QStringLiteral(":/images/return.png")), "Go back", toolBar);
+    auto goBackAction = new QAction(QIcon(QStringLiteral(":/return.png")), "Go back", toolBar);
     if (m_stack->currentIndex() < 1) {
         goBackAction->setEnabled(false);
     }
