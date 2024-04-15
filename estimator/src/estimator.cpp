@@ -22,31 +22,40 @@ enum StrategyChoice {
 };
 
 template <typename FloatType>
-constexpr FloatType PI = M_PI;
+constexpr auto PI = M_PI;
 template <>
-constexpr float PI<float> = M_PIf;
+constexpr auto PI<float> = M_PIf;
 template <>
-constexpr double PI<double> = M_PI;
+constexpr auto PI<double> = M_PI;
 template <>
-constexpr long double PI<long double> = M_PIl;
+constexpr auto PI<long double> = M_PIl;
 
 template <typename FloatType>
-constexpr FloatType DEG2RAD = PI<FloatType> / 180;
+constexpr auto DEG2RAD = PI<FloatType> / 180;
 template <>
-constexpr float DEG2RAD<float> = M_PIf / 180;
+constexpr auto DEG2RAD<float> = M_PIf / 180;
 template <>
-constexpr double DEG2RAD<double> = M_PI / 180;
+constexpr auto DEG2RAD<double> = M_PI / 180;
 template <>
-constexpr long double DEG2RAD<long double> = M_PIl / 180;
+constexpr auto DEG2RAD<long double> = M_PIl / 180;
 
 template <typename FloatType>
-constexpr FloatType RAD2DEG = 180 / PI<FloatType>;
+constexpr auto RAD2DEG = 180 / PI<FloatType>;
 template <>
-constexpr float RAD2DEG<float> = 180 / M_PIf;
+constexpr auto RAD2DEG<float> = 180 / M_PIf;
 template <>
-constexpr double RAD2DEG<double> = 180 / M_PI;
+constexpr auto RAD2DEG<double> = 180 / M_PI;
 template <>
-constexpr long double RAD2DEG<long double> = 180 / M_PIl;
+constexpr auto RAD2DEG<long double> = 180 / M_PIl;
+
+template <typename FloatType>
+constexpr auto RAD2DEG = 180 / PI<FloatType>;
+template <>
+constexpr auto RAD2DEG<float> = 180 / M_PIf;
+template <>
+constexpr auto RAD2DEG<double> = 180 / M_PI;
+template <>
+constexpr auto RAD2DEG<long double> = 180 / M_PIl;
 
 
 template <typename FloatType>

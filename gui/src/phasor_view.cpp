@@ -209,8 +209,8 @@ void PhasorView::update()
         return;
 
     std::array<std::complex<double>, NUM_SIGNALS> phasors;
-    double ω;
-    m_worker->getEstimations(phasors, ω);
+    double omega;
+    m_worker->getEstimations(phasors, omega);
 
     std::array<double, NUM_SIGNALS> phaseDiffs;
     std::array<double, NUM_SIGNALS> amplitudes;
