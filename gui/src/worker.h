@@ -37,7 +37,7 @@ public slots:
     void readAndParse();
 
     Q_INVOKABLE void getEstimations(std::array<std::complex<double>, NUM_SIGNALS> &out_phasors,
-                                    double &out_ω);
+                                    double &out_omega);
 
 private slots:
     void addCurSample();
