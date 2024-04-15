@@ -14,7 +14,7 @@
 #include <complex>
 #include <cmath>
 
-#include "signal_info_model.h"
+#include "signal_info.h"
 
 constexpr double pi = 3.14159265358979323846264338;
 constexpr double factorRadToDeg = 180 / pi;
@@ -30,12 +30,13 @@ public:
 
     void run() override;
 
-    static constexpr int N = 24;
+    static constexpr int F = 1;
+    static constexpr int N = 24 * F;
 
 public slots:
     void readAndParse();
 
-    Q_INVOKABLE void getEstimations(std::array<std::complex<double>, nsignals> &out_phasors,
+    Q_INVOKABLE void getEstimations(std::array<std::complex<double>, NUM_SIGNALS> &out_phasors,
                                     double &out_ω);
 
 private slots:
@@ -48,12 +49,12 @@ private:
     QMutex mutex;
     QIODevice *m_adc;
 
-    std::array<fftw_complex *, nsignals> input, output;
-    std::array<fftw_plan, nsignals> plans;
+    std::array<fftw_complex *, NUM_SIGNALS> input, output;
+    std::array<fftw_plan, NUM_SIGNALS> plans;
 
     ADCSample curSample = {};
     std::array<ADCSample, N> sampleBuffer = {};
-    std::array<std::array<std::complex<double>, N>, nsignals> phasorBuffer = {};
+    std::array<std::array<std::complex<double>, N>, NUM_SIGNALS> phasorBuffer = {};
     char prevByte = 0;
     int tokenIndex = 0;
     int sampleIndex = 0;

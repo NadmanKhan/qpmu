@@ -4,8 +4,8 @@
 #include <string>
 #include <string_view>
 
-constexpr int nsignals = 6;
-constexpr int nphases = 3;
+constexpr size_t NUM_SIGNALS = 6;
+constexpr size_t NUM_PHASES = 3;
 
 enum SignalType { SignalTypeVoltage, SignalTypeCurrent };
 
@@ -17,7 +17,7 @@ struct SignalInfo
     char phaseLetter;
 };
 
-static constexpr SignalInfo signalInfoList[nsignals] = {
+static constexpr SignalInfo signalInfoList[NUM_SIGNALS] = {
     SignalInfo{ "VA", "#404040", SignalTypeVoltage, 'A' },
     SignalInfo{ "VB", "#ff0000", SignalTypeVoltage, 'B' },
     SignalInfo{ "VC", "#00ffff", SignalTypeVoltage, 'C' },
@@ -26,7 +26,7 @@ static constexpr SignalInfo signalInfoList[nsignals] = {
     SignalInfo{ "IC", "#00c000", SignalTypeCurrent, 'C' }
 };
 
-static constexpr int phaseIndexPairList[nphases][2] = {
+static constexpr int phaseIndexPairList[NUM_PHASES][2] = {
     { 0, 3 } /* VA, IA */, { 1, 4 } /* VB, IB */, { 2, 5 } /* VC, IC */
 };
 

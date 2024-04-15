@@ -9,7 +9,7 @@
 #include <QBoxLayout>
 
 #include "worker.h"
-#include "signal_info_model.h"
+#include "signal_info.h"
 
 class WaveformView : public QWidget
 {

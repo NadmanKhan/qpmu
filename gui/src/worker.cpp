@@ -17,7 +17,7 @@ Worker::Worker(QIODevice *adc) : QThread(), m_adc(adc)
 
     m_adc->moveToThread(this);
 
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         input[i] = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * N);
         output[i] = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * N);
         for (int j = 0; j < N; ++j) {
@@ -33,7 +33,7 @@ Worker::Worker(QIODevice *adc) : QThread(), m_adc(adc)
 
 Worker::~Worker()
 {
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         fftw_free(input[i]);
         fftw_free(output[i]);
         fftw_destroy_plan(plans[i]);
@@ -99,7 +99,7 @@ void Worker::addCurSample()
     {
         QMutexLocker locker(&mutex);
         sampleBuffer[sampleIndex] = curSample;
-        for (int i = 0; i < nsignals; ++i) {
+        for (int i = 0; i < NUM_SIGNALS; ++i) {
             int index = nextIndex(sampleIndex);
             for (int j = 0; j < N; ++j) {
                 input[i][j][0] = sampleBuffer[index][1 + i];
@@ -109,7 +109,7 @@ void Worker::addCurSample()
     }
 
     // 2. execute plans
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         fftw_execute(plans[i]);
     }
 
@@ -117,42 +117,75 @@ void Worker::addCurSample()
 
     {
         QMutexLocker locker(&mutex);
-        for (int i = 0; i < nsignals; ++i) {
-            std::complex<double> phasor = 0;
-            double maxMag = 0;
-            for (int j = 0; j < N; ++j) {
-                if (maxMag < std::abs(*to_complex(&output[i][j]))) {
-                    phasor = *to_complex(&output[i][j]);
-                }
-            }
-            phasorBuffer[i][sampleIndex] = phasor;
+        for (int i = 0; i < NUM_SIGNALS; ++i) {
+            //            double maxNorm = 0;
+            //            int maxIdx = 1;
+            //            for (int j = 1; j < N; ++j) {
+            //                auto norm = std::norm(*to_complex(&output[i][j]));
+            //                if (maxNorm < norm) {
+            //                    maxNorm = norm;
+            //                    maxIdx = j;
+            //                }
+            //            }
+            //            if (i == 0) {
+            //                for (int j = 0; j < N; ++j) {
+            //                    auto p = *to_complex(&output[i][j]);
+            //                    cout << char((j == maxIdx) * '*' + (j != maxIdx) * ' ') <<
+            //                    std::fixed
+            //                         << std::setprecision(1) << std::right << std::setw(10) << j
+            //                         << " : " << p
+            //                         << " | " << (std::arg(p) * 180 / M_PI) << " " << std::abs(p)
+            //                         << "\n";
+            //                }
+            //                cout << "\n";
+            //            }
+            //            double sumMagn = 0;
+            //            for (int j = 1; j < N; ++j) {
+            //                sumMagn += std::abs(*to_complex(&output[i][j]));
+            //            }
+            //            std::complex<double> phasor = 0;
+            //            for (int j = 1; j < N; ++j) {
+            //                auto magn = std::abs(*to_complex(&output[i][j]));
+            //                phasor += (magn / sumMagn) * *to_complex(&output[i][j]);
+            //            }
+            //            phasorBuffer[i][sampleIndex] = phasor;
+            phasorBuffer[i][sampleIndex] = *to_complex(&output[i][F]);
+            //            auto p = to_complex(&output[i][F]);
+            //            phasorBuffer[i][sampleIndex] =
+            //                    std::polar(p->real() * M_SQRT2 / N, p->imag() * M_SQRT2 / N);
+            //            phasorBuffer[i][sampleIndex] = 0;
+            //            for (int j = 1; j < N; ++j) {
+            //                phasorBuffer[i][sampleIndex] += *to_complex(&output[i][j]);
+            //            }
         }
     }
 
     sampleIndex = nextIndex(sampleIndex);
 }
 
-void Worker::getEstimations(std::array<std::complex<double>, nsignals> &out_phasors, double &out_ω)
+void Worker::getEstimations(std::array<std::complex<double>, NUM_SIGNALS> &out_phasors,
+                            double &out_omega)
 {
     QMutexLocker locker(&mutex);
     int readIdx = prevIndex(sampleIndex);
     int prevReadIdx = prevIndex(readIdx);
 
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         out_phasors[i] = phasorBuffer[i][readIdx];
     }
 
-    double sum_ω_micros = 0;
+    double sum_omega_micros = 0;
 
     for (int i = 0; i < N; ++i) {
         if (i == sampleIndex || i == nextIndex(sampleIndex))
             continue;
-        const auto &θ2 = std::arg(phasorBuffer[0][i]);
-        const auto &θ1 = std::arg(phasorBuffer[0][prevIndex(i)]);
-        auto phaseDiff = std::fmod((θ1 - θ2) + (2 * M_PI), (2 * M_PI));
-        sum_ω_micros += (phaseDiff / sampleBuffer[i][8] /* timedelta */);
+        const auto &theta2 = std::arg(phasorBuffer[0][i]);
+        const auto &theta1 = std::arg(phasorBuffer[0][prevIndex(i)]);
+        auto phaseDiff = std::fmod((theta1 - theta2) + (2 * M_PI), (2 * M_PI));
+        sum_omega_micros += (phaseDiff / sampleBuffer[i][8] /* timedelta */);
     }
-    out_ω = (sum_ω_micros * 1e6 / (N - 2));
+    out_omega = (sum_omega_micros * 1e6 / (N - 2) / N * F);
+    //    qDebug() << (out_omega / (2 * M_PI));
 }
 
 constexpr int Worker::nextIndex(int currIndex)

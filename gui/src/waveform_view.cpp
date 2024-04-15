@@ -34,7 +34,6 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     m_chart->addAxis(m_axisCurrent, Qt::AlignRight);
     auto chartLegend = m_chart->legend();
     chartLegend->setMarkerShape(QLegend::MarkerShapeCircle);
-    chartLegend->setAlignment(Qt::AlignRight);
 
     auto chartView = new QChartView(this);
     chartView->setChart(m_chart);
@@ -49,7 +48,7 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
     const auto colorWhite = QColor(QStringLiteral("white"));
 
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         auto name = QString(signalInfoList[i].name);
         auto color = QColor(signalInfoList[i].colorHex);
 
@@ -96,25 +95,25 @@ void WaveformView::update()
     if (!isVisible())
         return;
 
-    std::array<std::complex<double>, nsignals> phasors;
+    std::array<std::complex<double>, NUM_SIGNALS> phasors;
     double ω;
 
     m_worker->getEstimations(phasors, ω);
 
-    std::array<double, nsignals> phaseDiffs; // in radians
-    std::array<double, nsignals> amplitudes;
+    std::array<double, NUM_SIGNALS> phaseDiffs; // in radians
+    std::array<double, NUM_SIGNALS> amplitudes;
 
     double phaseRef = std::arg(phasors[0]);
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef);
         amplitudes[i] = std::abs(phasors[i]) / Worker::N;
     }
 
-    std::array<QPointF, nsignals> polars;
+    std::array<QPointF, NUM_SIGNALS> polars;
 
     qreal vmax = 0;
     qreal imax = 0;
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         if (signalInfoList[i].signalType == SignalTypeVoltage) {
             vmax = qMax(vmax, amplitudes[i]);
         } else {
@@ -127,7 +126,7 @@ void WaveformView::update()
     const qreal tDelta = 1;
     const int npoints = 20; // excluding t=0
 
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         m_listSplineSeriesPoints[i].resize(npoints + (1 /* for t=0 */));
         m_listSplineSeriesPoints[i][0] = QPointF(0, amplitudes[i] * cos(phaseDiffs[i]));
         for (int j = 1; j <= npoints; ++j) {
@@ -142,7 +141,7 @@ void WaveformView::update()
     m_axisVoltage->setTickInterval(vmax);
     m_axisCurrent->setRange(-imax, +imax);
     m_axisCurrent->setTickInterval(imax);
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         m_listSplineSeries[i]->replace(m_listSplineSeriesPoints[i]);
     }
 }

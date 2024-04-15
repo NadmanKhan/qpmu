@@ -100,12 +100,12 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     chartView->show();
 
     m_table1 = new QTableWidget(this);
-    m_table1->setRowCount(nsignals);
+    m_table1->setRowCount(NUM_SIGNALS);
     m_table1->setColumnCount(2);
     m_table1->horizontalHeader()->hide();
 
     m_table2 = new QTableWidget(this);
-    m_table2->setRowCount(nphases);
+    m_table2->setRowCount(NUM_PHASES);
     m_table2->setColumnCount(1);
     m_table2->horizontalHeader()->hide();
 
@@ -126,7 +126,7 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     hbox->addWidget(chartView, 1);
     hbox->addLayout(vboxTables, 0);
 
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         auto name = QString(signalInfoList[i].name);
         auto color = QColor(signalInfoList[i].colorHex);
 
@@ -165,7 +165,7 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_table1->setItem(i, 1, newCellItem(i));
     }
 
-    for (int i = 0; i < nphases; ++i) {
+    for (int i = 0; i < NUM_PHASES; ++i) {
         const auto &[vIndex, iIndex] = phaseIndexPairList[i];
         auto vName = QString(signalInfoList[vIndex].name);
         auto vColor = QColor(signalInfoList[vIndex].colorHex);
@@ -208,23 +208,23 @@ void PhasorView::update()
     if (!isVisible())
         return;
 
-    std::array<std::complex<double>, nsignals> phasors;
+    std::array<std::complex<double>, NUM_SIGNALS> phasors;
     double ω;
     m_worker->getEstimations(phasors, ω);
 
-    std::array<double, nsignals> phaseDiffs;
-    std::array<double, nsignals> amplitudes;
+    std::array<double, NUM_SIGNALS> phaseDiffs;
+    std::array<double, NUM_SIGNALS> amplitudes;
 
     double phaseRef = std::arg(phasors[0]);
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef) * 180 / M_PI;
         phaseDiffs[i] = fmod(phaseDiffs[i] + 360, 360);
         amplitudes[i] = std::abs(phasors[i]) / Worker::N;
     }
 
-    std::array<QPointF, nsignals> polars;
+    std::array<QPointF, NUM_SIGNALS> polars;
 
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         polars[i] = QPointF(polarChartAngle(phaseDiffs[i]), amplitudes[i]);
     }
 
@@ -238,7 +238,7 @@ void PhasorView::update()
         }
     }
 
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         m_listLineSeriesPoints[i][0] = { polars[i].x(), 0.015 };
         m_listLineSeriesPoints[i][1] = m_listLineSeriesPoints[i][3] = polars[i];
 
@@ -254,7 +254,7 @@ void PhasorView::update()
         }
     }
 
-    for (int i = 0; i < nsignals; ++i) {
+    for (int i = 0; i < NUM_SIGNALS; ++i) {
         auto phaseDiff = phaseDiffs[i];
         if (phaseDiff > 180)
             phaseDiff -= 360;
@@ -266,10 +266,11 @@ void PhasorView::update()
         m_listLineSeries[i]->replace(m_listLineSeriesPoints[i]);
     }
 
-    for (int i = 0; i < nphases; ++i) {
+    for (int i = 0; i < NUM_PHASES; ++i) {
         const auto &[vIndex, iIndex] = phaseIndexPairList[i];
         m_table2->item(i, 0)->setText(
-                QString::number(phaseDiffs[iIndex] - phaseDiffs[vIndex], 'f', 1)
+                QString::number((std::fmod(phaseDiffs[vIndex] - phaseDiffs[iIndex] + 360, 360)),
+                                'f', 1)
                 + QStringLiteral("°"));
     }
 }

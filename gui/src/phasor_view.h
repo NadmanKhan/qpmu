@@ -13,7 +13,7 @@
 
 #include <cmath>
 
-#include "signal_info_model.h"
+#include "signal_info.h"
 #include "worker.h"
 
 class PhasorView : public QWidget
