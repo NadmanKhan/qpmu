@@ -17,10 +17,6 @@ find_package(
   COMPONENTS Core Widgets Charts Quick
   REQUIRED)
 
-if(NOT TARGET ${COMMON_LIB})
-  add_subdirectory(${COMMON_DIR} ${CMAKE_CURRENT_BINARY_DIR}/${COMMON_LIB})
-endif()
-
 set(PROJECT_SOURCES
     src/main_window.h
     src/main_window.cpp
@@ -56,8 +52,7 @@ target_compile_definitions(
 target_link_libraries(
   ${PROJECT_NAME}-gui
   PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Widgets
-          Qt${QT_VERSION_MAJOR}::Charts Qt${QT_VERSION_MAJOR}::Quick fftw3
-          ${COMMON_LIB})
+          Qt${QT_VERSION_MAJOR}::Charts Qt${QT_VERSION_MAJOR}::Quick fftw3)
 
 set_target_properties(
   ${PROJECT_NAME}-gui

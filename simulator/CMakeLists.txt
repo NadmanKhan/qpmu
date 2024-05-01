@@ -13,5 +13,4 @@ target_sources(${PROJECT_NAME}-simulator
 
 target_link_libraries(
   ${PROJECT_NAME}-simulator
-  PRIVATE ${COMMON_LIB}
   PRIVATE Boost::program_options)
