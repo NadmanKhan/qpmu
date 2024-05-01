@@ -95,53 +95,66 @@ void WaveformView::update()
     if (!isVisible())
         return;
 
-    std::array<std::complex<double>, NUM_SIGNALS> phasors;
-    double ω;
-
-    m_worker->getEstimations(phasors, ω);
+    auto msr = m_worker->measurement();
 
     std::array<double, NUM_SIGNALS> phaseDiffs; // in radians
     std::array<double, NUM_SIGNALS> amplitudes;
 
-    double phaseRef = std::arg(phasors[0]);
+    double phaseRef = std::arg(msr.phasors[0]);
     for (int i = 0; i < NUM_SIGNALS; ++i) {
-        phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef);
-        amplitudes[i] = std::abs(phasors[i]) / Worker::N;
+        phaseDiffs[i] = (std::arg(msr.phasors[i]) - phaseRef);
+        amplitudes[i] = std::abs(msr.phasors[i]) / BUFFER_SIZE;
     }
 
     std::array<QPointF, NUM_SIGNALS> polars;
 
-    qreal vmax = 0;
-    qreal imax = 0;
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
-        if (signalInfoList[i].signalType == SignalTypeVoltage) {
-            vmax = qMax(vmax, amplitudes[i]);
-        } else {
-            imax = qMax(imax, amplitudes[i]);
-        }
-    }
+    //    std::array<std::complex<double>, NUM_SIGNALS> phasors;
+    //    double omega;
 
-    //    qDebug() << (ω / (2 * M_PI));
-    const qreal factor = ω * (0.001 /* because in ms */);
-    const qreal tDelta = 1;
-    const int npoints = 20; // excluding t=0
+    //    m_worker->getEstimations(phasors, omega);
 
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
-        m_listSplineSeriesPoints[i].resize(npoints + (1 /* for t=0 */));
-        m_listSplineSeriesPoints[i][0] = QPointF(0, amplitudes[i] * cos(phaseDiffs[i]));
-        for (int j = 1; j <= npoints; ++j) {
-            auto ωt = j * tDelta * factor;
-            m_listSplineSeriesPoints[i][j] =
-                    QPointF((j * tDelta), amplitudes[i] * cos(ωt + phaseDiffs[i]));
-        }
-    }
+    //    std::array<double, NUM_SIGNALS> phaseDiffs; // in radians
+    //    std::array<double, NUM_SIGNALS> amplitudes;
 
-    m_axisTime->setRange(0, npoints * tDelta);
-    m_axisVoltage->setRange(-vmax, +vmax);
-    m_axisVoltage->setTickInterval(vmax);
-    m_axisCurrent->setRange(-imax, +imax);
-    m_axisCurrent->setTickInterval(imax);
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
-        m_listSplineSeries[i]->replace(m_listSplineSeriesPoints[i]);
-    }
+    //    double phaseRef = std::arg(phasors[0]);
+    //    for (int i = 0; i < NUM_SIGNALS; ++i) {
+    //        phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef);
+    //        amplitudes[i] = std::abs(phasors[i]) / Worker::N;
+    //    }
+
+    //    std::array<QPointF, NUM_SIGNALS> polars;
+
+    //    qreal vmax = 0;
+    //    qreal imax = 0;
+    //    for (int i = 0; i < NUM_SIGNALS; ++i) {
+    //        if (signalInfoList[i].signalType == SignalTypeVoltage) {
+    //            vmax = qMax(vmax, amplitudes[i]);
+    //        } else {
+    //            imax = qMax(imax, amplitudes[i]);
+    //        }
+    //    }
+
+    //    //    qDebug() << (omega / (2 * M_PI));
+    //    const qreal factor = omega * (0.001 /* because in ms */);
+    //    const qreal tDelta = 1;
+    //    const int npoints = 20; // excluding t=0
+
+    //    for (int i = 0; i < NUM_SIGNALS; ++i) {
+    //        m_listSplineSeriesPoints[i].resize(npoints + (1 /* for t=0 */));
+    //        m_listSplineSeriesPoints[i][0] = QPointF(0, amplitudes[i] * cos(phaseDiffs[i]));
+    //        for (int j = 1; j <= npoints; ++j) {
+    //            auto omegat = j * tDelta * factor;
+    //            m_listSplineSeriesPoints[i][j] =
+    //                    QPointF((j * tDelta), amplitudes[i] * cos(omegat + phaseDiffs[i]));
+    //        }
+    //    }
+
+    //    m_axisTime->setRange(0, npoints * tDelta);
+    //    m_axisVoltage->setRange(-vmax, +vmax);
+    //    m_axisVoltage->setTickInterval(vmax);
+    //    m_axisCurrent->setRange(-imax, +imax);
+    //    m_axisCurrent->setTickInterval(imax);
+    //    for (int i = 0; i < NUM_SIGNALS; ++i) {
+    //        m_listSplineSeries[i]->replace(m_listSplineSeriesPoints[i]);
+    //    }
 }

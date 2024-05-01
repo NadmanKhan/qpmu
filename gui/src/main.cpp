@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 
     QProcess adc;
     adc.setProgram("python3");
-    adc.setArguments(QStringList() << "../simulators/adc_simulator.py");
+    adc.setArguments(QStringList() << "../simulator/src/adc_simulator.py");
     auto worker = new Worker(&adc);
 
     MainWindow window(worker);

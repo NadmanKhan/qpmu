@@ -28,7 +28,7 @@ Worker::Worker(QIODevice *adc) : QThread(), m_adc(adc)
         plans[i] = fftw_plan_dft_1d(N, input[i], output[i], FFTW_FORWARD, FFTW_ESTIMATE);
     }
 
-    //    connect(m_adc, &QIODevice::readyRead, this, &Worker::read);
+    connect(m_adc, &QIODevice::readyRead, this, &Worker::readAndParse);
 }
 
 Worker::~Worker()
@@ -48,6 +48,8 @@ void Worker::run()
     while (m_adc->waitForReadyRead(-1)) {
         readAndParse();
     }
+    return;
+    while (fread(&m_measurement, sizeof(m_measurement), 1, stdin)) { }
 }
 
 void Worker::readAndParse()
@@ -118,45 +120,16 @@ void Worker::addCurSample()
     {
         QMutexLocker locker(&mutex);
         for (int i = 0; i < NUM_SIGNALS; ++i) {
-            //            double maxNorm = 0;
-            //            int maxIdx = 1;
-            //            for (int j = 1; j < N; ++j) {
-            //                auto norm = std::norm(*to_complex(&output[i][j]));
-            //                if (maxNorm < norm) {
-            //                    maxNorm = norm;
-            //                    maxIdx = j;
-            //                }
-            //            }
-            //            if (i == 0) {
-            //                for (int j = 0; j < N; ++j) {
-            //                    auto p = *to_complex(&output[i][j]);
-            //                    cout << char((j == maxIdx) * '*' + (j != maxIdx) * ' ') <<
-            //                    std::fixed
-            //                         << std::setprecision(1) << std::right << std::setw(10) << j
-            //                         << " : " << p
-            //                         << " | " << (std::arg(p) * 180 / M_PI) << " " << std::abs(p)
-            //                         << "\n";
-            //                }
-            //                cout << "\n";
-            //            }
-            //            double sumMagn = 0;
-            //            for (int j = 1; j < N; ++j) {
-            //                sumMagn += std::abs(*to_complex(&output[i][j]));
-            //            }
-            //            std::complex<double> phasor = 0;
-            //            for (int j = 1; j < N; ++j) {
-            //                auto magn = std::abs(*to_complex(&output[i][j]));
-            //                phasor += (magn / sumMagn) * *to_complex(&output[i][j]);
-            //            }
-            //            phasorBuffer[i][sampleIndex] = phasor;
-            phasorBuffer[i][sampleIndex] = *to_complex(&output[i][F]);
-            //            auto p = to_complex(&output[i][F]);
-            //            phasorBuffer[i][sampleIndex] =
-            //                    std::polar(p->real() * M_SQRT2 / N, p->imag() * M_SQRT2 / N);
-            //            phasorBuffer[i][sampleIndex] = 0;
-            //            for (int j = 1; j < N; ++j) {
-            //                phasorBuffer[i][sampleIndex] += *to_complex(&output[i][j]);
-            //            }
+                       double maxNorm = 0;
+                       int maxIdx = 1;
+                       for (int j = 1; j < N / 2; ++j) {
+                           auto norm = std::norm(*to_complex(&output[i][j]));
+                           if (maxNorm < norm) {
+                               maxNorm = norm;
+                               maxIdx = j;
+                           }
+                       }
+            phasorBuffer[i][sampleIndex] = *to_complex(&output[i][maxIdx]);
         }
     }
 
@@ -186,6 +159,11 @@ void Worker::getEstimations(std::array<std::complex<double>, NUM_SIGNALS> &out_p
     }
     out_omega = (sum_omega_micros * 1e6 / (N - 2) / N * F);
     //    qDebug() << (out_omega / (2 * M_PI));
+}
+
+Measurement Worker::measurement() const
+{
+    return m_measurement;
 }
 
 constexpr int Worker::nextIndex(int currIndex)

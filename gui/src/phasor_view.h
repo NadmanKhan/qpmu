@@ -10,6 +10,7 @@
 #include <QTimer>
 #include <QLayout>
 #include <QTableWidget>
+#include <QColor>
 
 #include <cmath>
 

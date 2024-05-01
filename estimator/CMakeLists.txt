@@ -1,22 +1,16 @@
-cmake_minimum_required(VERSION 3.14)
+# qpmu-common
+if(NOT TARGET ${COMMON_LIB})
+  add_subdirectory(${COMMON_DIR} ${CMAKE_CURRENT_BINARY_DIR}/${COMMON_LIB})
+endif()
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_executable(${PROJECT_NAME}-estimator)
 
-project(qpmu-estimator VERSION 0.1 LANGUAGES CXX)
+target_sources(${PROJECT_NAME}-estimator
+               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/estimator.cpp)
 
-add_subdirectory(../common CMAKE_CURRENT_BINARY_DIR/common) # qpmu-common
-add_subdirectory(external/github.com/jurihock/sdft/cpp) # sdft-cpp
-
-set(PROJECT_SOURCES
-    src/estimator.cpp
-)
-
-add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
-
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE qpmu-common
-    PRIVATE fftw3
-    PRIVATE sdft-cpp
-)
+target_link_libraries(
+  ${PROJECT_NAME}-estimator
+  PRIVATE ${COMMON_LIB}
+  PRIVATE fftw3
+  PRIVATE fftw3f
+  PRIVATE sdft-cpp)

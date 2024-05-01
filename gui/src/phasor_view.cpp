@@ -1,6 +1,6 @@
 #include "phasor_view.h"
 
-constexpr double polarChartAngle(double angle)
+double polarChartAngle(double angle)
 {
     return fmod(450 - angle, 360);
 }
@@ -15,7 +15,7 @@ QTableWidgetItem *newCellItem(int row = -1)
     if (row >= 0) {
         item->setTextAlignment(item->textAlignment() | Qt::AlignRight);
         if (row & 1) {
-            item->setBackground(QColorConstants::LightGray);
+            item->setBackground(QColor(QStringLiteral("LightGray")));
         }
     }
     item->setSizeHint(QSize(50, 25));

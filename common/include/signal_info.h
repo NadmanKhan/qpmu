@@ -30,27 +30,4 @@ static constexpr int phaseIndexPairList[NUM_PHASES][2] = {
     { 0, 3 } /* VA, IA */, { 1, 4 } /* VB, IB */, { 2, 5 } /* VC, IC */
 };
 
-static constexpr int index(const std::string_view &name)
-{
-    if (name == "VA" || name == "va") {
-        return 0;
-    }
-    if (name == "VB" || name == "vb") {
-        return 1;
-    }
-    if (name == "VC" || name == "vc") {
-        return 2;
-    }
-    if (name == "IA" || name == "ia") {
-        return 3;
-    }
-    if (name == "IB" || name == "ib") {
-        return 4;
-    }
-    if (name == "IC" || name == "ic") {
-        return 5;
-    }
-    return -1;
-}
-
 #endif // SIGNAL_INFO_MODEL_H

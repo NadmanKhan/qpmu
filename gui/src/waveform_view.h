@@ -7,6 +7,7 @@
 #include <QtCharts>
 #include <QTimer>
 #include <QBoxLayout>
+#include <QColor>
 
 #include "worker.h"
 #include "signal_info.h"

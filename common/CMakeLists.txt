@@ -1,19 +1,9 @@
-cmake_minimum_required(VERSION 3.14)
+add_library(${COMMON_LIB} STATIC)
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+target_include_directories(${COMMON_LIB}
+                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-set(SOURCES
-    src/empty.cpp
-)
-
-add_library(qpmu-common STATIC
-    ${SOURCES}
-)
-
-target_include_directories(qpmu-common PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+target_sources(
+  ${COMMON_LIB}
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/adc_sample.cpp
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/measurement.cpp)

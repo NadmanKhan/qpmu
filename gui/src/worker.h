@@ -15,6 +15,7 @@
 #include <cmath>
 
 #include "signal_info.h"
+#include "measurement.h"
 
 constexpr double pi = 3.14159265358979323846264338;
 constexpr double factorRadToDeg = 180 / pi;
@@ -38,6 +39,7 @@ public slots:
 
     Q_INVOKABLE void getEstimations(std::array<std::complex<double>, NUM_SIGNALS> &out_phasors,
                                     double &out_omega);
+    Measurement measurement() const;
 
 private slots:
     void addCurSample();
@@ -51,6 +53,8 @@ private:
 
     std::array<fftw_complex *, NUM_SIGNALS> input, output;
     std::array<fftw_plan, NUM_SIGNALS> plans;
+
+    Measurement m_measurement;
 
     ADCSample curSample = {};
     std::array<ADCSample, N> sampleBuffer = {};

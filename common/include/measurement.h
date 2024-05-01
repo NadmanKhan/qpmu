@@ -7,28 +7,38 @@
 #include <complex>
 #include <string>
 
-template <typename _FloatType>
+static size_t BUFFER_SIZE = 24;
+
 struct Measurement
 {
-    using FloatType = _FloatType;
-    using ComplexType = std::complex<FloatType>;
+    using FloatType = FLOAT_TYPE;
+    using ComplexType = std::complex<FLOAT_TYPE>;
 
+#ifdef INCLUDE_SAMPLE_IN_MEASUREMENT
     AdcSample adcSample;
+#endif
     ComplexType phasors[NUM_SIGNALS];
+    std::pair<FloatType, FloatType> phasors_polar[NUM_SIGNALS];
     FloatType freq;
-    FloatType rocof;
+
+    static inline std::string csv_header()
+    {
+        std::stringstream ss;
+        ss << AdcSample::csv_header() << ',';
+        for (size_t i = 0; i < NUM_SIGNALS; ++i) {
+            ss << "phasor" << i << "_real,phasor" << i << "_imag,";
+        }
+#ifdef INCLUDE_POLARS_IN_MEASUREMENT
+        for (size_t i = 0; i < NUM_SIGNALS; ++i) {
+            ss << "phasor" << i << "_magn,phasor" << i << "_phas,";
+        }
+#endif
+        ss << "freq";
+        return ss.str();
+    }
 };
 
-template <typename _FloatType>
-inline std::string to_string(const Measurement<_FloatType> &measurement)
-{
-    std::stringstream ss;
-    ss << "Measurement { adcSample=" << to_string(measurement.adcSample) << ", \t";
-    for (size_t i = 0; i < NUM_SIGNALS; ++i) {
-        ss << "phasor" << i << "=" << measurement.phasors[i] << " [polar(" << std::abs(measurement.phasors[i]) << ", " << std::arg(measurement.phasors[i]) << ")], ";
-    }
-    ss << "freq=" << measurement.freq << ", \t rocof=" << measurement.rocof << " }";
-    return ss.str();
-}
+std::string to_string(const Measurement &measurement);
+std::string to_csv(const Measurement &measurement);
 
 #endif // MEASUREMENT_H
