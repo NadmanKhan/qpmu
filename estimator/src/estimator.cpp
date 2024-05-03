@@ -106,9 +106,12 @@ qpmu::Measurement qpmu::Estimator::estimate_measurement(const qpmu::AdcSample &s
                 }
             }
             cur.phasors[i] = out[max_norm_index];
-            // scale the phasor down by the window size
-            cur.phasors[i] /= FloatType(m_size);
         }
+    }
+
+    // scale the phasors down by the window size
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        cur.phasors[i] /= FloatType(m_size);
     }
 
     /**
