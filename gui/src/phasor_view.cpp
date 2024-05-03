@@ -113,10 +113,8 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
     // Clear cell selections because they are unwanted.
     // Can't find any way to turn them off, hence this workaround.
-    connect(m_table1, &QTableWidget::currentCellChanged,
-            [=](int row, int column) { m_table1->setCurrentCell(-1, -1); });
-    connect(m_table2, &QTableWidget::currentCellChanged,
-            [=](int row, int column) { m_table2->setCurrentCell(-1, -1); });
+    connect(m_table1, &QTableWidget::currentCellChanged, [=] { m_table1->setCurrentCell(-1, -1); });
+    connect(m_table2, &QTableWidget::currentCellChanged, [=] { m_table2->setCurrentCell(-1, -1); });
 
     auto vboxTables = new QVBoxLayout();
     vboxTables->addWidget(m_table1);
@@ -212,7 +210,6 @@ void PhasorView::update()
     m_worker->getMeasurement(msr);
 
     const auto &phasors = msr.phasors;
-    const auto &freq = msr.freq;
 
     std::array<FloatType, NumChannels> phaseDiffs;
     std::array<FloatType, NumChannels> amplitudes;

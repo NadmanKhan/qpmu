@@ -132,7 +132,7 @@ void WaveformView::update()
     FloatType _2_pi_f = 2 * M_PI * freq;
 
     for (SizeType i = 0; i < NumChannels; ++i) {
-        for (SizeType j = 0; j < m_listSplineSeriesPoints[i].size(); ++j) {
+        for (SizeType j = 0; j < (SizeType)m_listSplineSeriesPoints[i].size(); ++j) {
             FloatType t = j * timeDelta;
             FloatType x = amplitudes[i] * std::cos(_2_pi_f * t + phaseDiffs[i]);
             m_listSplineSeriesPoints[i][j] = QPointF(t, x);
