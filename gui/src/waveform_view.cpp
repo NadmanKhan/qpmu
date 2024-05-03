@@ -115,8 +115,6 @@ void WaveformView::update()
         amplitudes[i] = std::abs(phasors[i]);
     }
 
-    std::array<QPointF, NumChannels> polars;
-
     FloatType vmax = 0;
     FloatType imax = 0;
     for (SizeType i = 0; i < NumChannels; ++i) {
