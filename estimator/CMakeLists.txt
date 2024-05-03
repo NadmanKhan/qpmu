@@ -6,6 +6,9 @@ find_package(
   COMPONENTS program_options
   REQUIRED)
 
+find_library(FFTW3_LIB fftw3)
+find_path(FFTW3_INCLUDE_DIR fftw3.h)
+
 add_executable(${PROJECT_NAME}-estimator)
 
 # Add the "include/" directory to the include directories
