@@ -5,20 +5,17 @@ project(
   VERSION 0.1
   LANGUAGES CXX)
 
-set(EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
-set(COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external)
+
 set(COMMON_LIB ${PROJECT_NAME}-common)
-
-add_subdirectory(${EXTERNAL_DIR})
-
-add_compile_definitions(FLOAT_TYPE=float)
-
-add_subdirectory(${COMMON_DIR})
-
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/common)
+target_compile_definitions(${COMMON_LIB} PUBLIC FLOAT_TYPE=double)
 link_libraries(${COMMON_LIB})
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/simulator)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/estimator)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/gui)
 
-target_compile_definitions(${COMMON_LIB} PUBLIC FLOAT_TYPE=float)

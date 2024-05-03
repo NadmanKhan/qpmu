@@ -1,4 +1,5 @@
 #include "phasor_view.h"
+#include "qpmu/common.h"
 
 double polarChartAngle(double angle)
 {
@@ -62,6 +63,7 @@ QIcon twoColorCircleIcon(const QColor &color1, const QColor &color2, int size)
 PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     : QWidget(parent), m_worker(worker)
 {
+    using namespace qpmu;
     assert(updateTimer != nullptr);
     assert(worker != nullptr);
 
@@ -100,12 +102,12 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     chartView->show();
 
     m_table1 = new QTableWidget(this);
-    m_table1->setRowCount(NUM_SIGNALS);
+    m_table1->setRowCount(NumChannels);
     m_table1->setColumnCount(2);
     m_table1->horizontalHeader()->hide();
 
     m_table2 = new QTableWidget(this);
-    m_table2->setRowCount(NUM_PHASES);
+    m_table2->setRowCount(NumPhases);
     m_table2->setColumnCount(1);
     m_table2->horizontalHeader()->hide();
 
@@ -126,11 +128,9 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     hbox->addWidget(chartView, 1);
     hbox->addLayout(vboxTables, 0);
 
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
-        auto name = QString(signalInfoList[i].name);
-        auto color = QColor(signalInfoList[i].colorHex);
-
-        // add signal to chart
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        auto name = QString(Signals[i].name);
+        auto color = QColor(Signals[i].colorHex);
 
         auto lineSeries = new QLineSeries();
         m_listLineSeries.append(lineSeries);
@@ -140,8 +140,8 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         lineSeries->setPen(QPen(color, 2.5));
         lineSeries->setUseOpenGL(true);
 
-        // Phasor line goes
-        // origin > tip > left-arm > tip > right-arm
+        // Lines sesries points to draw a phasor arrow:
+        // [origin, tip, left-arm, tip, right-arm]
         m_listLineSeriesPoints[i].append({ 0, 0 }); // origin
         m_listLineSeriesPoints[i].append({ 0, 0 }); // tip (gets updated)
         m_listLineSeriesPoints[i].append({ 0, 0 }); // arrow left-arm end (gets updated)
@@ -154,8 +154,6 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         lineSeries->attachAxis(axisAngular);
         lineSeries->attachAxis(axisRadial);
 
-        // add signal to table 1
-
         auto vheader = newCellItem();
         vheader->setIcon(circleIcon(color, 10));
         vheader->setText(name);
@@ -165,18 +163,18 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_table1->setItem(i, 1, newCellItem(i));
     }
 
-    for (int i = 0; i < NUM_PHASES; ++i) {
-        const auto &[vIndex, iIndex] = phaseIndexPairList[i];
-        auto vName = QString(signalInfoList[vIndex].name);
-        auto vColor = QColor(signalInfoList[vIndex].colorHex);
-        auto iName = QString(signalInfoList[iIndex].name);
-        auto iColor = QColor(signalInfoList[iIndex].colorHex);
-        auto phaseLetter = signalInfoList[vIndex].phaseLetter;
-        Q_ASSERT(phaseLetter == signalInfoList[iIndex].phaseLetter);
+    for (SizeType i = 0; i < NumPhases; ++i) {
+        const auto &[vIndex, iIndex] = SignalPhasePairs[i];
+        auto vName = QString(Signals[vIndex].name);
+        auto vColor = QColor(Signals[vIndex].colorHex);
+        auto iName = QString(Signals[iIndex].name);
+        auto iColor = QColor(Signals[iIndex].colorHex);
+        auto phaseId = signal_phase_char(Signals[vIndex]);
+        Q_ASSERT(phaseId == signal_phase_char(Signals[iIndex]));
 
         auto vheader = newCellItem();
         vheader->setIcon(twoColorCircleIcon(vColor, iColor, 10));
-        vheader->setText(QStringLiteral("Δθ%1").arg(phaseLetter));
+        vheader->setText(QStringLiteral("Δθ%1").arg(phaseId));
         m_table2->setVerticalHeaderItem(i, vheader);
 
         m_table2->setItem(i, 0, newCellItem(i));
@@ -208,45 +206,49 @@ void PhasorView::update()
     if (!isVisible())
         return;
 
-    std::array<std::complex<double>, NUM_SIGNALS> phasors;
-    double omega;
-    m_worker->getEstimations(phasors, omega);
+    using namespace qpmu;
 
-    std::array<double, NUM_SIGNALS> phaseDiffs;
-    std::array<double, NUM_SIGNALS> amplitudes;
+    Measurement msr;
+    m_worker->getMeasurement(msr);
 
-    double phaseRef = std::arg(phasors[0]);
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
-        phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef) * 180 / M_PI;
-        phaseDiffs[i] = fmod(phaseDiffs[i] + 360, 360);
-        amplitudes[i] = std::abs(phasors[i]) / Worker::N;
+    const auto &phasors = msr.phasors;
+    const auto &freq = msr.freq;
+
+    std::array<FloatType, NumChannels> phaseDiffs;
+    std::array<FloatType, NumChannels> amplitudes;
+
+    FloatType phaseRef = std::arg(phasors[0]);
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef) * (180 / M_PI);
+        phaseDiffs[i] = std::fmod(phaseDiffs[i] + 360, 360);
+        amplitudes[i] = std::abs(phasors[i]);
     }
 
-    std::array<QPointF, NUM_SIGNALS> polars;
+    std::array<QPointF, NumChannels> polars;
 
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
+    for (SizeType i = 0; i < NumChannels; ++i) {
         polars[i] = QPointF(polarChartAngle(phaseDiffs[i]), amplitudes[i]);
     }
 
-    for (int t : { 0, 3 }) {
-        qreal ymax = 0;
-        for (int i = 0; i < 3; ++i) {
-            ymax = qMax(ymax, amplitudes[t + i]);
+    for (SizeType t : { 0, 3 }) {
+        FloatType ymax = 0;
+        for (SizeType i = 0; i < 3; ++i) {
+            ymax = std::max(ymax, amplitudes[t + i]);
         }
-        for (int i = 0; i < 3; ++i) {
+        for (SizeType i = 0; i < 3; ++i) {
             polars[t + i].setY(amplitudes[t + i] / ymax);
         }
     }
 
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
-        m_listLineSeriesPoints[i][0] = { polars[i].x(), 0.015 };
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        m_listLineSeriesPoints[i][0] = { polars[i].x(), 0.02 };
         m_listLineSeriesPoints[i][1] = m_listLineSeriesPoints[i][3] = polars[i];
 
         { // create the arrow: two arms spreading out equal amounts
-            qreal spread = 0.04;
-            qreal distFromOrigin = polars[i].y() - (2 * spread);
-            qreal angle = atan2(spread, distFromOrigin);
-            qreal h = distFromOrigin / cos(angle);
+            FloatType spread = 0.04;
+            FloatType distFromOrigin = polars[i].y() - (2 * spread);
+            FloatType angle = std::atan2(spread, distFromOrigin);
+            FloatType h = distFromOrigin / cos(angle);
             angle *= (180 / M_PI);
 
             m_listLineSeriesPoints[i][2] = QPointF(polars[i].x() + angle, h);
@@ -254,23 +256,21 @@ void PhasorView::update()
         }
     }
 
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
+    for (SizeType i = 0; i < NumChannels; ++i) {
         auto phaseDiff = phaseDiffs[i];
         if (phaseDiff > 180)
             phaseDiff -= 360;
         m_table1->item(i, 0)->setText(QString::number(amplitudes[i], 'f', 1)
-                                      + (signalInfoList[i].signalType == SignalTypeVoltage
-                                                 ? QStringLiteral(" V")
-                                                 : QStringLiteral(" A")));
-        m_table1->item(i, 1)->setText(QString::number(phaseDiff, 'f', 1) + QStringLiteral("°"));
+                                      + signal_unit_char(Signals[i]));
+        m_table1->item(i, 1)->setText(QString::number(phaseDiff, 'f', 1) + "°");
         m_listLineSeries[i]->replace(m_listLineSeriesPoints[i]);
     }
 
-    for (int i = 0; i < NUM_PHASES; ++i) {
-        const auto &[vIndex, iIndex] = phaseIndexPairList[i];
+    for (SizeType i = 0; i < NumPhases; ++i) {
+        const auto &[vIndex, iIndex] = SignalPhasePairs[i];
         m_table2->item(i, 0)->setText(
                 QString::number((std::fmod(phaseDiffs[vIndex] - phaseDiffs[iIndex] + 360, 360)),
                                 'f', 1)
-                + QStringLiteral("°"));
+                + "°");
     }
 }

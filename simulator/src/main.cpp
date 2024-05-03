@@ -7,8 +7,10 @@
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/fusion/sequence.hpp>
+#include <thread>
 
-#include "adc_sample.h"
+#include "qpmu/common.h"
+#include "qpmu/util.h"
 
 namespace fs = std::filesystem;
 namespace po = boost::program_options;
@@ -16,17 +18,19 @@ using std::string, std::vector, std::pair, std::cerr, std::cout;
 
 int main(int argc, char *argv[])
 {
+    using namespace qpmu;
     /// Parse command line arguments
     /// ----------------------------
 
     po::options_description desc("Allowed options");
-    desc.add_options()
-            ("help", "produce help message")
-            ("v", po::value<string>(), "voltage in volts")
-            ("p", po::value<string>(), "power in watts")                               
-            ("format", po::value<string>()->default_value("b"), "output format: b (binary), r (readable string), csv (comma separated \"key=value\" "
-            "pairs)")
-            ("once", "print samples only once");
+    desc.add_options()("help", "produce help message")("v", po::value<string>(),
+                                                       "voltage in volts")("p", po::value<string>(),
+                                                                           "power in watts")(
+            "format", po::value<string>()->default_value("b"),
+            "output format: b (binary), s (human-readable string), c (comma separated "
+            "\"key=value\" "
+            "pairs)")("once", "print samples only once")("sleep",
+                                                         "sleep for delta time between samples");
 
     po::variables_map varmap;
     po::store(po::parse_command_line(argc, argv, desc), varmap);
@@ -43,30 +47,31 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    auto voltageStr = varmap["v"].as<string>();
-    auto powerStr = varmap["p"].as<string>();
+    auto voltage_str = varmap["v"].as<string>();
+    auto power_str = varmap["p"].as<string>();
     auto format = varmap["format"].as<string>();
     auto once = varmap.count("once");
+    const bool do_sleep = varmap.count("sleep");
 
     uint64_t voltage;
     {
         vector<string> tokens;
-        auto first_non_digit = voltageStr.find_first_not_of("0123456789");
+        auto first_non_digit = voltage_str.find_first_not_of("0123456789");
 
-        auto voltageUnit = voltageStr.substr(first_non_digit);
-        voltage = std::stoull(voltageStr.substr(0, first_non_digit));
+        auto voltage_unit = voltage_str.substr(first_non_digit);
+        voltage = std::stoull(voltage_str.substr(0, first_non_digit));
 
-        boost::to_lower(voltageUnit);
-        if (voltageUnit.empty()) {
-            voltageUnit = "v";
+        boost::to_lower(voltage_unit);
+        if (voltage_unit.empty()) {
+            voltage_unit = "v";
         }
 
-        if (voltageUnit == "mv") {
+        if (voltage_unit == "mv") {
             voltage /= 1000;
-        } else if (voltageUnit == "kv") {
+        } else if (voltage_unit == "kv") {
             voltage *= 1000;
-        } else if (voltageUnit != "v") {
-            cerr << "Invalid voltage unit: " << voltageUnit << '\n';
+        } else if (voltage_unit != "v") {
+            cerr << "Invalid voltage unit: " << voltage_unit << '\n';
             return 1;
         }
     }
@@ -74,31 +79,31 @@ int main(int argc, char *argv[])
     uint64_t power;
     {
         vector<string> tokens;
-        auto first_non_digit = powerStr.find_first_not_of("0123456789");
+        auto first_non_digit = power_str.find_first_not_of("0123456789");
 
-        auto powerUnit = powerStr.substr(first_non_digit);
-        power = std::stoull(powerStr.substr(0, first_non_digit));
+        auto power_unit = power_str.substr(first_non_digit);
+        power = std::stoull(power_str.substr(0, first_non_digit));
 
-        boost::to_lower(powerUnit);
-        if (powerUnit.empty()) {
-            powerUnit = "w";
+        boost::to_lower(power_unit);
+        if (power_unit.empty()) {
+            power_unit = "w";
         }
 
-        if (powerUnit == "mw") {
+        if (power_unit == "mw") {
             power /= 1000;
-        } else if (powerUnit == "kw") {
+        } else if (power_unit == "kw") {
             power *= 1000;
-        } else if (powerUnit != "w") {
-            cerr << "Invalid power unit: " << powerUnit << '\n';
+        } else if (power_unit != "w") {
+            cerr << "Invalid power unit: " << power_unit << '\n';
             return 1;
         }
     }
 
-    enum { FormatReadable, FormatCsv, FormatBinary } outputFormat;
+    enum { FormatReadableStr, FormatCsv, FormatBinary } outputFormat;
 
-    if (format == "r") {
-        outputFormat = FormatReadable;
-    } else if (format == "csv") {
+    if (format == "s") {
+        outputFormat = FormatReadableStr;
+    } else if (format == "c") {
         outputFormat = FormatCsv;
     } else if (format == "b") {
         outputFormat = FormatBinary;
@@ -112,9 +117,9 @@ int main(int argc, char *argv[])
     /// Open samples file and fill in the samples
     /// -----------------------------------------
 
-    auto currFile = fs::path(__FILE__);
-    auto rootDir = currFile.parent_path().parent_path();
-    string filename = rootDir.string() + "/data/" + std::to_string(voltage) + "v_"
+    auto currfile = fs::path(__FILE__);
+    auto rootdir = currfile.parent_path().parent_path();
+    string filename = rootdir.string() + "/data/" + std::to_string(voltage) + "v_"
             + std::to_string(power) + "w.csv";
     if (!fs::is_regular_file(filename)) {
         cerr << "File not found: " << filename << '\n';
@@ -142,31 +147,30 @@ int main(int argc, char *argv[])
                                     [](const string &str) { return str.empty(); }),
                      tokens.end());
 
-        if (tokens.size() != NUM_TOKENS) {
+        if (tokens.size() != NumTokensAdcSample) {
             continue;
         }
 
-        vector<pair<string, uint64_t>> keyValues;
-        std::transform(tokens.begin(), tokens.end(), std::back_inserter(keyValues),
-                       [](const string &token) {
-                           vector<string> keyValuePair;
-                           boost::split(keyValuePair, token, boost::is_any_of("="));
-                           if (keyValuePair.size() != 2) {
-                               return pair<string, uint64_t>();
-                           }
-                           boost::trim(keyValuePair[0]);
-                           boost::trim(keyValuePair[1]);
-                           return std::make_pair(keyValuePair[0],
-                                                 (uint64_t)std::stoull(keyValuePair[1]));
-                       });
+        vector<pair<string, uint64_t>> kvs;
+        std::transform(
+                tokens.begin(), tokens.end(), std::back_inserter(kvs), [](const string &token) {
+                    vector<string> keyValuePair;
+                    boost::split(keyValuePair, token, boost::is_any_of("="));
+                    if (keyValuePair.size() != 2) {
+                        return pair<string, uint64_t>();
+                    }
+                    boost::trim(keyValuePair[0]);
+                    boost::trim(keyValuePair[1]);
+                    return std::make_pair(keyValuePair[0], (uint64_t)std::stoull(keyValuePair[1]));
+                });
 
-        keyValues.erase(std::remove_if(keyValues.begin(), keyValues.end(),
-                                       [](const pair<string, uint64_t> &keyValue) {
-                                           return keyValue.first.empty();
-                                       }),
-                        keyValues.end());
+        kvs.erase(std::remove_if(kvs.begin(), kvs.end(),
+                                 [](const pair<string, uint64_t> &keyValue) {
+                                     return keyValue.first.empty();
+                                 }),
+                  kvs.end());
 
-        for (const auto &[key, value] : keyValues) {
+        for (const auto &[key, value] : kvs) {
             if (key == "seq_no") {
                 sample.seq_no = value;
             } else if (key == "ts") {
@@ -176,9 +180,9 @@ int main(int argc, char *argv[])
             } else {
                 assert(key.size() == 3);
                 assert(key[0] == 'c' && key[1] == 'h');
-                int channel = key[2] - '0';
-                assert(0 <= channel && channel < NUM_SIGNALS);
-                sample.ch[channel] = value;
+                int channel_idx = key[2] - '0';
+                assert(0 <= channel_idx && channel_idx < NumChannels);
+                sample.ch[channel_idx] = value;
             }
         }
 
@@ -193,11 +197,11 @@ int main(int argc, char *argv[])
             cout << to_csv(sample) << '\n';
             return;
         }
-        if (outputFormat == FormatReadable) {
+        if (outputFormat == FormatReadableStr) {
             cout << to_string(sample) << '\n';
             return;
         }
-        fwrite(&sample, sizeof(AdcSample), 1, stdout);
+        std::fwrite(&sample, sizeof(AdcSample), 1, stdout);
     };
 
     if (once) {
@@ -208,15 +212,23 @@ int main(int argc, char *argv[])
     }
 
     auto lastSample = samples[0];
+    if (outputFormat == FormatCsv) {
+        cout << adcsample_csv_header() << '\n';
+    }
+
     for (size_t i = 1;; ++i) {
         auto sample = samples[i % samples.size()];
-
         sample.seq_no = i;
         sample.ts = lastSample.ts + sample.delta;
 
         print(sample);
 
-        lastSample = sample;
+        std::swap(lastSample, sample);
+
+        if (do_sleep) {
+            // sleep for the delta time
+            std::this_thread::sleep_for(std::chrono::microseconds(sample.delta));
+        }
     }
 
     return 0;

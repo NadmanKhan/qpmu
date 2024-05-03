@@ -13,8 +13,6 @@
 #include <QColor>
 
 #include <cmath>
-
-#include "signal_info.h"
 #include "worker.h"
 
 class PhasorView : public QWidget

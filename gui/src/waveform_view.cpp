@@ -1,8 +1,10 @@
 #include "waveform_view.h"
+#include "qpmu/common.h"
 
 WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     : QWidget(parent), m_worker(worker)
 {
+    using namespace qpmu;
     assert(updateTimer != nullptr);
     assert(worker != nullptr);
 
@@ -11,8 +13,8 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     m_axisTime = new QValueAxis();
     m_axisTime->setTitleText(QStringLiteral("Time (ms)"));
     m_axisTime->setRange(0, 50);
-    m_axisTime->setTickCount(11);
-    m_axisTime->setLabelFormat(QStringLiteral("%.0f"));
+    m_axisTime->setTickCount(NumChannels + 2);
+    m_axisTime->setLabelsVisible(false);
 
     m_axisVoltage = new QValueAxis();
     m_axisVoltage->setTitleText(QStringLiteral("Voltage (V)"));
@@ -48,21 +50,21 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
     const auto colorWhite = QColor(QStringLiteral("white"));
 
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
-        auto name = QString(signalInfoList[i].name);
-        auto color = QColor(signalInfoList[i].colorHex);
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        auto name = QString(Signals[i].name);
+        auto color = QColor(Signals[i].colorHex);
 
         auto splineSeries = new QSplineSeries();
         m_listSplineSeries.append(splineSeries);
-        m_listSplineSeriesPoints.push_back({});
+        m_listSplineSeriesPoints.push_back(
+                QVector<QPointF>(PlotPointsPerCycle * PlotNumCycles + 1));
         splineSeries->setName(name);
         splineSeries->setPen(QPen(color, 2));
         splineSeries->setUseOpenGL(true);
 
         m_chart->addSeries(splineSeries);
         splineSeries->attachAxis(m_axisTime);
-        splineSeries->attachAxis(signalInfoList[i].signalType == SignalTypeVoltage ? m_axisVoltage
-                                                                                   : m_axisCurrent);
+        splineSeries->attachAxis(signal_is_voltage(Signals[i]) ? m_axisVoltage : m_axisCurrent);
 
         auto marker = chartLegend->markers(splineSeries).at(0);
         auto markerPenVisible = QPen(QBrush(color), 5);
@@ -84,10 +86,13 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     Q_ASSERT(m_timeoutTarget > 0);
     m_timeoutCounter = 0;
     connect(updateTimer, &QTimer::timeout, this, &WaveformView::update);
+    update();
 }
 
 void WaveformView::update()
 {
+    using namespace qpmu;
+
     ++m_timeoutCounter;
     m_timeoutCounter = m_timeoutCounter * bool(m_timeoutCounter != m_timeoutTarget);
     if (m_timeoutCounter != 0)
@@ -95,66 +100,51 @@ void WaveformView::update()
     if (!isVisible())
         return;
 
-    auto msr = m_worker->measurement();
+    Measurement msr;
+    m_worker->getMeasurement(msr);
 
-    std::array<double, NUM_SIGNALS> phaseDiffs; // in radians
-    std::array<double, NUM_SIGNALS> amplitudes;
+    const auto &phasors = msr.phasors;
+    const auto &freq = msr.freq;
 
-    double phaseRef = std::arg(msr.phasors[0]);
-    for (int i = 0; i < NUM_SIGNALS; ++i) {
-        phaseDiffs[i] = (std::arg(msr.phasors[i]) - phaseRef);
-        amplitudes[i] = std::abs(msr.phasors[i]) / BUFFER_SIZE;
+    std::array<FloatType, NumChannels> phaseDiffs; // in radians
+    std::array<FloatType, NumChannels> amplitudes;
+
+    FloatType phaseRef = std::arg(phasors[0]);
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef);
+        amplitudes[i] = std::abs(phasors[i]);
     }
 
-    std::array<QPointF, NUM_SIGNALS> polars;
+    std::array<QPointF, NumChannels> polars;
 
-    //    std::array<std::complex<double>, NUM_SIGNALS> phasors;
-    //    double omega;
+    FloatType vmax = 0;
+    FloatType imax = 0;
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        if (signal_is_voltage(Signals[i])) {
+            vmax = std::max(vmax, amplitudes[i]);
+        } else {
+            imax = std::max(imax, amplitudes[i]);
+        }
+    }
 
-    //    m_worker->getEstimations(phasors, omega);
+    FloatType timePeriod = 1.0 / freq;
+    FloatType timeDelta = (timePeriod / PlotPointsPerCycle);
+    FloatType _2_pi_f = 2 * M_PI * freq;
 
-    //    std::array<double, NUM_SIGNALS> phaseDiffs; // in radians
-    //    std::array<double, NUM_SIGNALS> amplitudes;
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        for (SizeType j = 0; j < m_listSplineSeriesPoints[i].size(); ++j) {
+            FloatType t = j * timeDelta;
+            FloatType x = amplitudes[i] * std::cos(_2_pi_f * t + phaseDiffs[i]);
+            m_listSplineSeriesPoints[i][j] = QPointF(t, x);
+        }
+    }
 
-    //    double phaseRef = std::arg(phasors[0]);
-    //    for (int i = 0; i < NUM_SIGNALS; ++i) {
-    //        phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef);
-    //        amplitudes[i] = std::abs(phasors[i]) / Worker::N;
-    //    }
-
-    //    std::array<QPointF, NUM_SIGNALS> polars;
-
-    //    qreal vmax = 0;
-    //    qreal imax = 0;
-    //    for (int i = 0; i < NUM_SIGNALS; ++i) {
-    //        if (signalInfoList[i].signalType == SignalTypeVoltage) {
-    //            vmax = qMax(vmax, amplitudes[i]);
-    //        } else {
-    //            imax = qMax(imax, amplitudes[i]);
-    //        }
-    //    }
-
-    //    //    qDebug() << (omega / (2 * M_PI));
-    //    const qreal factor = omega * (0.001 /* because in ms */);
-    //    const qreal tDelta = 1;
-    //    const int npoints = 20; // excluding t=0
-
-    //    for (int i = 0; i < NUM_SIGNALS; ++i) {
-    //        m_listSplineSeriesPoints[i].resize(npoints + (1 /* for t=0 */));
-    //        m_listSplineSeriesPoints[i][0] = QPointF(0, amplitudes[i] * cos(phaseDiffs[i]));
-    //        for (int j = 1; j <= npoints; ++j) {
-    //            auto omegat = j * tDelta * factor;
-    //            m_listSplineSeriesPoints[i][j] =
-    //                    QPointF((j * tDelta), amplitudes[i] * cos(omegat + phaseDiffs[i]));
-    //        }
-    //    }
-
-    //    m_axisTime->setRange(0, npoints * tDelta);
-    //    m_axisVoltage->setRange(-vmax, +vmax);
-    //    m_axisVoltage->setTickInterval(vmax);
-    //    m_axisCurrent->setRange(-imax, +imax);
-    //    m_axisCurrent->setTickInterval(imax);
-    //    for (int i = 0; i < NUM_SIGNALS; ++i) {
-    //        m_listSplineSeries[i]->replace(m_listSplineSeriesPoints[i]);
-    //    }
+    m_axisTime->setRange(0, PlotNumCycles * timePeriod);
+    m_axisVoltage->setRange(-vmax, +vmax);
+    m_axisVoltage->setTickInterval(vmax);
+    m_axisCurrent->setRange(-imax, +imax);
+    m_axisCurrent->setTickInterval(imax);
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        m_listSplineSeries[i]->replace(m_listSplineSeriesPoints[i]);
+    }
 }

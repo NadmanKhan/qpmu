@@ -10,7 +10,6 @@
 #include <QColor>
 
 #include "worker.h"
-#include "signal_info.h"
 
 class WaveformView : public QWidget
 {
@@ -22,6 +21,9 @@ private slots:
     void update();
 
 private:
+    static constexpr int PlotPointsPerCycle = 8;
+    static constexpr double PlotNumCycles = 2;
+
     Worker *m_worker;
 
     QChart *m_chart;
