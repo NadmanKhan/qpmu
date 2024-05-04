@@ -100,11 +100,11 @@ void WaveformView::update()
     if (!isVisible())
         return;
 
-    Measurement msr;
-    m_worker->getMeasurement(msr);
+    Estimations est;
+    m_worker->getEstimations(est);
 
-    const auto &phasors = msr.phasors;
-    const auto &freq = msr.freq;
+    const auto &phasors = est.phasors;
+    const auto &freq = est.freq;
 
     std::array<FloatType, NumChannels> phaseDiffs; // in radians
     std::array<FloatType, NumChannels> amplitudes;

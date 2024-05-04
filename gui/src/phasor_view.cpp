@@ -206,10 +206,10 @@ void PhasorView::update()
 
     using namespace qpmu;
 
-    Measurement msr;
-    m_worker->getMeasurement(msr);
+    Estimations est;
+    m_worker->getEstimations(est);
 
-    const auto &phasors = msr.phasors;
+    const auto &phasors = est.phasors;
 
     std::array<FloatType, NumChannels> phaseDiffs;
     std::array<FloatType, NumChannels> amplitudes;
@@ -245,7 +245,7 @@ void PhasorView::update()
             FloatType spread = 0.04;
             FloatType distFromOrigin = polars[i].y() - (2 * spread);
             FloatType angle = std::atan2(spread, distFromOrigin);
-            FloatType h = distFromOrigin / cos(angle);
+            FloatType h = distFromOrigin / std::cos(angle);
             angle *= (180 / M_PI);
 
             m_listLineSeriesPoints[i][2] = QPointF(polars[i].x() + angle, h);

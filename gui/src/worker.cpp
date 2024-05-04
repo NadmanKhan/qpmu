@@ -4,10 +4,10 @@ Worker::Worker() : QThread() { }
 
 void Worker::run()
 {
-    while (fread(&m_measurement, sizeof(m_measurement), 1, stdin)) { }
+    while (fread(&m_estimations, sizeof(m_estimations), 1, stdin)) { }
 }
 
-void Worker::getMeasurement(qpmu::Measurement &out_measurement)
+void Worker::getEstimations(qpmu::Estimations &out_estimations)
 {
-    out_measurement = m_measurement;
+    out_estimations = m_estimations;
 }

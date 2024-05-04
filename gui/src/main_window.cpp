@@ -56,6 +56,8 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
     optionsModel.append(OptionModel{ QStringLiteral("Monitor Phasors"),
                                      QStringLiteral(":/vector.png"),
                                      new PhasorView(m_timer, worker, this) });
+    optionsModel.append(OptionModel{ QStringLiteral("Monitor"), QStringLiteral(":/meter.png"),
+                                     new MonitorView(m_timer, worker, this) });
 
     const int rowCount = 2;
     const int colCount = 2;

@@ -10,7 +10,6 @@
 #include <thread>
 
 #include "qpmu/common.h"
-#include "qpmu/util.h"
 
 namespace fs = std::filesystem;
 namespace po = boost::program_options;
@@ -181,7 +180,7 @@ int main(int argc, char *argv[])
                 assert(key.size() == 3);
                 assert(key[0] == 'c' && key[1] == 'h');
                 int channel_idx = key[2] - '0';
-                assert(0 <= channel_idx && channel_idx < NumChannels);
+                assert(0 <= channel_idx && channel_idx < (int)NumChannels);
                 sample.ch[channel_idx] = value;
             }
         }
@@ -213,7 +212,7 @@ int main(int argc, char *argv[])
 
     auto lastSample = samples[0];
     if (outputFormat == FormatCsv) {
-        cout << adcsample_csv_header() << '\n';
+        cout << AdcSample::csv_header() << '\n';
     }
 
     for (size_t i = 1;; ++i) {
