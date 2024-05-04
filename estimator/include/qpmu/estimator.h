@@ -75,7 +75,7 @@ public:
     Estimator(SizeType window_size, EstimationStrategy strategy = EstimationStrategy::FFT);
 
     // ****** Public member functions ******
-    qpmu::Measurement estimate_measurement(const qpmu::AdcSample &sample);
+    qpmu::Estimations estimate_measurements(const qpmu::AdcSample &sample);
 
 private:
     // ****** Private member functions ******
@@ -84,7 +84,7 @@ private:
     EstimationStrategy m_strategy = EstimationStrategy::FFT;
     SizeType m_size = 0;
     std::vector<qpmu::AdcSample> m_samples = {};
-    std::vector<qpmu::Measurement> m_measurements = {};
+    std::vector<qpmu::Estimations> m_estimations = {};
     SizeType m_index = 0;
     FftwState m_fftw_state = {};
     SdftState m_sdft_state = {};

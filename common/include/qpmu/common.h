@@ -20,8 +20,8 @@ constexpr SizeType NumChannels = 6;
 constexpr SizeType NumPhases = 3;
 constexpr SizeType NumTokensAdcSample = NumChannels + 3; // seq_no, ts, delta, ch0, ch1, ..., ch5
 
-enum class SignalType { Voltage, Current };
-enum class SignalPhase { A, B, C };
+enum SignalType { Voltage, Current };
+enum SignalPhase { A, B, C };
 
 constexpr char SignalTypeId[2] = { 'V', 'I' };
 constexpr char SignalTypeUnit[2] = { 'V', 'A' };
@@ -76,15 +76,29 @@ struct AdcSample
     UIntType ch[NumChannels]; // Channel values
     UIntType ts; // Timestamp (in microseconds)
     UIntType delta; // Timestamp difference from previous sample (in microseconds)
+
+    static std::string csv_header();
+    friend std::string to_string(const AdcSample &sample);
+    friend std::string to_csv(const AdcSample &sample);
 };
 
-struct Measurement
+struct Estimations
 {
-    UIntType timestamp; // Timestamp in microseconds
+    AdcSample adc_sample; // Original sample
     ComplexType phasors[NumChannels]; // Estimated phasors
     FloatType freq; // Estimated frequency in Hz
     FloatType rocof; // Estimated rate of change of frequency in Hz/s
+    FloatType power[NumChannels]; // Estimated power in Watt
+
+    static std::string csv_header();
+    friend std::string to_string(const Estimations &est);
+    friend std::string to_csv(const Estimations &est);
 };
+
+// utility functions
+
+std::string phasor_to_string(const ComplexType &phasor);
+std::string phasor_polar_to_string(const ComplexType &phasor);
 
 } // namespace qpmu
 

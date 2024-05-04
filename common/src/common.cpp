@@ -3,7 +3,7 @@
 #include <sstream>
 #include <iomanip>
 
-#include "qpmu/util.h"
+#include "qpmu/common.h"
 
 namespace qpmu {
 
@@ -35,7 +35,7 @@ std::string to_string(const AdcSample &sample)
     return ss.str();
 }
 
-std::string adcsample_csv_header()
+std::string AdcSample::csv_header()
 {
     std::string header;
     header += "seq_no,";
@@ -60,23 +60,23 @@ std::string to_csv(const AdcSample &sample)
     return str;
 }
 
-std::string to_string(const Measurement &measurement)
+std::string to_string(const Estimations &est)
 {
     std::stringstream ss;
-    ss << "timestamp=" << measurement.timestamp << ",\t";
+    ss << to_string(est.adc_sample) << ",\t";
     for (size_t i = 0; i < NumChannels; ++i) {
-        ss << "phasor" << i << "=" << phasor_to_string(measurement.phasors[i]) << "="
-           << phasor_polar_to_string(measurement.phasors[i]) << ",\t";
+        ss << "phasor" << i << "=" << phasor_to_string(est.phasors[i]) << "="
+           << phasor_polar_to_string(est.phasors[i]) << ",\t";
     }
-    ss << "freq=" << measurement.freq << ",\t";
-    ss << "rocof=" << measurement.rocof;
+    ss << "freq=" << est.freq << ",\t";
+    ss << "rocof=" << est.rocof;
     return ss.str();
 }
 
-std::string measurement_csv_header()
+std::string Estimations::csv_header()
 {
     std::string header;
-    header += "timestamp,";
+    header += AdcSample::csv_header() + ',';
     for (size_t i = 0; i < NumChannels; ++i) {
         header += "phasor" + std::to_string(i) + ',';
         header += "phasor" + std::to_string(i) + "_polar" + ',';
@@ -85,19 +85,19 @@ std::string measurement_csv_header()
     return header;
 }
 
-std::string to_csv(const Measurement &measurement)
+std::string to_csv(const Estimations &est)
 {
     std::string str;
-    str += std::to_string(measurement.timestamp) + ',';
+    str += to_csv(est.adc_sample);
     for (size_t i = 0; i < NumChannels; ++i) {
-        str += phasor_to_string(measurement.phasors[i]);
+        str += phasor_to_string(est.phasors[i]);
         str += ',';
-        str += phasor_polar_to_string(measurement.phasors[i]);
+        str += phasor_polar_to_string(est.phasors[i]);
         str += ',';
     }
-    str += std::to_string(measurement.freq);
+    str += std::to_string(est.freq);
     str += ',';
-    str += std::to_string(measurement.rocof);
+    str += std::to_string(est.rocof);
     return str;
 }
 

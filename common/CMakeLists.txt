@@ -5,4 +5,4 @@ target_include_directories(${COMMON_LIB}
 
 target_sources(
   ${COMMON_LIB}
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/util.cpp)
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/common.cpp)

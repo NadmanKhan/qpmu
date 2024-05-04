@@ -20,6 +20,8 @@ find_package(
 set(PROJECT_SOURCES
     src/main_window.h
     src/main_window.cpp
+    src/monitor_view.h
+    src/monitor_view.cpp
     src/phasor_view.h
     src/phasor_view.cpp
     src/waveform_view.h
@@ -27,6 +29,8 @@ set(PROJECT_SOURCES
     src/worker.h
     src/worker.cpp
     src/main.cpp
+    src/timeout_notifier.h
+    src/timeout_notifier.cpp
     img/.qrc)
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

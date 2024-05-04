@@ -9,7 +9,6 @@
 #include <sdft/sdft.h>
 
 #include "qpmu/common.h"
-#include "qpmu/util.h"
 #include "qpmu/estimator.h"
 
 using std::string, std::cout, std::cerr;
@@ -63,7 +62,7 @@ int main(int argc, char *argv[])
     }
 
     Estimator estimator(window_size, strategy);
-    Measurement measurement;
+    Estimations measurement;
     AdcSample sample;
 
     auto print = [&] {
@@ -72,16 +71,16 @@ int main(int argc, char *argv[])
         } else if (outputFormat == FormatCsv) {
             cout << to_csv(measurement) << '\n';
         } else {
-            std::fwrite(&measurement, sizeof(Measurement), 1, stdout);
+            std::fwrite(&measurement, sizeof(Estimations), 1, stdout);
         }
     };
 
     if (outputFormat == FormatCsv) {
-        cout << measurement_csv_header() << '\n';
+        cout << Estimations::csv_header() << '\n';
     }
 
     while (fread(&sample, sizeof(AdcSample), 1, stdin)) {
-        measurement = estimator.estimate_measurement(sample);
+        measurement = estimator.estimate_measurements(sample);
         print();
     }
 

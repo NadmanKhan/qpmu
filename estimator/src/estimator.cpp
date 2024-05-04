@@ -3,7 +3,6 @@
 #include <cmath>
 #include <iostream>
 #include <numeric>
-#include <qpmu/util.h>
 
 qpmu::Estimator::~Estimator()
 {
@@ -18,7 +17,7 @@ qpmu::Estimator::~Estimator()
 }
 
 qpmu::Estimator::Estimator(SizeType window_size, EstimationStrategy strategy)
-    : m_strategy(strategy), m_size(window_size), m_samples(window_size), m_measurements(window_size)
+    : m_strategy(strategy), m_size(window_size), m_samples(window_size), m_estimations(window_size)
 {
     if (m_strategy == EstimationStrategy::FFT) {
         for (SizeType i = 0; i < NumChannels; ++i) {
@@ -39,16 +38,16 @@ qpmu::Estimator::Estimator(SizeType window_size, EstimationStrategy strategy)
     }
 }
 
-qpmu::Measurement qpmu::Estimator::estimate_measurement(const qpmu::AdcSample &sample)
+qpmu::Estimations qpmu::Estimator::estimate_measurements(const qpmu::AdcSample &sample)
 {
     using namespace qpmu;
 #define NEXT(index) (((index) != (m_size - 1)) * ((index) + 1))
 #define PREV(index) (((index) != 0) * ((index)-1) + ((index) == 0) * (m_size - 1))
 
-    const auto &prv = m_measurements[PREV(m_index)];
-    auto &cur = m_measurements[m_index];
+    const auto &prv = m_estimations[PREV(m_index)];
+    auto &cur = m_estimations[m_index];
 
-    cur.timestamp = sample.ts;
+    cur.adc_sample = sample;
 
     /**
      * ***************************************************************************************
@@ -138,13 +137,13 @@ qpmu::Measurement qpmu::Estimator::estimate_measurement(const qpmu::AdcSample &s
     cur.freq /= sample.delta;
     cur.freq *= 1e6; // Because sample.delta is in microseconds
     cur.freq /= (2 * M_PI);
-    cur.freq = std::accumulate(m_measurements.begin(), m_measurements.end(), FloatType(0.0),
-                               [](FloatType acc, const Measurement &m) { return acc + m.freq; })
+    cur.freq = std::accumulate(m_estimations.begin(), m_estimations.end(), FloatType(0.0),
+                               [](FloatType acc, const Estimations &m) { return acc + m.freq; })
             / m_size;
 
     cur.rocof = (cur.freq - prv.freq) / sample.delta;
-    cur.rocof = std::accumulate(m_measurements.begin(), m_measurements.end(), FloatType(0.0),
-                                [](FloatType acc, const Measurement &m) { return acc + m.rocof; })
+    cur.rocof = std::accumulate(m_estimations.begin(), m_estimations.end(), FloatType(0.0),
+                                [](FloatType acc, const Estimations &m) { return acc + m.rocof; })
             / m_size;
 
     // Update the index
