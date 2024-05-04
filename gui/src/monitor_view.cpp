@@ -1,6 +1,7 @@
 #include "monitor_view.h"
 #include "qpmu/common.h"
 #include <iostream>
+#include <qlineseries.h>
 
 QPointF unitvector(qreal angle)
 {
@@ -20,28 +21,21 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     connect(m_updateNotifier, &TimeoutNotifier::timeout, this, &MonitorView::update);
 
     /// Layout
-    auto vbox = new QVBoxLayout(this);
-    setLayout(vbox);
+    auto outerHbox = new QHBoxLayout(this);
+    setLayout(outerHbox);
+
+    /// Visualization area layout
+    auto visualVbox = new QVBoxLayout(this);
+    outerHbox->addLayout(visualVbox);
 
     /// ChartView
     auto chartView = new QChartView(this);
     chartView->setRenderHint(QPainter::Antialiasing, true);
-    //    auto chartViewSizePolicy = chartView->sizePolicy();
-    //    chartViewSizePolicy.setWidthForHeight(true);
-    //    chartViewSizePolicy.setHeightForWidth(true);
-    //    chartView->setSizePolicy(chartViewSizePolicy);
-    chartView->setContentsMargins(QMargins(0, 0, 0, 0));
-    vbox->addWidget(chartView);
+    visualVbox->addWidget(chartView);
 
     /// Chart
     auto chart = new QChart();
     chart->legend()->hide();
-    auto chartSizePolicy = chart->sizePolicy();
-    //    chartSizePolicy.setWidthForHeight(true);
-    //    chartSizePolicy.setHeightForWidth(true);
-    chart->setSizePolicy(chartSizePolicy);
-    chart->setMargins(QMargins(0, 0, 0, 0));
-    chart->setContentsMargins(QMargins(0, 0, 0, 0));
     chart->setAnimationOptions(QChart::NoAnimation);
     chartView->setChart(chart);
 
@@ -49,7 +43,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     auto axisX = new QValueAxis(chart);
     chart->addAxis(axisX, Qt::AlignBottom);
     axisX->setLabelsVisible(false);
-    axisX->setRange(0, (PolarGraphWidth + RectGraphWidth + 2 * Margin + Spacing) * Scale);
+    axisX->setRange(0, (PolarGraphWidth + RectGraphWidth + Spacing) * Scale);
     axisX->setTickCount(2);
     axisX->setVisible(false);
 
@@ -57,8 +51,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     auto axisY = new QValueAxis(chart);
     chart->addAxis(axisY, Qt::AlignLeft);
     axisY->setLabelsVisible(false);
-    axisY->setRange(Scale * -(Margin + PolarGraphWidth / 2),
-                    Scale * +(Margin + PolarGraphWidth / 2));
+    axisY->setRange(Scale * -(PolarGraphWidth / 2), Scale * +(PolarGraphWidth / 2));
     axisY->setTickCount(2);
     axisY->setVisible(false);
 
@@ -85,7 +78,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         return s;
     };
     { /// Polar graph axes
-        auto xOffset = QPointF(Margin + PolarGraphWidth / 2, 0);
+        auto xOffset = QPointF(PolarGraphWidth / 2, 0);
         auto circle = makeFakeAxisSeries("spline");
         for (int i = 0; i <= (360 / 10); ++i) {
             qreal theta = qreal(i) / (360.0 / 10) * (2 * M_PI);
@@ -103,15 +96,11 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     }
     { /// Rectangular graph axes
         auto ver = makeFakeAxisSeries("line");
-        ver->append(
-                Scale
-                * QPointF(Margin + Spacing + PolarGraphWidth, -((PolarGraphWidth + Margin) / 2)));
-        ver->append(
-                Scale
-                * QPointF(Margin + Spacing + PolarGraphWidth, +((PolarGraphWidth + Margin) / 2)));
+        ver->append(Scale * QPointF(Spacing + PolarGraphWidth, -(PolarGraphWidth / 2)));
+        ver->append(Scale * QPointF(Spacing + PolarGraphWidth, +(PolarGraphWidth / 2)));
         auto hor = makeFakeAxisSeries("line");
-        hor->append(Scale * QPointF(Margin + Spacing + PolarGraphWidth, 0));
-        hor->append(Scale * QPointF(Margin + Spacing + PolarGraphWidth + RectGraphWidth, 0));
+        hor->append(Scale * QPointF(Spacing + PolarGraphWidth, 0));
+        hor->append(Scale * QPointF(Spacing + PolarGraphWidth + RectGraphWidth, 0));
     }
 
     /// Data
@@ -129,7 +118,8 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         phasorSeries->attachAxis(axisY);
 
         /// Waveform series
-        auto waveformSeries = new QSplineSeries(chart);
+        auto waveformSeries =
+                signal_is_voltage(Signals[i]) ? new QSplineSeries(chart) : new QLineSeries(chart);
         waveformSeries->setName(name);
         waveformSeries->setPen(pen);
         chart->addSeries(waveformSeries);
@@ -156,9 +146,9 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_connectorPointsList[i] = QVector<QPointF>(2);
     }
 
-    /// Controls
-    auto hbox = new QHBoxLayout(this);
-    vbox->addLayout(hbox, 1);
+    /// Controls layout (side panel)
+    auto sideVbox = new QVBoxLayout(this);
+    outerHbox->addLayout(sideVbox);
 
     /// RadioButton to enable/disable connectors
     auto radioEnableConnectors = new QRadioButton("Connector lines", this);
@@ -168,11 +158,11 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         }
     });
     radioEnableConnectors->setChecked(false);
-    hbox->addWidget(radioEnableConnectors);
+    sideVbox->addWidget(radioEnableConnectors);
 
     /// ComboBox
     auto labelSimulate = new QLabel("Simulation frequency: ", this);
-    hbox->addWidget(labelSimulate);
+    sideVbox->addWidget(labelSimulate);
     m_comboSimulationFrequency = new QComboBox(this);
     {
         QStringList items;
@@ -183,7 +173,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_comboSimulationFrequency->addItems(items);
     }
     m_comboSimulationFrequency->setCurrentIndex(0);
-    hbox->addWidget(m_comboSimulationFrequency);
+    sideVbox->addWidget(m_comboSimulationFrequency);
 }
 
 void MonitorView::update()
@@ -216,7 +206,7 @@ void MonitorView::update()
 
     if (m_comboSimulationFrequency->currentIndex() > 0) {
         /// simulating; nudge the phasors according to the chosen frequency
-        FloatType f = SimulationFrequencyOptions[m_comboSimulationFrequency->currentIndex()];
+        FloatType f = SimulationFrequencyOptions[m_comboSimulationFrequency->currentIndex() - 1];
         FloatType delta = 2 * M_PI * f * UpdateIntervalMs / 1000;
         for (SizeType i = 0; i < NumChannels; ++i) {
             m_plottedPhasors[i] *= std::polar(1.0, delta);
@@ -261,15 +251,20 @@ void MonitorView::update()
             FloatType x = j * (RectGraphWidth / NumCycles / NumPointsPerCycle);
             m_waveformPointsList[i][j] = QPointF(x, y);
         }
-        // if (Signals[i].type == SignalType::Current) {
-        // }
+        if (signal_is_current(Signals[i])) {
+            for (SizeType j = 2; j < (NumPointsPerCycle * NumCycles + 1); j += 2) {
+                auto a = j - 2, b = j - 1, c = j;
+                m_waveformPointsList[i][b].setX(m_waveformPointsList[i][c].x());
+                m_waveformPointsList[i][b].setY(m_waveformPointsList[i][a].y());
+            }
+        }
 
-        /// Offset the points to fit the designated areas
+        /// Translate the points to fit the designated areas
         for (SizeType j = 0; j < 5; ++j) {
-            m_phasorPointsList[i][j] += QPointF(Margin + PolarGraphWidth / 2, 0);
+            m_phasorPointsList[i][j] += QPointF(PolarGraphWidth / 2, 0);
         }
         for (SizeType j = 0; j < (NumPointsPerCycle * NumCycles + 1); ++j) {
-            m_waveformPointsList[i][j] += QPointF(Margin + Spacing + PolarGraphWidth, 0);
+            m_waveformPointsList[i][j] += QPointF(PolarGraphWidth + Spacing, 0);
         }
 
         /// Scale the points
