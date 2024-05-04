@@ -1,7 +1,9 @@
 #include "monitor_view.h"
 #include "qpmu/common.h"
 #include <iostream>
+#include <qabstractseries.h>
 #include <qlineseries.h>
+#include <qradiobutton.h>
 
 QPointF unitvector(qreal angle)
 {
@@ -56,7 +58,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     axisY->setVisible(false);
 
     /// Fake axes
-    auto makeFakeAxisSeries = [=](std::string type) {
+    auto makeFakeAxisSeries = [=](std::string type, qreal penWidth = 1) {
         QXYSeries *s = nullptr;
         if (type == "spline") {
             s = new QSplineSeries(chart);
@@ -67,7 +69,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         }
         Q_ASSERT(s);
         auto color = QColor("lightGray");
-        s->setPen(QPen(color, 2));
+        s->setPen(QPen(color, penWidth));
         if (type == "scatter") {
             s->setBrush(QBrush(color));
             s->setMarkerSize(0);
@@ -78,41 +80,45 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         return s;
     };
     { /// Polar graph axes
-        auto xOffset = QPointF(PolarGraphWidth / 2, 0);
-        auto circle = makeFakeAxisSeries("spline");
-        for (int i = 0; i <= (360 / 10); ++i) {
-            qreal theta = qreal(i) / (360.0 / 10) * (2 * M_PI);
-            circle->append(Scale * (unitvector(theta) + xOffset));
+        const auto xOffset = QPointF(PolarGraphWidth / 2, 0);
+        for (int radiusPoint = 1; radiusPoint <= 4; ++radiusPoint) {
+            const qreal radius =
+                    qreal(radiusPoint) / 4 * PolarGraphWidth / 2 - bool(radiusPoint == 4) * 0.005;
+            auto circle = makeFakeAxisSeries("spline", 1 + bool(radiusPoint == 4) * 1.5);
+            for (int i = 0; i <= (360 / 10); ++i) {
+                const qreal theta = qreal(i) / (360.0 / 10) * (2 * M_PI);
+                circle->append(Scale * (radius * unitvector(theta) + xOffset));
+            }
         }
-        for (int i = 0; i <= (360 / 60); ++i) {
-            qreal theta = qreal(i) / (360.0 / 60) * (2 * M_PI);
-            auto tick = makeFakeAxisSeries("line");
-            auto pen = tick->pen();
-            pen.setWidthF(pen.widthF() * 0.5);
-            tick->setPen(pen);
+        for (int i = 0; i <= (360 / 30); ++i) {
+            qreal theta = qreal(i) / (360.0 / 30) * (2 * M_PI);
+            auto tick = makeFakeAxisSeries("line", 1);
             tick->append(Scale * xOffset);
-            tick->append(Scale * (1.025 * unitvector(theta) + xOffset));
+            tick->append(Scale * (1.05 * unitvector(theta) + xOffset));
         }
     }
     { /// Rectangular graph axes
-        auto ver = makeFakeAxisSeries("line");
+        auto ver = makeFakeAxisSeries("line", 2);
         ver->append(Scale * QPointF(Spacing + PolarGraphWidth, -(PolarGraphWidth / 2)));
         ver->append(Scale * QPointF(Spacing + PolarGraphWidth, +(PolarGraphWidth / 2)));
-        auto hor = makeFakeAxisSeries("line");
+        auto hor = makeFakeAxisSeries("line", 2);
         hor->append(Scale * QPointF(Spacing + PolarGraphWidth, 0));
         hor->append(Scale * QPointF(Spacing + PolarGraphWidth + RectGraphWidth, 0));
     }
 
     /// Data
     for (SizeType i = 0; i < NumChannels; ++i) {
-        QString name = Signals[i].name;
-        QColor color(Signals[i].colorHex);
-        QPen pen(color, 2, Qt::SolidLine);
+        auto name = QString(Signals[i].name);
+        auto color = QColor(Signals[i].colorHex);
+        auto phasorPen = QPen(color, 3.0, Qt::SolidLine);
+        auto waveformPen = QPen(color, 1.5, Qt::SolidLine);
+        auto connectorPen = QPen(color.lighter(), 0.75, Qt::CustomDashLine);
+        connectorPen.setDashPattern(QVector<qreal>() << (Scale * 2) << (Scale * 2));
 
         /// Phasor series
         auto phasorSeries = new QLineSeries(chart);
         phasorSeries->setName(name);
-        phasorSeries->setPen(pen);
+        phasorSeries->setPen(phasorPen);
         chart->addSeries(phasorSeries);
         phasorSeries->attachAxis(axisX);
         phasorSeries->attachAxis(axisY);
@@ -121,7 +127,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         auto waveformSeries =
                 signal_is_voltage(Signals[i]) ? new QSplineSeries(chart) : new QLineSeries(chart);
         waveformSeries->setName(name);
-        waveformSeries->setPen(pen);
+        waveformSeries->setPen(waveformPen);
         chart->addSeries(waveformSeries);
         waveformSeries->attachAxis(axisX);
         waveformSeries->attachAxis(axisY);
@@ -129,8 +135,6 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         /// Connector series
         auto connectorSeries = new QLineSeries(chart);
         connectorSeries->setName(name);
-        auto connectorPen = QPen(color.lighter(), 0.8, Qt::CustomDashLine);
-        connectorPen.setDashPattern(QVector<qreal>() << (Scale * 4) << (Scale * 2));
         connectorSeries->setPen(connectorPen);
         connectorSeries->setVisible(false);
         chart->addSeries(connectorSeries);
@@ -146,23 +150,72 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_connectorPointsList[i] = QVector<QPointF>(2);
     }
 
-    /// Controls layout (side panel)
-    auto sideVbox = new QVBoxLayout(this);
-    outerHbox->addLayout(sideVbox);
+    /// Layout for constrols (side panel)
+    auto sideGrid = new QGridLayout(this);
+    sideGrid->setContentsMargins(QMargins(0, 20, 0, 20));
+    outerHbox->addLayout(sideGrid);
+
+    /// CheckBoxes to enable/disable series
+    {
+        for (SignalType type : { SignalType::Voltage, SignalType::Current }) {
+
+            /// Individual voltages or currents
+            QList<QCheckBox *> checks;
+            for (SizeType i = 0; i < NumChannels; ++i) {
+                if (Signals[i].type == type) {
+                    auto check = new QCheckBox(Signals[i].name, this);
+                    connect(check, &QCheckBox::toggled, [=](bool checked) {
+                        m_phasorSeriesList[i]->setVisible(checked);
+                        m_waveformSeriesList[i]->setVisible(checked);
+                        m_connectorSeriesList[i]->setVisible(checked);
+                    });
+                    check->setChecked(true);
+                    sideGrid->addWidget(check, checks.size(), type);
+                    checks.append(check);
+                }
+            }
+
+            /// All voltages or all currents
+            auto checkAll =
+                    new QCheckBox((type == SignalType::Voltage ? QStringLiteral("Voltages")
+                                                               : QStringLiteral("Currents")),
+                                  this);
+            connect(checkAll, &QCheckBox::toggled, [=](bool checked) {
+                for (auto check : checks) {
+                    check->setChecked(checked);
+                }
+            });
+            checkAll->setChecked(true);
+            sideGrid->addWidget(checkAll, checks.size(), type);
+
+            /// If all checks are checked, then the "All" check should be checked
+            for (auto check : checks) {
+                connect(check, &QCheckBox::toggled, [=] {
+                    int cnt = std::count_if(checks.begin(), checks.end(),
+                                            [](QCheckBox *r) { return r->isChecked(); });
+                    if (cnt == 0) {
+                        checkAll->setChecked(false);
+                    } else if (cnt == checks.size()) {
+                        checkAll->setChecked(true);
+                    }
+                });
+            }
+        }
+    }
 
     /// RadioButton to enable/disable connectors
     auto radioEnableConnectors = new QRadioButton("Connector lines", this);
     connect(radioEnableConnectors, &QRadioButton::toggled, [=](bool checked) {
         for (SizeType i = 0; i < NumChannels; ++i) {
-            m_connectorSeriesList[i]->setVisible(checked);
+            m_connectorSeriesList[i]->setVisible(m_phasorSeriesList[i]->isVisible() && checked);
         }
     });
-    radioEnableConnectors->setChecked(false);
-    sideVbox->addWidget(radioEnableConnectors);
+    radioEnableConnectors->setChecked(true);
+    sideGrid->addWidget(radioEnableConnectors, sideGrid->rowCount(), 0, 1, 2);
 
     /// ComboBox
     auto labelSimulate = new QLabel("Simulation frequency: ", this);
-    sideVbox->addWidget(labelSimulate);
+    sideGrid->addWidget(labelSimulate);
     m_comboSimulationFrequency = new QComboBox(this);
     {
         QStringList items;
@@ -173,7 +226,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_comboSimulationFrequency->addItems(items);
     }
     m_comboSimulationFrequency->setCurrentIndex(0);
-    sideVbox->addWidget(m_comboSimulationFrequency);
+    sideGrid->addWidget(m_comboSimulationFrequency);
 }
 
 void MonitorView::update()
@@ -236,7 +289,7 @@ void MonitorView::update()
                     std::sqrt(alphaOpposite * alphaOpposite + alphaAdjacent * alphaAdjacent);
         }
         m_phasorPointsList[i][0] = QPointF(0, 0);
-        m_phasorPointsList[i][1] = ampli * unitvector(phase);
+        m_phasorPointsList[i][1] = ampli * 0.99 * unitvector(phase);
         m_phasorPointsList[i][2] = alphaHypotenuse * unitvector(phase + alpha);
         m_phasorPointsList[i][3] = m_phasorPointsList[i][1];
         m_phasorPointsList[i][4] = alphaHypotenuse * unitvector(phase - alpha);

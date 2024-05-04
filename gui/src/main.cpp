@@ -12,12 +12,16 @@ int main(int argc, char *argv[])
 #endif
     QApplication app(argc, argv);
 
+    auto font = app.font();
+    // font.setPointSize(font.pointSize() * 1.5);
+    app.setFont(font);
+
     Worker worker;
 
     MainWindow window(&worker);
     worker.start();
 
-    window.resize(600, 300);
+    window.resize(1000, 500);
     window.show();
 
     return app.exec();

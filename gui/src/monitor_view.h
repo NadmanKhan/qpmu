@@ -8,9 +8,11 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QColor>
 #include <QComboBox>
 #include <QRadioButton>
+#include <QCheckBox>
 #include <QLabel>
 
 #include "qpmu/common.h"
@@ -24,13 +26,13 @@ public:
     static constexpr qreal Scale = 5;
     static constexpr qreal Spacing = 0.25;
     static constexpr qreal PolarGraphWidth = 2;
-    static constexpr qreal RectGraphWidth = 2;
+    static constexpr qreal RectGraphWidth = 4;
 
     static constexpr quint32 UpdateIntervalMs = 200;
     static constexpr qreal SimulationFrequencyOptions[] = { 2, 1, 0.5, 0.25, 0.125 };
 
-    static constexpr int NumCycles = 1;
-    static constexpr int NumPointsPerCycle = 2 * 12;
+    static constexpr int NumCycles = 2;
+    static constexpr int NumPointsPerCycle = 2 * 35;
 
     MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
 
