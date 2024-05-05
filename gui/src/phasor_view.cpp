@@ -117,7 +117,7 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         lineSeries->attachAxis(axisRadial);
 
         auto vheader = newCellItem();
-        vheader->setIcon(circleIcon(color, 10));
+        vheader->setIcon(circlePixmap(color, 10));
         vheader->setText(name);
         m_table1->setVerticalHeaderItem(i, vheader);
 
@@ -135,7 +135,7 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         Q_ASSERT(phaseId == signal_phase_char(Signals[iIndex]));
 
         auto vheader = newCellItem();
-        vheader->setIcon(twoColorCircleIcon(vColor, iColor, 10));
+        vheader->setIcon(twoColorCirclePixmap(vColor, iColor, 10));
         vheader->setText(QStringLiteral("Δθ%1").arg(phaseId));
         m_table2->setVerticalHeaderItem(i, vheader);
 
