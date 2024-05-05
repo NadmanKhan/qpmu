@@ -16,8 +16,17 @@ qpmu::Estimator::~Estimator()
     // The SDFT state is trivially destructible
 }
 
-qpmu::Estimator::Estimator(SizeType window_size, EstimationStrategy strategy)
-    : m_strategy(strategy), m_size(window_size), m_samples(window_size), m_estimations(window_size)
+qpmu::Estimator::Estimator(SizeType window_size, EstimationStrategy strategy,
+                           std::pair<FloatType, FloatType> voltage_params,
+                           std::pair<FloatType, FloatType> current_params)
+    : m_strategy(strategy),
+      m_size(window_size),
+      m_scale_voltage(voltage_params.first),
+      m_offset_voltage(voltage_params.second),
+      m_scale_current(current_params.first),
+      m_offset_current(current_params.second),
+      m_samples(window_size),
+      m_estimations(window_size)
 {
     if (m_strategy == EstimationStrategy::FFT) {
         for (SizeType i = 0; i < NumChannels; ++i) {
@@ -38,7 +47,7 @@ qpmu::Estimator::Estimator(SizeType window_size, EstimationStrategy strategy)
     }
 }
 
-qpmu::Estimations qpmu::Estimator::estimate_measurements(const qpmu::AdcSample &sample)
+qpmu::Estimations qpmu::Estimator::estimate_measurements(qpmu::AdcSample sample)
 {
     using namespace qpmu;
 #define NEXT(index) (((index) != (m_size - 1)) * ((index) + 1))
@@ -48,6 +57,14 @@ qpmu::Estimations qpmu::Estimator::estimate_measurements(const qpmu::AdcSample &
     auto &cur = m_estimations[m_index];
 
     cur.adc_sample = sample;
+
+    for (SizeType i = 0; i < NumChannels; ++i) {
+        const auto &scale = (signal_is_voltage(Signals[i]) ? m_scale_voltage : m_scale_current);
+        const auto &offset = (signal_is_voltage(Signals[i]) ? m_offset_voltage : m_offset_current);
+        // if (signal_is_voltage(Signals[i])) std::cerr << (signal_unit_char(Signals[i])) << ": " << sample.ch[i];
+        sample.ch[i] = (sample.ch[i] * scale) + offset;
+        // if (signal_is_voltage(Signals[i])) std::cerr << " -> " << sample.ch[i] << '\n';
+    }
 
     /**
      * ***************************************************************************************
@@ -145,6 +162,12 @@ qpmu::Estimations qpmu::Estimator::estimate_measurements(const qpmu::AdcSample &
     cur.rocof = std::accumulate(m_estimations.begin(), m_estimations.end(), FloatType(0.0),
                                 [](FloatType acc, const Estimations &m) { return acc + m.rocof; })
             / m_size;
+
+    for (SizeType p = 0; p < NumPhases; ++p) {
+        const auto &[v_index, i_index] = SignalPhasePairs[p];
+        cur.power[p] = (cur.phasors[v_index] * std::conj(cur.phasors[i_index])).real();
+        cur.power[p] /= NumChannels;
+    }
 
     // Update the index
     m_index = NEXT(m_index);

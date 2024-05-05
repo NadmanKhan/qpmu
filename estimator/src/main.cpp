@@ -23,6 +23,10 @@ int main(int argc, char *argv[])
                                                        po::value<string>()->default_value("fft"),
                                                        "Estimation strategy to use (fft or sdft)")(
             "window", po::value<SizeType>(), "Window size to use for estimation")(
+            "vscale", po::value<FloatType>()->default_value(1.0), "Voltage scale factor")(
+            "voffset", po::value<FloatType>()->default_value(0.0), "Voltage offset")(
+            "iscale", po::value<FloatType>()->default_value(1.0), "Current scale factor")(
+            "ioffset", po::value<FloatType>()->default_value(0.0), "Current offset")(
             "format", po::value<string>()->default_value("b"),
             "output format: b (binary), s (human-readable string), c (comma separated "
             "\"key=value\" "
@@ -37,6 +41,13 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    EstimationStrategy strategy = EstimationStrategy::FFT;
+    if (varmap.count("strategy")) {
+        if (varmap["strategy"].as<string>() == "sdft") {
+            strategy = EstimationStrategy::SDFT;
+        }
+    }
+
     SizeType window_size = 0;
     if (!varmap.count("window")) {
         cerr << "Window size is required\n";
@@ -45,12 +56,13 @@ int main(int argc, char *argv[])
     }
     window_size = varmap["window"].as<SizeType>();
 
-    EstimationStrategy strategy = EstimationStrategy::FFT;
-    if (varmap.count("strategy")) {
-        if (varmap["strategy"].as<string>() == "sdft") {
-            strategy = EstimationStrategy::SDFT;
-        }
-    }
+    FloatType vscale = varmap["vscale"].as<FloatType>();
+    FloatType voffset = varmap["voffset"].as<FloatType>();
+    FloatType iscale = varmap["iscale"].as<FloatType>();
+    FloatType ioffset = varmap["ioffset"].as<FloatType>();
+
+    std::cerr << "vscale: " << vscale << ", voffset: " << voffset << ", iscale: " << iscale
+              << ", ioffset: " << ioffset << '\n';
 
     enum { FormatReadableStr, FormatCsv, FormatBinary } outputFormat;
     if (varmap["format"].as<string>() == "s") {
@@ -61,7 +73,7 @@ int main(int argc, char *argv[])
         outputFormat = FormatBinary;
     }
 
-    Estimator estimator(window_size, strategy);
+    Estimator estimator(window_size, strategy, { vscale, voffset }, { iscale, ioffset });
     Estimations measurement;
     AdcSample sample;
 

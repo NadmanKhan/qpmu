@@ -72,10 +72,12 @@ public:
     Estimator &operator=(const Estimator &) = default;
     Estimator &operator=(Estimator &&) = default;
     ~Estimator();
-    Estimator(SizeType window_size, EstimationStrategy strategy = EstimationStrategy::FFT);
+    Estimator(SizeType window_size, EstimationStrategy strategy = EstimationStrategy::FFT,
+              std::pair<FloatType, FloatType> voltage_params = { 1.0, 0.0 },
+              std::pair<FloatType, FloatType> current_params = { 1.0, 0.0 });
 
     // ****** Public member functions ******
-    qpmu::Estimations estimate_measurements(const qpmu::AdcSample &sample);
+    qpmu::Estimations estimate_measurements(qpmu::AdcSample sample);
 
 private:
     // ****** Private member functions ******
@@ -83,6 +85,10 @@ private:
     // ****** Private member variables ******
     EstimationStrategy m_strategy = EstimationStrategy::FFT;
     SizeType m_size = 0;
+    FloatType m_scale_voltage = 1.0;
+    FloatType m_offset_voltage = 0.0;
+    FloatType m_scale_current = 1.0;
+    FloatType m_offset_current = 0.0;
     std::vector<qpmu::AdcSample> m_samples = {};
     std::vector<qpmu::Estimations> m_estimations = {};
     SizeType m_index = 0;
