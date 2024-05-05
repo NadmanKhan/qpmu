@@ -144,7 +144,6 @@ qpmu::Estimations qpmu::Estimator::estimate_measurements(qpmu::AdcSample sample)
     cur.freq = 0;
     for (SizeType i = 0; i < NumChannels; ++i) {
         auto phase_diff = std::arg(cur.phasors[i]) - std::arg(prv.phasors[i]);
-        phase_diff = std::fmod(phase_diff, FloatType(2 * M_PI));
         phase_diff = std::fmod(phase_diff + FloatType(2 * M_PI), FloatType(2 * M_PI));
         cur.freq += phase_diff;
     }
