@@ -35,12 +35,12 @@ struct Signal
     SignalPhase phase;
 };
 
-constexpr Signal Signals[NumChannels] = { { "Va", "#404040", SignalType::Voltage, SignalPhase::A },
-                                          { "Vb", "#ff0000", SignalType::Voltage, SignalPhase::B },
-                                          { "Vc", "#00ffff", SignalType::Voltage, SignalPhase::C },
-                                          { "Ia", "#eeee00", SignalType::Current, SignalPhase::A },
-                                          { "Ib", "#0000ff", SignalType::Current, SignalPhase::B },
-                                          { "Ic", "#00c000", SignalType::Current,
+constexpr Signal Signals[NumChannels] = { { "VA", "#404040", SignalType::Voltage, SignalPhase::A },
+                                          { "VB", "#ff0000", SignalType::Voltage, SignalPhase::B },
+                                          { "VC", "#00ffff", SignalType::Voltage, SignalPhase::C },
+                                          { "IA", "#eeee00", SignalType::Current, SignalPhase::A },
+                                          { "IB", "#0000ff", SignalType::Current, SignalPhase::B },
+                                          { "IC", "#00c000", SignalType::Current,
                                             SignalPhase::C } };
 
 constexpr bool signal_is_voltage(const Signal &info)
