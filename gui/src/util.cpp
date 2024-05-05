@@ -1,6 +1,6 @@
 #include "util.h"
 
-QIcon circleIcon(const QColor &color, int size)
+QPixmap circlePixmap(const QColor &color, int size)
 {
     QPixmap pixmap(size, size);
     pixmap.fill(Qt::transparent); // Fill the pixmap with transparent color
@@ -14,10 +14,10 @@ QIcon circleIcon(const QColor &color, int size)
     painter.drawEllipse(0, 0, size, size);
     painter.end();
 
-    return QIcon(pixmap);
+    return pixmap;
 }
 
-QIcon twoColorCircleIcon(const QColor &color1, const QColor &color2, int size)
+QPixmap twoColorCirclePixmap(const QColor &color1, const QColor &color2, int size)
 {
     QPixmap pixmap(size, size);
     pixmap.fill(Qt::transparent); // Fill the pixmap with transparent color
@@ -34,5 +34,5 @@ QIcon twoColorCircleIcon(const QColor &color1, const QColor &color2, int size)
     painter.drawPie(0, 0, size, size, 0 * 16, +90 * 16);
     painter.end();
 
-    return QIcon(pixmap);
+    return pixmap;
 }

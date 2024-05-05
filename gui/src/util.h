@@ -5,8 +5,8 @@
 #include <QPixmap>
 #include <QIcon>
 
-QIcon circleIcon(const QColor &color, int size);
+QPixmap circlePixmap(const QColor &color, int size);
 
-QIcon twoColorCircleIcon(const QColor &color1, const QColor &color2, int size);
+QPixmap twoColorCirclePixmap(const QColor &color1, const QColor &color2, int size);
 
 #endif // QPMU_GUI_UTIL_H
