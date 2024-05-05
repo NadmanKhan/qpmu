@@ -203,15 +203,15 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         }
     }
 
-    /// RadioButton to enable/disable connectors
-    auto radioEnableConnectors = new QRadioButton("Connector lines", this);
-    connect(radioEnableConnectors, &QRadioButton::toggled, [=](bool checked) {
+    /// CheckBox to enable/disable connectors
+    auto checkConnectors = new QCheckBox("Connector lines", this);
+    connect(checkConnectors, &QCheckBox::toggled, [=](bool checked) {
         for (SizeType i = 0; i < NumChannels; ++i) {
-            m_connectorSeriesList[i]->setVisible(m_phasorSeriesList[i]->isVisible() && checked);
+            m_connectorSeriesList[i]->setVisible(checked && m_phasorSeriesList[i]->isVisible());
         }
     });
-    radioEnableConnectors->setChecked(true);
-    sideGrid->addWidget(radioEnableConnectors, sideGrid->rowCount(), 0, 1, 2);
+    checkConnectors->setChecked(true);
+    sideGrid->addWidget(checkConnectors, sideGrid->rowCount(), 0, 1, 2);
 
     /// ComboBox
     auto labelSimulate = new QLabel("Simulation frequency: ", this);
