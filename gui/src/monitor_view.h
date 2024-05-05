@@ -15,6 +15,7 @@
 #include <QRadioButton>
 #include <QCheckBox>
 #include <QLabel>
+#include <QTableWidget>
 
 #include "qpmu/common.h"
 #include "worker.h"
@@ -40,10 +41,9 @@ public:
         { 0, 60, 120, 180, 240, 300, 360 }, { 0, 1, 2, 10, 20, 100, 200 }
     };
 
-    static constexpr char const *const TableHHeaders[] = { "Phase ID", "",        "Voltage",
-                                                           "",         "Current", "Phase Diff.",
+    static constexpr char const *const TableHHeaders[] = { "Voltage", "Current", "Phase Diff.",
                                                            "Power" };
-    static constexpr int NumTableColumns = 7;
+    static constexpr int NumTableColumns = 4;
 
     MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
 

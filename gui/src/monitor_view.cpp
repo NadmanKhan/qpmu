@@ -152,69 +152,100 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_connectorPointsList[i] = QVector<QPointF>(2);
     }
 
-    /// Tables
-    auto tableLayout = new QGridLayout(this);
-    dataVBox->addLayout(tableLayout);
+    /// Data table
+    auto table = new QTableWidget(this);
+    dataVBox->addWidget(table);
+    table->setColumnCount(NumTableColumns);
+    table->setRowCount(NumPhases);
+    /// clear cell selections because they are unwanted
+    connect(table, &QTableWidget::currentCellChanged, [=] { table->setCurrentCell(-1, -1); });
+
+    auto newCellItem = [&](bool header) -> QTableWidgetItem * {
+        auto item = new QTableWidgetItem();
+        item->setFlags(Qt::NoItemFlags);
+        // item->setForeground(QBrush(QColor(QStringLiteral("black"))));
+        item->setFont(QFont(QStringLiteral("monospace")));
+        item->setTextAlignment(Qt::AlignVCenter);
+        if (header) {
+            item->setTextAlignment(item->textAlignment() | Qt::AlignHCenter);
+        } else {
+            item->setTextAlignment(item->textAlignment() | Qt::AlignRight);
+        }
+        return item;
+    };
 
     /// Table vertical headers (one for each phase)
     for (SizeType p = 0; p < NumPhases; ++p) {
         auto label = new QLabel(QString(SignalPhaseId[p]), this);
         label->setAlignment(Qt::AlignRight);
-        if (p == 0) {
-            label->setText(label->text() + QStringLiteral(" (Ref.)"));
-        }
-        tableLayout->addWidget(label, p + 1, 0);
+        auto item = newCellItem(true);
+        item->setText(label->text());
+        table->setVerticalHeaderItem(p, item);
     }
 
     /// Table horizontal headers (voltage, current, phase diff., power)
     for (int i = 0; i < NumTableColumns; ++i) {
         auto label = new QLabel(TableHHeaders[i], this);
-        label->setAlignment(Qt::AlignCenter);
-        if (i == 0) {
-            label->setAlignment(Qt::AlignRight);
-        }
-        tableLayout->addWidget(label, 0, i);
+        label->setAlignment(Qt::AlignRight);
+        auto item = newCellItem(true);
+        item->setText(label->text());
+        table->setHorizontalHeaderItem(i, item);
     }
 
     for (SizeType p = 0; p < NumPhases; ++p) {
         const auto &[vIdx, iIdx] = SignalPhasePairs[p];
-        auto vColorLabel = new QLabel(this);
+        auto vColorLabel = new QLabel();
         vColorLabel->setPixmap(circlePixmap(QColor(Signals[vIdx].colorHex), 10));
-        auto vPhasorLabel = new QLabel("_", this);
-        auto iColorLabel = new QLabel(this);
+        auto vPhasorLabel = new QLabel("_");
+        auto iColorLabel = new QLabel();
         iColorLabel->setPixmap(circlePixmap(QColor(Signals[iIdx].colorHex), 10));
-        auto iPhasorLabel = new QLabel("_", this);
-        auto phaseDiffLabel = new QLabel("_", this);
-        auto powerLabel = new QLabel("_", this);
+        auto iPhasorLabel = new QLabel("_");
+        auto phaseDiffLabel = new QLabel("_");
+        auto powerLabel = new QLabel("_");
 
-        vColorLabel->setAlignment(Qt::AlignRight);
-        vPhasorLabel->setAlignment(Qt::AlignLeft);
-        iColorLabel->setAlignment(Qt::AlignRight);
-        iPhasorLabel->setAlignment(Qt::AlignLeft);
-        phaseDiffLabel->setAlignment(Qt::AlignCenter);
-        powerLabel->setAlignment(Qt::AlignCenter);
+        vColorLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        vPhasorLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        iColorLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        iPhasorLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        phaseDiffLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        powerLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+        auto vWidget = new QWidget(this);
+        auto vHBox = new QHBoxLayout();
+        vWidget->setLayout(vHBox);
+        vHBox->addWidget(vColorLabel);
+        vHBox->addWidget(vPhasorLabel);
+        vHBox->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+        auto iWidget = new QWidget(this);
+        auto iHBox = new QHBoxLayout();
+        iWidget->setLayout(iHBox);
+        iHBox->addWidget(iColorLabel);
+        iHBox->addWidget(iPhasorLabel);
+        iHBox->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
         m_phasorValueLabels[vIdx] = vPhasorLabel;
         m_phasorValueLabels[iIdx] = iPhasorLabel;
         m_phaseDiffLabels[p] = phaseDiffLabel;
         m_phasePowerLabels[p] = powerLabel;
 
-        tableLayout->addWidget(vColorLabel, p + 1, 1);
-        tableLayout->addWidget(vPhasorLabel, p + 1, 2);
-        tableLayout->addWidget(iColorLabel, p + 1, 3);
-        tableLayout->addWidget(iPhasorLabel, p + 1, 4);
-        tableLayout->addWidget(phaseDiffLabel, p + 1, 5);
-        tableLayout->addWidget(powerLabel, p + 1, 6);
+        table->setCellWidget(p, 0, vWidget);
+        table->setCellWidget(p, 1, iWidget);
+        table->setCellWidget(p, 2, phaseDiffLabel);
+        table->setCellWidget(p, 3, powerLabel);
     }
 
-    /// Layout for constrols (side panel)
+    
+    table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+
+    /// Layout for controls (side panel)
     auto sideVBox = new QVBoxLayout(this);
     sideVBox->setContentsMargins(QMargins(0, 20, 0, 20));
     outerHBox->addLayout(sideVBox);
 
-    /// Enable/disable plots
+    /// Toggle Visibility
     {
-        auto groupBox = new QGroupBox("Hide or Show", this);
+        auto groupBox = new QGroupBox("Toggle Visibility", this);
         sideVBox->addWidget(groupBox);
         auto groupGrid = new QGridLayout(groupBox);
 
@@ -348,7 +379,6 @@ void MonitorView::update()
     FloatType phaseRef = std::arg(est.phasors[0]);
     for (SizeType i = 0; i < NumChannels; ++i) {
         phaseDiffs[i] = std::arg(est.phasors[i]) - phaseRef;
-        phaseDiffs[i] = std::fmod(phaseDiffs[i] + 2 * M_PI, 2 * M_PI);
         amplitudes[i] = std::abs(est.phasors[i]);
     }
 
@@ -474,17 +504,25 @@ void MonitorView::update()
             const auto &iAmpli = amplitudes[iIdx];
             const auto &vPhase = phaseDiffs[vIdx] * 180 / M_PI;
             const auto &iPhase = phaseDiffs[iIdx] * 180 / M_PI;
-            const auto &phaseDiff = std::abs(std::fmod(vPhase - iPhase + 2 * 360, 360));
+            auto diff = std::abs(vPhase - iPhase);
+            const auto &phaseDiff = std::min(diff, 360 - diff);
             const auto &power = est.power[p];
 
-            m_phasorValueLabels[vIdx]->setText("<b>" + QString::number(vAmpli, 'f', 2) + "</b> "
-                                               + SignalTypeUnit[SignalType::Voltage] + "  ∠  <b>"
-                                               + QString::number(vPhase, 'f', 2) + "</b>°");
-            m_phasorValueLabels[iIdx]->setText("<b>" + QString::number(iAmpli, 'f', 2) + "</b> "
-                                               + SignalTypeUnit[SignalType::Current] + "  ∠  <b>"
-                                               + QString::number(iPhase, 'f', 2) + "</b>°");
-            m_phaseDiffLabels[p]->setText("<b>" + QString::number(phaseDiff, 'f', 2) + "</b>°");
-            m_phasePowerLabels[p]->setText("<b>" + QString::number(power, 'f', 2) + "</b> W");
+            auto vPhasorText = QStringLiteral("<b>%1</b> %2  ∠  <b>%3</b> °")
+                                       .arg(vAmpli, 8, 'f', 2, ' ')
+                                       .arg(SignalTypeUnit[SignalType::Voltage])
+                                       .arg(vPhase, 8, 'f', 2, ' ');
+            auto iPhasorText = QStringLiteral("<b>%1</b> %2  ∠  <b>%3</b> °")
+                                       .arg(iAmpli, 8, 'f', 2, ' ')
+                                       .arg(SignalTypeUnit[SignalType::Current])
+                                       .arg(iPhase, 8, 'f', 2, ' ');
+            auto phaseDiffText = QStringLiteral("<b>%1</b> °").arg(phaseDiff, 8, 'f', 2, ' ');
+            auto powerText = QStringLiteral("<b>%1</b> W").arg(power, 8, 'f', 2, ' ');
+
+            m_phasorValueLabels[vIdx]->setText(vPhasorText);
+            m_phasorValueLabels[iIdx]->setText(iPhasorText);
+            m_phaseDiffLabels[p]->setText(phaseDiffText);
+            m_phasePowerLabels[p]->setText(powerText);
         }
     }
 }
