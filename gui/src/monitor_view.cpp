@@ -5,6 +5,7 @@
 #include <iostream>
 #include <qabstractseries.h>
 #include <qlineseries.h>
+#include <qnamespace.h>
 #include <qradiobutton.h>
 
 QPointF unitvector(qreal angle)
@@ -28,14 +29,14 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     auto outerHBox = new QHBoxLayout(this);
     setLayout(outerHBox);
 
-    /// Visualization area layout
-    auto visualVbox = new QVBoxLayout(this);
-    outerHBox->addLayout(visualVbox);
+    /// Data visualization area layout
+    auto dataVBox = new QVBoxLayout(this);
+    outerHBox->addLayout(dataVBox);
 
     /// ChartView
     auto chartView = new QChartView(this);
     chartView->setRenderHint(QPainter::Antialiasing, true);
-    visualVbox->addWidget(chartView);
+    dataVBox->addWidget(chartView);
 
     /// Chart
     auto chart = new QChart();
@@ -107,7 +108,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         hor->append(Scale * QPointF(Spacing + PolarGraphWidth + RectGraphWidth, 0));
     }
 
-    /// Data
+    /// Charts
     for (SizeType i = 0; i < NumChannels; ++i) {
         auto name = QString(Signals[i].name);
         auto color = QColor(Signals[i].colorHex);
@@ -151,6 +152,61 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_connectorPointsList[i] = QVector<QPointF>(2);
     }
 
+    /// Tables
+    auto tableLayout = new QGridLayout(this);
+    dataVBox->addLayout(tableLayout);
+
+    /// Table vertical headers (one for each phase)
+    for (SizeType p = 0; p < NumPhases; ++p) {
+        auto label = new QLabel(QString(SignalPhaseId[p]), this);
+        label->setAlignment(Qt::AlignRight);
+        if (p == 0) {
+            label->setText(label->text() + QStringLiteral(" (Ref.)"));
+        }
+        tableLayout->addWidget(label, p + 1, 0);
+    }
+
+    /// Table horizontal headers (voltage, current, phase diff., power)
+    for (int i = 0; i < NumTableColumns; ++i) {
+        auto label = new QLabel(TableHHeaders[i], this);
+        label->setAlignment(Qt::AlignCenter);
+        if (i == 0) {
+            label->setAlignment(Qt::AlignRight);
+        }
+        tableLayout->addWidget(label, 0, i);
+    }
+
+    for (SizeType p = 0; p < NumPhases; ++p) {
+        const auto &[vIdx, iIdx] = SignalPhasePairs[p];
+        auto vColorLabel = new QLabel(this);
+        vColorLabel->setPixmap(circlePixmap(QColor(Signals[vIdx].colorHex), 10));
+        auto vPhasorLabel = new QLabel("_", this);
+        auto iColorLabel = new QLabel(this);
+        iColorLabel->setPixmap(circlePixmap(QColor(Signals[iIdx].colorHex), 10));
+        auto iPhasorLabel = new QLabel("_", this);
+        auto phaseDiffLabel = new QLabel("_", this);
+        auto powerLabel = new QLabel("_", this);
+
+        vColorLabel->setAlignment(Qt::AlignRight);
+        vPhasorLabel->setAlignment(Qt::AlignLeft);
+        iColorLabel->setAlignment(Qt::AlignRight);
+        iPhasorLabel->setAlignment(Qt::AlignLeft);
+        phaseDiffLabel->setAlignment(Qt::AlignCenter);
+        powerLabel->setAlignment(Qt::AlignCenter);
+
+        m_phasorValueLabels[vIdx] = vPhasorLabel;
+        m_phasorValueLabels[iIdx] = iPhasorLabel;
+        m_phaseDiffLabels[p] = phaseDiffLabel;
+        m_phasePowerLabels[p] = powerLabel;
+
+        tableLayout->addWidget(vColorLabel, p + 1, 1);
+        tableLayout->addWidget(vPhasorLabel, p + 1, 2);
+        tableLayout->addWidget(iColorLabel, p + 1, 3);
+        tableLayout->addWidget(iPhasorLabel, p + 1, 4);
+        tableLayout->addWidget(phaseDiffLabel, p + 1, 5);
+        tableLayout->addWidget(powerLabel, p + 1, 6);
+    }
+
     /// Layout for constrols (side panel)
     auto sideVBox = new QVBoxLayout(this);
     sideVBox->setContentsMargins(QMargins(0, 20, 0, 20));
@@ -158,9 +214,18 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
     /// Enable/disable plots
     {
-        auto groupBox = new QGroupBox("Plot Contents", this);
+        auto groupBox = new QGroupBox("Hide or Show", this);
         sideVBox->addWidget(groupBox);
         auto groupGrid = new QGridLayout(groupBox);
+
+        /// Connectors
+        auto checkConnectors = new QCheckBox("Connector lines", this);
+        connect(checkConnectors, &QCheckBox::toggled, [=](bool checked) {
+            for (SizeType i = 0; i < NumChannels; ++i) {
+                m_connectorSeriesList[i]->setVisible(checked && m_phasorSeriesList[i]->isVisible());
+            }
+        });
+        checkConnectors->setChecked(true);
 
         for (SignalType type : { SignalType::Voltage, SignalType::Current }) {
             /// Individual voltages or currents
@@ -171,10 +236,11 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
                     connect(check, &QCheckBox::toggled, [=](bool checked) {
                         m_phasorSeriesList[i]->setVisible(checked);
                         m_waveformSeriesList[i]->setVisible(checked);
-                        m_connectorSeriesList[i]->setVisible(checked);
+                        m_connectorSeriesList[i]->setVisible(checked
+                                                             && checkConnectors->isChecked());
                     });
                     check->setChecked(true);
-                    check->setIcon(circleIcon(QColor(Signals[i].colorHex), 10));
+                    check->setIcon(circlePixmap(QColor(Signals[i].colorHex), 10));
                     check->setText(Signals[i].name);
                     groupGrid->addWidget(check, checks.size(), type);
                     checks.append(check);
@@ -208,59 +274,41 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
             }
         }
 
-        /// Connectors
-        auto checkConnectors = new QCheckBox("Connector lines", this);
-        connect(checkConnectors, &QCheckBox::toggled, [=](bool checked) {
-            for (SizeType i = 0; i < NumChannels; ++i) {
-                m_connectorSeriesList[i]->setVisible(checked && m_phasorSeriesList[i]->isVisible());
-            }
-        });
-        checkConnectors->setChecked(true);
         groupGrid->addWidget(checkConnectors, groupGrid->rowCount(), 0, 1, 2);
     }
 
     /// Plot ranges
     {
-        auto groupBox = new QGroupBox("Plot Ranges", this);
+        auto groupBox = new QGroupBox("Set Plot Range", this);
         sideVBox->addWidget(groupBox);
         auto groupGrid = new QGridLayout(groupBox);
 
-        auto makeComboBox = [=](const qreal *options, int numOptions, int &index, char unit) {
-            auto comboBox = new QComboBox(this);
-            for (int i = 0; i < numOptions; ++i) {
-                comboBox->addItem(options[i] == 0 ? QStringLiteral("Auto")
-                                                  : (QString::number(options[i]) + ' ' + unit));
-            }
-            connect(comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
-                    [&](int i) { index = i; });
-            comboBox->setCurrentIndex(0);
-            return comboBox;
-        };
-
         m_plotRangeIndex[0] = m_plotRangeIndex[1] = 0;
 
-        /// Voltage plot range
-        {
-            auto comboBox =
-                    makeComboBox(VoltagePlotRanges, sizeof(VoltagePlotRanges) / sizeof(qreal),
-                                 m_plotRangeIndex[SignalType::Voltage], 'V');
-            groupGrid->addWidget(new QLabel("Voltage"), 0, 0);
-            groupGrid->addWidget(comboBox, 0, 1);
-        }
-
-        /// Current plot range
-        {
-            auto comboBox =
-                    makeComboBox(CurrentPlotRanges, sizeof(CurrentPlotRanges) / sizeof(qreal),
-                                 m_plotRangeIndex[SignalType::Current], 'A');
-            groupGrid->addWidget(new QLabel("Current"), 1, 0);
-            groupGrid->addWidget(comboBox, 1, 1);
+        for (SignalType type : { SignalType::Voltage, SignalType::Current }) {
+            auto combo = new QComboBox(this);
+            for (int i = 0; i < (int)PlotRangeOptions[type].size(); ++i) {
+                auto text = PlotRangeOptions[type][i] == 0
+                        ? QStringLiteral("Auto")
+                        : (QString::number(PlotRangeOptions[type][i])
+                           + (type == SignalType::Voltage ? QStringLiteral(" V")
+                                                          : QStringLiteral(" A")));
+                combo->addItem(text);
+            }
+            connect(combo, &QComboBox::currentIndexChanged,
+                    [=](int index) { m_plotRangeIndex[type] = index; });
+            combo->setCurrentIndex(0);
+            auto label = new QLabel((type == SignalType::Voltage ? QStringLiteral("Voltage")
+                                                                 : QStringLiteral("Current")),
+                                    this);
+            groupGrid->addWidget(label, type, 0);
+            groupGrid->addWidget(combo, type, 1);
         }
     }
 
     /// Frequency Simulation
     {
-        auto groupBox = new QGroupBox("Frequency Simulation", this);
+        auto groupBox = new QGroupBox("Simulate Frequency", this);
         sideVBox->addWidget(groupBox);
         auto groupGrid = new QGridLayout(groupBox);
         QList<QRadioButton *> radioButtons;
@@ -291,41 +339,44 @@ void MonitorView::update()
     if (!isVisible())
         return;
 
-    std::array<FloatType, NumChannels> phaseDiffs; // in radians
-    std::array<FloatType, NumChannels> amplitudes;
-
     Estimations est;
     m_worker->getEstimations(est);
 
+    std::array<FloatType, NumChannels> phaseDiffs;
+    std::array<FloatType, NumChannels> amplitudes;
+
     FloatType phaseRef = std::arg(est.phasors[0]);
-    FloatType maxAmpli[2] = { 0, 0 };
-
     for (SizeType i = 0; i < NumChannels; ++i) {
-        phaseDiffs[i] = std::arg(est.phasors[i]);
+        phaseDiffs[i] = std::arg(est.phasors[i]) - phaseRef;
+        phaseDiffs[i] = std::fmod(phaseDiffs[i] + 2 * M_PI, 2 * M_PI);
         amplitudes[i] = std::abs(est.phasors[i]);
-
-        maxAmpli[Signals[i].type] = std::max(maxAmpli[Signals[i].type], amplitudes[i]);
     }
 
+    std::array<FloatType, NumChannels> plotPhaseDiffs = phaseDiffs;
+    std::array<FloatType, NumChannels> plotAmplitudes = amplitudes;
+
+    FloatType maxAmpli[2] = { 0, 0 };
     for (SizeType i = 0; i < NumChannels; ++i) {
-        phaseDiffs[i] -= phaseRef;
+        maxAmpli[Signals[i].type] = std::max(maxAmpli[Signals[i].type], plotAmplitudes[i]);
+    }
+    for (SizeType i = 0; i < NumChannels; ++i) {
         if (m_plotRangeIndex[Signals[i].type] > 0) {
-            amplitudes[i] /= m_plotRangeIndex[Signals[i].type];
+            plotAmplitudes[i] /= m_plotRangeIndex[Signals[i].type];
         } else {
-            amplitudes[i] /= maxAmpli[Signals[i].type];
+            plotAmplitudes[i] /= maxAmpli[Signals[i].type];
         }
     }
 
     if (m_simulationFrequencyIndex > 0) {
         /// simulating; nudge the phasors according to the chosen frequency
         FloatType f = SimulationFrequencyOptions[m_simulationFrequencyIndex];
-        FloatType delta = 2 * M_PI * f * UpdateIntervalMs / 1000;
+        FloatType delta = 2 * M_PI * f * UpdateIntervalMs / 1000.0;
         for (SizeType i = 0; i < NumChannels; ++i) {
             m_plottedPhasors[i] *= std::polar(1.0, delta);
         }
     } else {
         for (SizeType i = 0; i < NumChannels; ++i) {
-            m_plottedPhasors[i] = std::polar(amplitudes[i], phaseDiffs[i]);
+            m_plottedPhasors[i] = std::polar(plotAmplitudes[i], plotPhaseDiffs[i]);
         }
     }
 
@@ -355,7 +406,7 @@ void MonitorView::update()
         m_phasorPointsList[i][4] = alphaHypotenuse * unitvector(phase - alpha);
         // if ampli > 1, which may be the case when the user picks an amplitude range for plotting,
         // clip the phasor to the unit circle and remove the arros
-        if (ampli > 1 + 1e-3) {
+        if (ampli > 1 + 1e-9) {
             ampli = 1;
             m_phasorPointsList[i][1] = ampli * unitvector(phase);
             m_phasorPointsList[i][2] = m_phasorPointsList[i][0];
@@ -406,5 +457,34 @@ void MonitorView::update()
         m_phasorSeriesList[i]->replace(m_phasorPointsList[i]);
         m_waveformSeriesList[i]->replace(m_waveformPointsList[i]);
         m_connectorSeriesList[i]->replace(m_connectorPointsList[i]);
+    }
+
+    if (m_simulationFrequencyIndex > 0) {
+        for (SizeType p = 0; p < NumPhases; ++p) {
+            const auto &[vIdx, iIdx] = SignalPhasePairs[p];
+            m_phasorValueLabels[vIdx]->setText("_");
+            m_phasorValueLabels[iIdx]->setText("_");
+            m_phaseDiffLabels[p]->setText("_");
+            m_phasePowerLabels[p]->setText("_");
+        }
+    } else {
+        for (SizeType p = 0; p < NumPhases; ++p) {
+            const auto &[vIdx, iIdx] = SignalPhasePairs[p];
+            const auto &vAmpli = amplitudes[vIdx];
+            const auto &iAmpli = amplitudes[iIdx];
+            const auto &vPhase = phaseDiffs[vIdx] * 180 / M_PI;
+            const auto &iPhase = phaseDiffs[iIdx] * 180 / M_PI;
+            const auto &phaseDiff = std::abs(std::fmod(vPhase - iPhase + 2 * 360, 360));
+            const auto &power = est.power[p];
+
+            m_phasorValueLabels[vIdx]->setText("<b>" + QString::number(vAmpli, 'f', 2) + "</b> "
+                                               + SignalTypeUnit[SignalType::Voltage] + "  ∠  <b>"
+                                               + QString::number(vPhase, 'f', 2) + "</b>°");
+            m_phasorValueLabels[iIdx]->setText("<b>" + QString::number(iAmpli, 'f', 2) + "</b> "
+                                               + SignalTypeUnit[SignalType::Current] + "  ∠  <b>"
+                                               + QString::number(iPhase, 'f', 2) + "</b>°");
+            m_phaseDiffLabels[p]->setText("<b>" + QString::number(phaseDiff, 'f', 2) + "</b>°");
+            m_phasePowerLabels[p]->setText("<b>" + QString::number(power, 'f', 2) + "</b> W");
+        }
     }
 }

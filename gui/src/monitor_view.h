@@ -11,6 +11,7 @@
 #include <QGridLayout>
 #include <QColor>
 #include <QComboBox>
+#include <QIcon>
 #include <QRadioButton>
 #include <QCheckBox>
 #include <QLabel>
@@ -32,9 +33,17 @@ public:
     static constexpr int NumPointsPerCycle = 2 * 35;
 
     static constexpr quint32 UpdateIntervalMs = 200;
-    static constexpr qreal SimulationFrequencyOptions[] = { 0, 0.125, 0.25, 0.5, 1, 2 };
-    static constexpr qreal VoltagePlotRanges[] = { 0, 60, 120, 180, 240, 300, 360 };
-    static constexpr qreal CurrentPlotRanges[] = { 0, 1, 2, 10, 20, 100, 200 };
+    static constexpr std::array<qreal, 6> SimulationFrequencyOptions = {
+        0, 0.125, 0.25, 0.5, 1, 2
+    };
+    static constexpr std::array<qreal, 7> PlotRangeOptions[2] = {
+        { 0, 60, 120, 180, 240, 300, 360 }, { 0, 1, 2, 10, 20, 100, 200 }
+    };
+
+    static constexpr char const *const TableHHeaders[] = { "Phase ID", "",        "Voltage",
+                                                           "",         "Current", "Phase Diff.",
+                                                           "Power" };
+    static constexpr int NumTableColumns = 7;
 
     MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
 
@@ -54,6 +63,10 @@ private:
     QVector<QPointF> m_phasorPointsList[qpmu::NumChannels];
     QVector<QPointF> m_waveformPointsList[qpmu::NumChannels];
     QVector<QPointF> m_connectorPointsList[qpmu::NumChannels];
+
+    QLabel *m_phasorValueLabels[qpmu::NumChannels];
+    QLabel *m_phaseDiffLabels[qpmu::NumPhases];
+    QLabel *m_phasePowerLabels[qpmu::NumPhases];
 
     int m_simulationFrequencyIndex = 0;
     int m_plotRangeIndex[2] = { 0, 0 };
