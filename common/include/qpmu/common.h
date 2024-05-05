@@ -43,6 +43,8 @@ constexpr Signal Signals[NumChannels] = { { "VA", "#404040", SignalType::Voltage
                                           { "IC", "#00c000", SignalType::Current,
                                             SignalPhase::C } };
 
+constexpr SizeType SignalPhasePairs[NumPhases][2] = { { 0, 3 }, { 1, 4 }, { 2, 5 } };
+
 constexpr bool signal_is_voltage(const Signal &info)
 {
     return info.type == SignalType::Voltage;
@@ -68,8 +70,6 @@ constexpr char signal_phase_char(const Signal &info)
     return SignalPhaseId[static_cast<int>(info.phase)];
 }
 
-constexpr SizeType SignalPhasePairs[NumPhases][2] = { { 0, 3 }, { 1, 4 }, { 2, 5 } };
-
 struct AdcSample
 {
     UIntType seq_no; // Sequence number
@@ -88,7 +88,7 @@ struct Estimations
     ComplexType phasors[NumChannels]; // Estimated phasors
     FloatType freq; // Estimated frequency in Hz
     FloatType rocof; // Estimated rate of change of frequency in Hz/s
-    FloatType power[NumChannels]; // Estimated power in Watt
+    FloatType power[NumPhases]; // Estimated power in Watt
 
     static std::string csv_header();
     friend std::string to_string(const Estimations &est);
