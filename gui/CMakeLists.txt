@@ -31,6 +31,7 @@ set(PROJECT_SOURCES
     src/main.cpp
     src/timeout_notifier.h
     src/timeout_notifier.cpp
+    src/util.cpp
     img/.qrc)
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

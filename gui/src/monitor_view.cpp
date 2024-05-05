@@ -1,5 +1,7 @@
 #include "monitor_view.h"
 #include "qpmu/common.h"
+#include "util.h"
+
 #include <iostream>
 #include <qabstractseries.h>
 #include <qlineseries.h>
@@ -23,12 +25,12 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     connect(m_updateNotifier, &TimeoutNotifier::timeout, this, &MonitorView::update);
 
     /// Layout
-    auto outerHbox = new QHBoxLayout(this);
-    setLayout(outerHbox);
+    auto outerHBox = new QHBoxLayout(this);
+    setLayout(outerHBox);
 
     /// Visualization area layout
     auto visualVbox = new QVBoxLayout(this);
-    outerHbox->addLayout(visualVbox);
+    outerHBox->addLayout(visualVbox);
 
     /// ChartView
     auto chartView = new QChartView(this);
@@ -45,7 +47,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     auto axisX = new QValueAxis(chart);
     chart->addAxis(axisX, Qt::AlignBottom);
     axisX->setLabelsVisible(false);
-    axisX->setRange(0, (PolarGraphWidth + RectGraphWidth + Spacing) * Scale);
+    axisX->setRange(Scale * -0.05, (PolarGraphWidth + RectGraphWidth + Spacing) * Scale);
     axisX->setTickCount(2);
     axisX->setVisible(false);
 
@@ -53,7 +55,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     auto axisY = new QValueAxis(chart);
     chart->addAxis(axisY, Qt::AlignLeft);
     axisY->setLabelsVisible(false);
-    axisY->setRange(Scale * -(PolarGraphWidth / 2), Scale * +(PolarGraphWidth / 2));
+    axisY->setRange(Scale * -(0.05 + PolarGraphWidth / 2), Scale * +(0.05 + PolarGraphWidth / 2));
     axisY->setTickCount(2);
     axisY->setVisible(false);
 
@@ -82,8 +84,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     { /// Polar graph axes
         const auto xOffset = QPointF(PolarGraphWidth / 2, 0);
         for (int radiusPoint = 1; radiusPoint <= 4; ++radiusPoint) {
-            const qreal radius =
-                    qreal(radiusPoint) / 4 * PolarGraphWidth / 2 - bool(radiusPoint == 4) * 0.005;
+            const qreal radius = qreal(radiusPoint) / 4 * PolarGraphWidth / 2;
             auto circle = makeFakeAxisSeries("spline", 1 + bool(radiusPoint == 4) * 1.5);
             for (int i = 0; i <= (360 / 10); ++i) {
                 const qreal theta = qreal(i) / (360.0 / 10) * (2 * M_PI);
@@ -151,26 +152,31 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     }
 
     /// Layout for constrols (side panel)
-    auto sideGrid = new QGridLayout(this);
-    sideGrid->setContentsMargins(QMargins(0, 20, 0, 20));
-    outerHbox->addLayout(sideGrid);
+    auto sideVBox = new QVBoxLayout(this);
+    sideVBox->setContentsMargins(QMargins(0, 20, 0, 20));
+    outerHBox->addLayout(sideVBox);
 
-    /// CheckBoxes to enable/disable series
+    /// Enable/disable plots
     {
-        for (SignalType type : { SignalType::Voltage, SignalType::Current }) {
+        auto groupBox = new QGroupBox("Plot Contents", this);
+        sideVBox->addWidget(groupBox);
+        auto groupGrid = new QGridLayout(groupBox);
 
+        for (SignalType type : { SignalType::Voltage, SignalType::Current }) {
             /// Individual voltages or currents
             QList<QCheckBox *> checks;
             for (SizeType i = 0; i < NumChannels; ++i) {
                 if (Signals[i].type == type) {
-                    auto check = new QCheckBox(Signals[i].name, this);
+                    auto check = new QCheckBox(this);
                     connect(check, &QCheckBox::toggled, [=](bool checked) {
                         m_phasorSeriesList[i]->setVisible(checked);
                         m_waveformSeriesList[i]->setVisible(checked);
                         m_connectorSeriesList[i]->setVisible(checked);
                     });
                     check->setChecked(true);
-                    sideGrid->addWidget(check, checks.size(), type);
+                    check->setIcon(circleIcon(QColor(Signals[i].colorHex), 10));
+                    check->setText(Signals[i].name);
+                    groupGrid->addWidget(check, checks.size(), type);
                     checks.append(check);
                 }
             }
@@ -186,7 +192,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
                 }
             });
             checkAll->setChecked(true);
-            sideGrid->addWidget(checkAll, checks.size(), type);
+            groupGrid->addWidget(checkAll, checks.size(), type);
 
             /// If all checks are checked, then the "All" check should be checked
             for (auto check : checks) {
@@ -201,32 +207,81 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
                 });
             }
         }
+
+        /// Connectors
+        auto checkConnectors = new QCheckBox("Connector lines", this);
+        connect(checkConnectors, &QCheckBox::toggled, [=](bool checked) {
+            for (SizeType i = 0; i < NumChannels; ++i) {
+                m_connectorSeriesList[i]->setVisible(checked && m_phasorSeriesList[i]->isVisible());
+            }
+        });
+        checkConnectors->setChecked(true);
+        groupGrid->addWidget(checkConnectors, groupGrid->rowCount(), 0, 1, 2);
     }
 
-    /// CheckBox to enable/disable connectors
-    auto checkConnectors = new QCheckBox("Connector lines", this);
-    connect(checkConnectors, &QCheckBox::toggled, [=](bool checked) {
-        for (SizeType i = 0; i < NumChannels; ++i) {
-            m_connectorSeriesList[i]->setVisible(checked && m_phasorSeriesList[i]->isVisible());
-        }
-    });
-    checkConnectors->setChecked(true);
-    sideGrid->addWidget(checkConnectors, sideGrid->rowCount(), 0, 1, 2);
-
-    /// ComboBox
-    auto labelSimulate = new QLabel("Simulation frequency: ", this);
-    sideGrid->addWidget(labelSimulate);
-    m_comboSimulationFrequency = new QComboBox(this);
+    /// Plot ranges
     {
-        QStringList items;
-        items << "Off";
-        for (auto f : SimulationFrequencyOptions) {
-            items << QString::number(f) + " Hz";
+        auto groupBox = new QGroupBox("Plot Ranges", this);
+        sideVBox->addWidget(groupBox);
+        auto groupGrid = new QGridLayout(groupBox);
+
+        auto makeComboBox = [=](const qreal *options, int numOptions, int &index, char unit) {
+            auto comboBox = new QComboBox(this);
+            for (int i = 0; i < numOptions; ++i) {
+                comboBox->addItem(options[i] == 0 ? QStringLiteral("Auto")
+                                                  : (QString::number(options[i]) + ' ' + unit));
+            }
+            connect(comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+                    [&](int i) { index = i; });
+            comboBox->setCurrentIndex(0);
+            return comboBox;
+        };
+
+        m_plotRangeIndex[0] = m_plotRangeIndex[1] = 0;
+
+        /// Voltage plot range
+        {
+            auto comboBox =
+                    makeComboBox(VoltagePlotRanges, sizeof(VoltagePlotRanges) / sizeof(qreal),
+                                 m_plotRangeIndex[SignalType::Voltage], 'V');
+            groupGrid->addWidget(new QLabel("Voltage"), 0, 0);
+            groupGrid->addWidget(comboBox, 0, 1);
         }
-        m_comboSimulationFrequency->addItems(items);
+
+        /// Current plot range
+        {
+            auto comboBox =
+                    makeComboBox(CurrentPlotRanges, sizeof(CurrentPlotRanges) / sizeof(qreal),
+                                 m_plotRangeIndex[SignalType::Current], 'A');
+            groupGrid->addWidget(new QLabel("Current"), 1, 0);
+            groupGrid->addWidget(comboBox, 1, 1);
+        }
     }
-    m_comboSimulationFrequency->setCurrentIndex(0);
-    sideGrid->addWidget(m_comboSimulationFrequency);
+
+    /// Frequency Simulation
+    {
+        auto groupBox = new QGroupBox("Frequency Simulation", this);
+        sideVBox->addWidget(groupBox);
+        auto groupGrid = new QGridLayout(groupBox);
+        QList<QRadioButton *> radioButtons;
+        m_simulationFrequencyIndex = 0;
+        int i = 0;
+        for (FloatType f : SimulationFrequencyOptions) {
+            QString text = (f == 0) ? "Off" : QString::number(f) + " Hz";
+            auto radio = new QRadioButton(text, this);
+            connect(radio, &QRadioButton::toggled, [=](bool checked) {
+                if (checked) {
+                    m_simulationFrequencyIndex = i;
+                }
+            });
+            if (i == 0) {
+                radio->setChecked(true);
+            }
+            groupGrid->addWidget(radio, (i % 3), (i / 3));
+            radioButtons.append(radio);
+            ++i;
+        }
+    }
 }
 
 void MonitorView::update()
@@ -254,12 +309,16 @@ void MonitorView::update()
 
     for (SizeType i = 0; i < NumChannels; ++i) {
         phaseDiffs[i] -= phaseRef;
-        amplitudes[i] /= maxAmpli[Signals[i].type];
+        if (m_plotRangeIndex[Signals[i].type] > 0) {
+            amplitudes[i] /= m_plotRangeIndex[Signals[i].type];
+        } else {
+            amplitudes[i] /= maxAmpli[Signals[i].type];
+        }
     }
 
-    if (m_comboSimulationFrequency->currentIndex() > 0) {
+    if (m_simulationFrequencyIndex > 0) {
         /// simulating; nudge the phasors according to the chosen frequency
-        FloatType f = SimulationFrequencyOptions[m_comboSimulationFrequency->currentIndex() - 1];
+        FloatType f = SimulationFrequencyOptions[m_simulationFrequencyIndex];
         FloatType delta = 2 * M_PI * f * UpdateIntervalMs / 1000;
         for (SizeType i = 0; i < NumChannels; ++i) {
             m_plottedPhasors[i] *= std::polar(1.0, delta);
@@ -274,6 +333,7 @@ void MonitorView::update()
         auto phasor = m_plottedPhasors[i];
         auto phase = std::arg(phasor);
         auto ampli = std::abs(phasor);
+        ampli *= 0.995;
 
         /// Phasor series path: origin > phasor > arrow-left-arm > phasor > arrow-right-arm
         /// ---
@@ -289,10 +349,19 @@ void MonitorView::update()
                     std::sqrt(alphaOpposite * alphaOpposite + alphaAdjacent * alphaAdjacent);
         }
         m_phasorPointsList[i][0] = QPointF(0, 0);
-        m_phasorPointsList[i][1] = ampli * 0.99 * unitvector(phase);
+        m_phasorPointsList[i][1] = ampli * unitvector(phase);
         m_phasorPointsList[i][2] = alphaHypotenuse * unitvector(phase + alpha);
         m_phasorPointsList[i][3] = m_phasorPointsList[i][1];
         m_phasorPointsList[i][4] = alphaHypotenuse * unitvector(phase - alpha);
+        // if ampli > 1, which may be the case when the user picks an amplitude range for plotting,
+        // clip the phasor to the unit circle and remove the arros
+        if (ampli > 1 + 1e-3) {
+            ampli = 1;
+            m_phasorPointsList[i][1] = ampli * unitvector(phase);
+            m_phasorPointsList[i][2] = m_phasorPointsList[i][0];
+            m_phasorPointsList[i][3] = m_phasorPointsList[i][1];
+            m_phasorPointsList[i][4] = m_phasorPointsList[i][0];
+        }
 
         /// Waveform points are generated by simulating the sinusoid
         /// ---

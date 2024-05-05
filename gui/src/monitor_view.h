@@ -28,11 +28,13 @@ public:
     static constexpr qreal PolarGraphWidth = 2;
     static constexpr qreal RectGraphWidth = 4;
 
-    static constexpr quint32 UpdateIntervalMs = 200;
-    static constexpr qreal SimulationFrequencyOptions[] = { 2, 1, 0.5, 0.25, 0.125 };
-
     static constexpr int NumCycles = 2;
     static constexpr int NumPointsPerCycle = 2 * 35;
+
+    static constexpr quint32 UpdateIntervalMs = 200;
+    static constexpr qreal SimulationFrequencyOptions[] = { 0, 0.125, 0.25, 0.5, 1, 2 };
+    static constexpr qreal VoltagePlotRanges[] = { 0, 60, 120, 180, 240, 300, 360 };
+    static constexpr qreal CurrentPlotRanges[] = { 0, 1, 2, 10, 20, 100, 200 };
 
     MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
 
@@ -41,6 +43,7 @@ private slots:
 
 private:
     Worker *m_worker;
+    TimeoutNotifier *m_updateNotifier;
 
     qpmu::ComplexType m_plottedPhasors[qpmu::NumChannels];
 
@@ -52,9 +55,8 @@ private:
     QVector<QPointF> m_waveformPointsList[qpmu::NumChannels];
     QVector<QPointF> m_connectorPointsList[qpmu::NumChannels];
 
-    TimeoutNotifier *m_updateNotifier;
-
-    QComboBox *m_comboSimulationFrequency;
+    int m_simulationFrequencyIndex = 0;
+    int m_plotRangeIndex[2] = { 0, 0 };
 };
 
 #endif // MONITOR_VIEW_H
