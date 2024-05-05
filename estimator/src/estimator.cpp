@@ -61,9 +61,7 @@ qpmu::Estimations qpmu::Estimator::estimate_measurements(qpmu::AdcSample sample)
     for (SizeType i = 0; i < NumChannels; ++i) {
         const auto &scale = (signal_is_voltage(Signals[i]) ? m_scale_voltage : m_scale_current);
         const auto &offset = (signal_is_voltage(Signals[i]) ? m_offset_voltage : m_offset_current);
-        // if (signal_is_voltage(Signals[i])) std::cerr << (signal_unit_char(Signals[i])) << ": " << sample.ch[i];
         sample.ch[i] = (sample.ch[i] * scale) + offset;
-        // if (signal_is_voltage(Signals[i])) std::cerr << " -> " << sample.ch[i] << '\n';
     }
 
     /**
