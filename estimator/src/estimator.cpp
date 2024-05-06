@@ -163,7 +163,6 @@ qpmu::Estimations qpmu::Estimator::estimate_measurements(qpmu::AdcSample sample)
     for (SizeType p = 0; p < NumPhases; ++p) {
         const auto &[v_index, i_index] = SignalPhasePairs[p];
         cur.power[p] = (cur.phasors[v_index] * std::conj(cur.phasors[i_index])).real();
-        cur.power[p] /= NumChannels;
     }
 
     // Update the index
