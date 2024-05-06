@@ -144,10 +144,8 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     table->setColumnCount(NumTableColumns);
     table->setRowCount(NumPhases);
     table->setContentsMargins(QMargins(10, 0, 10, 0));
-    table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     table->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table->setSelectionMode(QAbstractItemView::NoSelection);
     table->setFocusPolicy(Qt::NoFocus);
