@@ -23,6 +23,19 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     auto dataVBox = new QVBoxLayout();
     outerHBox->addLayout(dataVBox);
 
+    /// Status label
+    m_statusLabel = new QLabel();
+    dataVBox->addWidget(m_statusLabel);
+    m_statusLabel->setAutoFillBackground(true);
+    m_statusLabel->setAlignment(Qt::AlignLeft);
+    m_statusLabel->setContentsMargins(QMargins(10, 5, 10, 5));
+    m_statusLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    {
+        auto font = m_statusLabel->font();
+        font.setPointSize(font.pointSize() * 1.25);
+        m_statusLabel->setFont(font);
+    }
+
     /// ChartView
     auto chartView = new QChartView();
     dataVBox->addWidget(chartView, 2);
@@ -245,7 +258,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     /// Layout for controls (side panel)
     auto sideVBox = new QVBoxLayout();
     outerHBox->addLayout(sideVBox);
-    sideVBox->setContentsMargins(QMargins(0, 20, 0, 20));
+    sideVBox->setContentsMargins(QMargins(0, 0, 0, 0));
 
     /// Toggle visibility
     {
@@ -487,6 +500,19 @@ void MonitorView::update()
         m_phasorSeriesList[i]->replace(m_phasorPointsList[i]);
         m_waveformSeriesList[i]->replace(m_waveformPointsList[i]);
         m_connectorSeriesList[i]->replace(m_connectorPointsList[i]);
+    }
+
+    if (m_simulationFrequencyIndex > 0) {
+        m_statusLabel->setBackgroundRole(QPalette::Highlight);
+        m_statusLabel->setText(
+                QStringLiteral("Simulating signals at <strong>")
+                + QString::number(SimulationFrequencyOptions[m_simulationFrequencyIndex])
+                + QStringLiteral(" Hz</strong>"));
+    } else {
+        m_statusLabel->setBackgroundRole(QPalette::Midlight);
+        m_statusLabel->setText(
+                QStringLiteral("Live signals at <strong>") + QString::number(est.freq, 'f', 1)
+                + QStringLiteral(" Hz</strong> (phases are relative to phase of VA)"));
     }
 
     if (m_simulationFrequencyIndex > 0) {

@@ -63,6 +63,7 @@ private:
     QVector<QPointF> m_waveformPointsList[qpmu::NumChannels];
     QVector<QPointF> m_connectorPointsList[qpmu::NumChannels];
 
+    QLabel *m_statusLabel;
     QLabel *m_phasorLabels[qpmu::NumChannels];
     QLabel *m_phaseDiffLabels[qpmu::NumPhases];
     QLabel *m_phasePowerLabels[qpmu::NumPhases];
