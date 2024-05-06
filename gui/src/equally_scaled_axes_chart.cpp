@@ -1,11 +1,11 @@
-#include "fixed_aspect_ratio_chart.h"
+#include "equally_scaled_axes_chart.h"
 
-FixedAspectRatioChart::FixedAspectRatioChart(QGraphicsItem *parent, Qt::WindowFlags wFlags)
+EquallyScaledAxesChart::EquallyScaledAxesChart(QGraphicsItem *parent, Qt::WindowFlags wFlags)
     : QChart(parent, wFlags)
 {
 }
 
-void FixedAspectRatioChart::resizeEvent(QGraphicsSceneResizeEvent *event)
+void EquallyScaledAxesChart::resizeEvent(QGraphicsSceneResizeEvent *event)
 {
 
     QChart::resizeEvent(event);

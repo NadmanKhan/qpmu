@@ -1,18 +1,18 @@
-#ifndef FIXED_ASPECT_RATIO_CHART_H
-#define FIXED_ASPECT_RATIO_CHART_H
+#ifndef EQUALLY_SCALED_AXES_CHART_H
+#define EQUALLY_SCALED_AXES_CHART_H
 
 #include <QtWidgets>
 #include <QtCharts>
 #include <QGraphicsSceneResizeEvent>
 
-class FixedAspectRatioChart : public QChart
+class EquallyScaledAxesChart : public QChart
 {
 public:
-    FixedAspectRatioChart(QGraphicsItem *parent = nullptr,
+    EquallyScaledAxesChart(QGraphicsItem *parent = nullptr,
                           Qt::WindowFlags wFlags = Qt::WindowFlags());
 
 protected:
     void resizeEvent(QGraphicsSceneResizeEvent *event) override;
 };
 
-#endif // FIXED_ASPECT_RATIO_CHART_H
+#endif // EQUALLY_SCALED_AXES_CHART_H

@@ -31,8 +31,8 @@ set(PROJECT_SOURCES
     src/main.cpp
     src/timeout_notifier.h
     src/timeout_notifier.cpp
-    src/fixed_aspect_ratio_chart.h
-    src/fixed_aspect_ratio_chart.cpp
+    src/equally_scaled_axes_chart.h
+    src/equally_scaled_axes_chart.cpp
     src/util.cpp
     img/.qrc)
 
