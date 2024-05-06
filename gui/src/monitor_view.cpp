@@ -1,6 +1,8 @@
 #include "monitor_view.h"
 #include "util.h"
 
+#include <cmath>
+
 MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     : QWidget(parent), m_worker(worker)
 {
