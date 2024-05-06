@@ -5,6 +5,8 @@
 #include <QPixmap>
 #include <QIcon>
 
+#include <cmath>
+
 QPixmap circlePixmap(const QColor &color, int size);
 
 QPixmap twoColorCirclePixmap(const QColor &color1, const QColor &color2, int size);
