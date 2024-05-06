@@ -59,10 +59,6 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         Q_ASSERT(s);
         auto color = QColor("lightGray");
         s->setPen(QPen(color, penWidth));
-        if (type == "scatter") {
-            s->setBrush(QBrush(color));
-            s->setMarkerSize(0);
-        }
         chart->addSeries(s);
         s->attachAxis(axisX);
         s->attachAxis(axisY);
