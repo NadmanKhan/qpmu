@@ -36,3 +36,8 @@ QPixmap twoColorCirclePixmap(const QColor &color1, const QColor &color2, int siz
 
     return pixmap;
 }
+
+QPointF unitvector(qreal angle)
+{
+    return QPointF(std::cos(angle), std::sin(angle));
+}
