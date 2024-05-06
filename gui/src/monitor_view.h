@@ -20,12 +20,12 @@
 #include "qpmu/common.h"
 #include "worker.h"
 #include "timeout_notifier.h"
+#include "equally_scaled_axes_chart.h"
 
 class MonitorView : public QWidget
 {
     Q_OBJECT
 public:
-    static constexpr qreal Scale = 5;
     static constexpr qreal Spacing = 0.25;
     static constexpr qreal PolarGraphWidth = 2;
     static constexpr qreal RectGraphWidth = 4;
@@ -53,7 +53,6 @@ private slots:
 private:
     Worker *m_worker;
     TimeoutNotifier *m_updateNotifier;
-
     qpmu::ComplexType m_plottedPhasors[qpmu::NumChannels];
 
     QLineSeries *m_phasorSeriesList[qpmu::NumChannels];
@@ -64,7 +63,7 @@ private:
     QVector<QPointF> m_waveformPointsList[qpmu::NumChannels];
     QVector<QPointF> m_connectorPointsList[qpmu::NumChannels];
 
-    QLabel *m_phasorValueLabels[qpmu::NumChannels];
+    QLabel *m_phasorLabels[qpmu::NumChannels];
     QLabel *m_phaseDiffLabels[qpmu::NumPhases];
     QLabel *m_phasePowerLabels[qpmu::NumPhases];
 
