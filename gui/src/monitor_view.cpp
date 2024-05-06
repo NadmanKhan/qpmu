@@ -331,7 +331,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
                                                           : QStringLiteral(" A")));
                 combo->addItem(text);
             }
-            connect(combo, &QComboBox::currentIndexChanged,
+            connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
                     [=](int index) { m_plotRangeIndex[type] = index; });
             combo->setCurrentIndex(0);
             auto label = new QLabel((type == SignalType::Voltage ? QStringLiteral("Voltage")
