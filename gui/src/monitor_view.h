@@ -31,10 +31,10 @@ class MonitorView : public QWidget
 public:
     static constexpr qreal Spacing = 0.25;
     static constexpr qreal PolarGraphWidth = 2;
-    static constexpr qreal RectGraphWidth = 2;
+    static constexpr qreal RectGraphWidth = 4;
 
-    static constexpr int NumCycles = 1;
-    static constexpr int NumPointsPerCycle = 2 * 7;
+    static constexpr int NumCycles = 2;
+    static constexpr int NumPointsPerCycle = 2 * 5;
 
     static constexpr quint32 UpdateIntervalMs = 100;
     static constexpr std::array<qreal, 6> SimulationFrequencyOptions = {

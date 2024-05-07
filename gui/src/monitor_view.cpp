@@ -442,7 +442,7 @@ void MonitorView::update()
         FloatType f = SimulationFrequencyOptions[m_simulationFrequencyIndex];
         FloatType delta = f * (2 * M_PI * UpdateIntervalMs / 1000.0);
         for (SizeType i = 0; i < NumChannels; ++i) {
-            m_plotPhaseDiffs[i] += delta;
+            m_plotPhaseDiffs[i] = std::fmod(m_plotPhaseDiffs[i] + delta, 2 * M_PI);
             if (m_plotPhaseDiffs[i] < M_PI) {
                 m_plotPhaseDiffs[i] += 2 * M_PI;
             }
@@ -460,7 +460,7 @@ void MonitorView::update()
         FloatType phaseRef = std::arg(est.phasors[0]);
         for (SizeType i = 0; i < NumChannels; ++i) {
             m_plotAmplitudes[i] = std::abs(est.phasors[i]);
-            m_plotPhaseDiffs[i] = std::arg(est.phasors[i]) - phaseRef;
+            m_plotPhaseDiffs[i] = std::fmod(std::arg(est.phasors[i]) - phaseRef + 2 * M_PI, 2 * M_PI);
             if (m_plotPhaseDiffs[i] < M_PI) {
                 m_plotPhaseDiffs[i] += 2 * M_PI;
             }
