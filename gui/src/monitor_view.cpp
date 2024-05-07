@@ -2,6 +2,7 @@
 #include "util.h"
 
 #include <cmath>
+#include <qnamespace.h>
 
 MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     : QWidget(parent), m_worker(worker)
@@ -111,8 +112,8 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         auto color = QColor(Signals[i].colorHex);
         auto phasorPen = QPen(color, 3.0, Qt::SolidLine);
         auto waveformPen = QPen(color, 2, Qt::SolidLine);
-        auto connectorPen = QPen(color, 1.0, Qt::CustomDashLine);
-        connectorPen.setDashPattern(QVector<qreal>() << 15 << 5);
+        auto connectorPen = QPen(color, 1.0, Qt::DotLine);
+        // connectorPen.setDashPattern(QVector<qreal>() << 15 << 5);
 
         /// Phasor series
         auto phasorSeries = new QLineSeries(chart);
