@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     auto font = app.font();
-    // font.setPointSize(font.pointSize() * 1.5);
+    font.setPointSize(font.pointSize() * 1.25);
     app.setFont(font);
 
     Worker worker;

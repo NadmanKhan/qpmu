@@ -11,6 +11,7 @@ QPixmap circlePixmap(const QColor &color, int size);
 
 QPixmap twoColorCirclePixmap(const QColor &color1, const QColor &color2, int size);
 
+QPixmap rectPixmap(const QColor &color, int width, int height);
 
 QPointF unitvector(qreal angle);
 

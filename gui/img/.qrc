@@ -5,5 +5,8 @@
         <file>return.png</file>
         <file>vector.png</file>
         <file>waves.png</file>
+        <file>pause.png</file>
+        <file>play.png</file>
+        <file>dashed-line.png</file>
     </qresource>
 </RCC>
