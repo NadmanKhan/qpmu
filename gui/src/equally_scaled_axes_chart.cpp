@@ -1,9 +1,8 @@
 #include "equally_scaled_axes_chart.h"
 #include <qnamespace.h>
 
-EquallyScaledAxesChart::EquallyScaledAxesChart(Qt::Orientation stretchOriention,
-                                               QGraphicsItem *parent, Qt::WindowFlags wFlags)
-    : QChart(parent, wFlags), m_stretchOirentation(stretchOriention)
+EquallyScaledAxesChart::EquallyScaledAxesChart(QGraphicsItem *parent, Qt::WindowFlags wFlags)
+    : QChart(parent, wFlags)
 {
 }
 
@@ -18,9 +17,11 @@ void EquallyScaledAxesChart::resizeEvent(QGraphicsSceneResizeEvent *event)
 
     auto s = event->newSize();
 
-    if (m_stretchOirentation == Qt::Horizontal) {
+    if (w2h > 1.0) {
+        // too wide
         s.setWidth(s.width() / w2h);
     } else {
+        // too high
         s.setHeight(s.height() * w2h);
     }
 

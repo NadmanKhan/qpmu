@@ -10,14 +10,11 @@
 class EquallyScaledAxesChart : public QChart
 {
 public:
-    EquallyScaledAxesChart(Qt::Orientation stretchOriention, QGraphicsItem *parent = nullptr,
+    EquallyScaledAxesChart(QGraphicsItem *parent = nullptr,
                            Qt::WindowFlags wFlags = Qt::WindowFlags());
 
 protected:
     void resizeEvent(QGraphicsSceneResizeEvent *event) override;
-
-private:
-    Qt::Orientation m_stretchOirentation;
 };
 
 #endif // EQUALLY_SCALED_AXES_CHART_H

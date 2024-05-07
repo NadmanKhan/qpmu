@@ -57,7 +57,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     chartView->setContentsMargins(QMargins(0, 0, 0, 0));
 
     /// Chart
-    auto chart = new EquallyScaledAxesChart(Qt::Vertical);
+    auto chart = new EquallyScaledAxesChart();
     chartView->setChart(chart);
     chart->legend()->hide();
     chart->setAnimationOptions(QChart::NoAnimation);
