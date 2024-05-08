@@ -62,12 +62,8 @@ private:
     qpmu::FloatType m_plotAmplitudes[qpmu::NumChannels];
     qpmu::FloatType m_plotPhaseDiffs[qpmu::NumChannels];
 
-    QList<QLineSeries *> m_phasorFakeAxesSeriesList;
-    QList<QLineSeries *> m_waveformFakeAxesSeriesList;
-    QList<QVector<QPointF>> m_phasorFakeAxesPointList;
-    QList<QVector<QPointF>> m_waveformFakeAxesPointList;
-    QList<QVector<QPointF>> m_phasorFakeAxesPointListCopy;
-    QList<QVector<QPointF>> m_waveformFakeAxesPointListCopy;
+    QList<QLineSeries *> m_phasorFakeAxesSeriesList[2];
+    QList<QLineSeries *> m_waveformFakeAxesSeriesList[2];
 
     QLineSeries *m_phasorSeriesList[qpmu::NumChannels];
     QLineSeries *m_waveformSeriesList[qpmu::NumChannels];

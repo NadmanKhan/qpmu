@@ -5,6 +5,7 @@
 #include <cmath>
 #include <qabstractseries.h>
 #include <qcheckbox.h>
+#include <qdebug.h>
 #include <qlineseries.h>
 #include <qnamespace.h>
 #include <qpalette.h>
@@ -77,8 +78,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     axisY->setVisible(false);
 
     /// Fake axes
-    auto makeFakeAxisSeries = [=](QAbstractSeries::SeriesType type, bool forPhasor,
-                                  qreal penWidth) {
+    auto makeFakeAxisSeries = [=](QAbstractSeries::SeriesType type, qreal penWidth, QString name) {
         QLineSeries *s = nullptr;
         if (type == QAbstractSeries::SeriesTypeSpline) {
             s = new QSplineSeries(chart);
@@ -88,46 +88,66 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         Q_ASSERT(s);
         auto color = QColor("lightGray");
         s->setPen(QPen(color, penWidth));
+        s->setName(name);
         chart->addSeries(s);
         s->attachAxis(axisX);
         s->attachAxis(axisY);
-        if (forPhasor) {
-            m_phasorFakeAxesSeriesList.append(s);
-        } else {
-            m_waveformFakeAxesSeriesList.append(s);
-        }
         return s;
     };
     { /// Polar graph axes
-        for (int radiusPoint = 1; radiusPoint <= 4; ++radiusPoint) {
-            const qreal radius = qreal(radiusPoint) / 4 * PolarGraphWidth / 2;
-            auto circle = makeFakeAxisSeries(QAbstractSeries::SeriesTypeSpline, true,
-                                             1 + bool(radiusPoint == 4) * 1);
-            for (int i = 0; i <= (360 / 10); ++i) {
-                const qreal theta = qreal(i) / (360.0 / 10) * (2 * M_PI);
-                circle->append(radius * unitvector(theta));
+        constexpr qreal xoff[2] = { PolarGraphWidth / 2,
+                                    (PolarGraphWidth + Spacing + RectGraphWidth) / 2 };
+        for (bool b : { 0, 1 }) {
+            auto &seriesList = m_phasorFakeAxesSeriesList[b];
+            for (int radiusPoint = 1; radiusPoint <= 4; ++radiusPoint) {
+                const qreal radius = qreal(radiusPoint) / 4 * PolarGraphWidth / 2;
+                auto circle = makeFakeAxisSeries(QAbstractSeries::SeriesTypeSpline,
+                                                 1 + bool(radiusPoint == 4) * 1,
+                                                 QStringLiteral("Angular Axis"));
+                for (int i = 0; i <= (360 / 10); ++i) {
+                    const qreal theta = qreal(i) / (360.0 / 10) * (2 * M_PI);
+                    circle->append(radius * unitvector(theta));
+                }
+                seriesList.append(circle);
             }
-            m_phasorFakeAxesPointList.append(circle->points());
+            for (int i = 0; i <= (360 / 30); ++i) {
+                qreal theta = qreal(i) / (360.0 / 30) * (2 * M_PI);
+                auto angleTick =
+                        makeFakeAxisSeries(QAbstractSeries::SeriesTypeLine, 1,
+                                           QStringLiteral("Angular Axis Tick at %1°").arg(i * 30));
+                angleTick->append(0, 0);
+                angleTick->append(1.05 * unitvector(theta));
+                seriesList.append(angleTick);
+            }
+            for (auto series : seriesList) {
+                for (int j = 0; j < (int)series->count(); ++j) {
+                    series->replace(j, series->at(j) + QPointF(xoff[b], 0));
+                }
+            }
         }
-        for (int i = 0; i <= (360 / 30); ++i) {
-            qreal theta = qreal(i) / (360.0 / 30) * (2 * M_PI);
-            auto angleTick = makeFakeAxisSeries(QAbstractSeries::SeriesTypeLine, true, 1);
-            angleTick->append(0, 0);
-            angleTick->append(1.05 * unitvector(theta));
-            m_phasorFakeAxesPointList.append(angleTick->points());
-        }
-        m_phasorFakeAxesPointListCopy = m_phasorFakeAxesPointList;
     }
     { /// Rectangular graph axes
-        auto ver = makeFakeAxisSeries(QAbstractSeries::SeriesTypeLine, false, 2);
-        ver->append(0, -(PolarGraphWidth / 2));
-        ver->append(0, +(PolarGraphWidth / 2));
-        m_waveformFakeAxesPointList.append(ver->points());
-        auto hor = makeFakeAxisSeries(QAbstractSeries::SeriesTypeLine, false, 2);
-        hor->append(0, 0);
-        hor->append(RectGraphWidth, 0);
-        m_waveformFakeAxesPointList.append(hor->points());
-        m_waveformFakeAxesPointListCopy = m_waveformFakeAxesPointList;
+        constexpr qreal xoff[2] = { PolarGraphWidth + Spacing,
+                                    ((PolarGraphWidth + Spacing + RectGraphWidth) / 2)
+                                            - (RectGraphWidth / 2) };
+        for (bool b : { 0, 1 }) {
+            auto &seriesList = m_waveformFakeAxesSeriesList[b];
+            auto ver = makeFakeAxisSeries(QAbstractSeries::SeriesTypeLine, 2,
+                                          QStringLiteral("Voltage or Current"));
+            ver->append(0, -(PolarGraphWidth / 2));
+            ver->append(0, +(PolarGraphWidth / 2));
+            auto hor =
+                    makeFakeAxisSeries(QAbstractSeries::SeriesTypeLine, 2, QStringLiteral("Time"));
+            hor->append(0, 0);
+            hor->append(RectGraphWidth, 0);
+            seriesList.append(ver);
+            seriesList.append(hor);
+            for (auto series : m_waveformFakeAxesSeriesList[b]) {
+                for (int j = 0; j < (int)series->count(); ++j) {
+                    series->replace(j, series->at(j) + QPointF(xoff[b], 0));
+                }
+            }
+        }
     }
 
     /// Data
@@ -280,7 +300,14 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         } else {
             m_pausePlayButton->setIcon(QIcon(QStringLiteral(":/play.png")));
             m_pausePlayButton->setText(QStringLiteral("Play"));
+            m_statusLabel->setText(QStringLiteral("<strong>Paused ")
+                                   + ((m_simulationFrequencyIndex > 0)
+                                              ? QStringLiteral("simulation")
+                                              : QStringLiteral("live"))
+                                   + QStringLiteral("</strong>"));
+            m_statusLabel->setForegroundRole(QPalette::Text);
         }
+        forceUpdate();
     });
 
     { /// Toggle visibility
@@ -448,13 +475,6 @@ void MonitorView::update(bool force)
     bool is_simulating = m_simulationFrequencyIndex > 0;
 
     if (!m_playing) {
-        if (!m_statusLabel->text().startsWith(QStringLiteral("Paused"))) {
-            m_statusLabel->setText(
-                    QStringLiteral("<strong>Paused ")
-                    + (is_simulating ? QStringLiteral("simulation") : QStringLiteral("live"))
-                    + QStringLiteral("</strong>"));
-            m_statusLabel->setForegroundRole(QPalette::Text);
-        }
         return;
     }
 
@@ -505,6 +525,7 @@ void MonitorView::update(bool force)
         }
     }
 
+    /// Update points
     for (SizeType i = 0; i < NumChannels; ++i) {
         auto ampli = m_plotAmplitudes[i] / plotMaxAmpli[Signals[i].type];
         auto phase = m_plotPhaseDiffs[i];
@@ -561,21 +582,9 @@ void MonitorView::update(bool force)
         for (auto &point : m_phasorPointsList[i]) {
             point.setX(point.x() + offsetPhasors);
         }
-        m_phasorFakeAxesPointListCopy = m_phasorFakeAxesPointList;
-        for (auto &list : m_phasorFakeAxesPointListCopy) {
-            for (auto &point : list) {
-                point.setX(point.x() + offsetPhasors);
-            }
-        }
 
         for (auto &point : m_waveformPointsList[i]) {
             point.setX(point.x() + offsetWaveforms);
-        }
-        m_waveformFakeAxesPointListCopy = m_waveformFakeAxesPointList;
-        for (auto &list : m_waveformFakeAxesPointListCopy) {
-            for (auto &point : list) {
-                point.setX(point.x() + offsetWaveforms);
-            }
         }
 
         /// Connector points connect the phasor tip to the waveforms first point
@@ -584,30 +593,6 @@ void MonitorView::update(bool force)
         } else {
             m_connectorPointsList[i][0] = m_phasorPointsList[i][1];
             m_connectorPointsList[i][1] = m_waveformPointsList[i][0];
-        }
-    }
-
-    /// Replace points
-    if (m_phasorCheckBox->isChecked()) {
-        for (SizeType i = 0; i < NumChannels; ++i) {
-            m_phasorSeriesList[i]->replace(m_phasorPointsList[i]);
-        }
-        for (int i = 0; i < (int)m_phasorFakeAxesSeriesList.size(); ++i) {
-            m_phasorFakeAxesSeriesList[i]->replace(m_phasorFakeAxesPointListCopy[i]);
-        }
-    }
-    if (m_waveformCheckBox->isChecked()) {
-        for (SizeType i = 0; i < NumChannels; ++i) {
-            m_waveformSeriesList[i]->replace(m_waveformPointsList[i]);
-        }
-        for (int i = 0; i < (int)m_waveformFakeAxesSeriesList.size(); ++i) {
-            m_waveformFakeAxesSeriesList[i]->replace(m_waveformFakeAxesPointListCopy[i]);
-        }
-    }
-    if (m_phasorCheckBox->isChecked() && m_phasorCheckBox->isChecked()
-        && m_waveformCheckBox->isChecked()) {
-        for (SizeType i = 0; i < NumChannels; ++i) {
-            m_connectorSeriesList[i]->replace(m_connectorPointsList[i]);
         }
     }
 
@@ -620,13 +605,60 @@ void MonitorView::update(bool force)
                                              && m_phasorCheckBox->isChecked()
                                              && m_waveformCheckBox->isChecked());
     }
-    for (int i = 0; i < (int)m_phasorFakeAxesSeriesList.size(); ++i) {
-        m_phasorFakeAxesSeriesList[i]->setVisible(m_phasorCheckBox->isChecked());
-    }
-    for (int i = 0; i < (int)m_waveformFakeAxesSeriesList.size(); ++i) {
-        m_waveformFakeAxesSeriesList[i]->setVisible(m_waveformCheckBox->isChecked());
+
+    if (m_phasorCheckBox->isChecked()) {
+        bool which = !m_waveformCheckBox->isChecked();
+        for (auto &series : m_phasorFakeAxesSeriesList[which]) {
+            series->setVisible(true);
+        }
+        for (auto &series : m_phasorFakeAxesSeriesList[which ^ 1]) {
+            series->setVisible(false);
+        }
+    } else {
+        for (auto &series : m_phasorFakeAxesSeriesList[0]) {
+            series->setVisible(false);
+        }
+        for (auto &series : m_phasorFakeAxesSeriesList[1]) {
+            series->setVisible(false);
+        }
     }
 
+    if (m_waveformCheckBox->isChecked()) {
+        bool which = !m_phasorCheckBox->isChecked();
+        for (auto &series : m_waveformFakeAxesSeriesList[which]) {
+            series->setVisible(true);
+        }
+        for (auto &series : m_waveformFakeAxesSeriesList[which ^ 1]) {
+            series->setVisible(false);
+        }
+    } else {
+        for (auto &series : m_waveformFakeAxesSeriesList[0]) {
+            series->setVisible(false);
+        }
+        for (auto &series : m_waveformFakeAxesSeriesList[1]) {
+            series->setVisible(false);
+        }
+    }
+
+    /// Replace points
+    if (m_phasorCheckBox->isChecked()) {
+        for (SizeType i = 0; i < NumChannels; ++i) {
+            m_phasorSeriesList[i]->replace(m_phasorPointsList[i]);
+        }
+    }
+    if (m_waveformCheckBox->isChecked()) {
+        for (SizeType i = 0; i < NumChannels; ++i) {
+            m_waveformSeriesList[i]->replace(m_waveformPointsList[i]);
+        }
+    }
+    if (m_phasorCheckBox->isChecked() && m_phasorCheckBox->isChecked()
+        && m_waveformCheckBox->isChecked()) {
+        for (SizeType i = 0; i < NumChannels; ++i) {
+            m_connectorSeriesList[i]->replace(m_connectorPointsList[i]);
+        }
+    }
+
+    /// Update status label
     if (is_simulating) {
         m_statusLabel->setForegroundRole(QPalette::Text);
         m_statusLabel->setBackgroundRole(QPalette::Base);
@@ -642,6 +674,7 @@ void MonitorView::update(bool force)
                 + QStringLiteral(" Hz</strong> (phases relative to %1)").arg(Signals[0].name));
     }
 
+    /// Update table
     if (is_simulating) {
         for (SizeType p = 0; p < NumPhases; ++p) {
             const auto &[vIdx, iIdx] = SignalPhasePairs[p];
