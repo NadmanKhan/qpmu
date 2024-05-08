@@ -29,10 +29,10 @@ std::string to_string(const AdcSample &sample)
     std::stringstream ss;
     ss << "seq_no=" << sample.seq_no << ",\t";
     for (size_t i = 0; i < NumChannels; ++i) {
-        ss << "ch" << i << "=" << std::setw(4) << sample.ch[i] << ",";
+        ss << "ch" << i << "=" << std::setw(4) << sample.ch[i] << ", ";
     }
     ss << "ts=" << sample.ts << ",\t";
-    ss << "delta=" << sample.delta << ",\n";
+    ss << "delta=" << sample.delta << ",";
     return ss.str();
 }
 
@@ -70,7 +70,7 @@ std::string to_string(const Estimations &est)
            << phasor_polar_to_string(est.phasors[i]) << ",\t";
     }
     ss << "freq=" << est.freq << ",\t";
-    ss << "rocof=" << est.rocof << ",\n";
+    ss << "rocof=" << est.rocof << ",";
     return ss.str();
 }
 
@@ -133,11 +133,10 @@ AdcSample AdcSample::from_string(const std::string &s)
                     int idx = last_char_before_equals - '0';
                     sample.ch[idx] = value;
                 }
-                break;
             }
+            break;
         default:
             value = (value * 10) + (std::isdigit(c) * (c - '0'));
-            break;
         }
         last_char = c;
     }
