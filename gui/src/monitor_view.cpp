@@ -61,7 +61,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     chart->legend()->hide();
     chart->setAnimationOptions(QChart::NoAnimation);
     chart->setBackgroundRoundness(0);
-    chart->setContentsMargins(QMargins(0, 0, 0, 0));
+    chart->setContentsMargins(0, 0, 0, 0);
 
     /// Axes
     auto axisX = new QValueAxis();
