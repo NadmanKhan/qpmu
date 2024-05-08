@@ -64,9 +64,6 @@ int main(int argc, char *argv[])
     FloatType iscale = varmap["iscale"].as<FloatType>();
     FloatType ioffset = varmap["ioffset"].as<FloatType>();
 
-    std::cerr << "vscale: " << vscale << ", voffset: " << voffset << ", iscale: " << iscale
-              << ", ioffset: " << ioffset << '\n';
-
     enum Format { FormatReadableStr, FormatCsv, FormatBinary };
     Format inputFormat;
     Format outputFormat;
@@ -93,12 +90,12 @@ int main(int argc, char *argv[])
         switch (outputFormat) {
         case FormatBinary:
             std::fwrite(&measurement, sizeof(Estimations), 1, stdout);
+            break;
         case FormatCsv:
             cout << to_csv(measurement) << '\n';
             break;
         default:
             cout << to_string(measurement) << '\n';
-            break;
         }
     };
 
