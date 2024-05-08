@@ -13,7 +13,7 @@
 
 namespace fs = std::filesystem;
 namespace po = boost::program_options;
-using std::string, std::vector, std::pair, std::cerr, std::cout;
+using std::string, std::vector, std::cerr, std::cout;
 
 int main(int argc, char *argv[])
 {
