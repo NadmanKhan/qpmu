@@ -27,10 +27,10 @@ int main(int argc, char *argv[])
             "voffset", po::value<FloatType>()->default_value(0.0), "Voltage offset")(
             "iscale", po::value<FloatType>()->default_value(1.0), "Current scale factor")(
             "ioffset", po::value<FloatType>()->default_value(0.0), "Current offset")(
-            "iformat", po::value<string>()->default_value("b"),
+            "infmt", po::value<string>()->default_value("b"),
             "Input format: b (binary), s (human-readable string), c (comma separated "
             "\"key=value\" "
-            "pairs)")("oformat", po::value<string>()->default_value("b"),
+            "pairs)")("outfmt", po::value<string>()->default_value("b"),
                       "Output format: b (binary), s (human-readable string), c (comma separated "
                       "\"key=value\" "
                       "pairs)");
@@ -70,16 +70,16 @@ int main(int argc, char *argv[])
     enum Format { FormatReadableStr, FormatCsv, FormatBinary };
     Format inputFormat;
     Format outputFormat;
-    if (varmap["iformat"].as<string>() == "s") {
+    if (varmap["infmt"].as<string>() == "s") {
         inputFormat = FormatReadableStr;
-    } else if (varmap["iformat"].as<string>() == "c") {
+    } else if (varmap["infmt"].as<string>() == "c") {
         inputFormat = FormatCsv;
     } else {
         inputFormat = FormatBinary;
     }
-    if (varmap["oformat"].as<string>() == "s") {
+    if (varmap["outfmt"].as<string>() == "s") {
         outputFormat = FormatReadableStr;
-    } else if (varmap["oformat"].as<string>() == "c") {
+    } else if (varmap["outfmt"].as<string>() == "c") {
         outputFormat = FormatCsv;
     } else {
         outputFormat = FormatBinary;

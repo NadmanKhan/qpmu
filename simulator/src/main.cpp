@@ -22,14 +22,14 @@ int main(int argc, char *argv[])
     /// ----------------------------
 
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "produce help message")("v", po::value<string>(),
-                                                       "voltage in volts")("p", po::value<string>(),
-                                                                           "power in watts")(
-            "format", po::value<string>()->default_value("b"),
-            "output format: b (binary), s (human-readable string), c (comma separated "
+    desc.add_options()("help", "Produce help message")("v", po::value<string>(),
+                                                       "Voltage in volts")("p", po::value<string>(),
+                                                                           "Power in watts")(
+            "outfmt", po::value<string>()->default_value("b"),
+            "Output format: b (binary), s (human-readable string), c (comma separated "
             "\"key=value\" "
-            "pairs)")("once", "print samples only once")("sleep",
-                                                         "sleep for delta time between samples");
+            "pairs)")("once", "Print samples only once")("sleep",
+                                                         "Sleep for delta time between samples");
 
     po::variables_map varmap;
     po::store(po::parse_command_line(argc, argv, desc), varmap);
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
     auto voltage_str = varmap["v"].as<string>();
     auto power_str = varmap["p"].as<string>();
-    auto format = varmap["format"].as<string>();
+    auto format = varmap["outfmt"].as<string>();
     auto once = varmap.count("once");
     const bool do_sleep = varmap.count("sleep");
 
