@@ -18,16 +18,14 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     assert(updateTimer != nullptr);
     assert(worker != nullptr);
 
+    hide();
+
     /// Update notifiers
-    auto guardedUpdate = [=] {
-        if (!isVisible())
-            return;
-        update();
-    };
     m_simulationUpdateNotifier = new TimeoutNotifier(updateTimer, UpdateIntervalMs);
-    connect(m_simulationUpdateNotifier, &TimeoutNotifier::timeout, guardedUpdate);
+    connect(m_simulationUpdateNotifier, &TimeoutNotifier::timeout, this,
+            &MonitorView::noForceUpdate);
     m_updateNotifier = new TimeoutNotifier(updateTimer, UpdateIntervalMs * 5);
-    connect(m_updateNotifier, &TimeoutNotifier::timeout, guardedUpdate);
+    connect(m_updateNotifier, &TimeoutNotifier::timeout, this, &MonitorView::noForceUpdate);
 
     /// Main outer layout
     auto outerHBox = new QHBoxLayout(this);
@@ -366,6 +364,18 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
                 vizGroupGrid->addWidget(m_signalCheckBoxList[i][j], 3 + j, i);
             }
         }
+
+        connect(m_phasorCheckBox, QOverload<bool>::of(&QCheckBox::toggled), this,
+                &MonitorView::forceUpdate);
+        connect(m_waveformCheckBox, QOverload<bool>::of(&QCheckBox::toggled), this,
+                &MonitorView::forceUpdate);
+        connect(m_connectorCheckBox, QOverload<bool>::of(&QCheckBox::toggled), this,
+                &MonitorView::forceUpdate);
+        for (int i = 0; i < 2; ++i) {
+            for (auto checkBox : m_signalCheckBoxList[i]) {
+                connect(checkBox, &QCheckBox::toggled, this, &MonitorView::forceUpdate);
+            }
+        }
     }
 
     { /// Plot max amplitude options
@@ -414,13 +424,26 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         }
     }
 
-    update();
-    hide();
+    update(true);
 }
 
-void MonitorView::update()
+void MonitorView::noForceUpdate()
+{
+    update(false);
+}
+
+void MonitorView::forceUpdate()
+{
+    update(true);
+}
+
+void MonitorView::update(bool force)
 {
     using namespace qpmu;
+
+    if (!force && !isVisible()) {
+        return;
+    }
 
     bool is_simulating = m_simulationFrequencyIndex > 0;
 
@@ -451,7 +474,7 @@ void MonitorView::update()
             }
         }
     } else {
-        if (!m_updateNotifier->isTimeout()) {
+        if (!force && !m_updateNotifier->isTimeout()) {
             return;
         }
 
@@ -460,7 +483,8 @@ void MonitorView::update()
         FloatType phaseRef = std::arg(est.phasors[0]);
         for (SizeType i = 0; i < NumChannels; ++i) {
             m_plotAmplitudes[i] = std::abs(est.phasors[i]);
-            m_plotPhaseDiffs[i] = std::fmod(std::arg(est.phasors[i]) - phaseRef + 2 * M_PI, 2 * M_PI);
+            m_plotPhaseDiffs[i] =
+                    std::fmod(std::arg(est.phasors[i]) - phaseRef + 2 * M_PI, 2 * M_PI);
             if (m_plotPhaseDiffs[i] < M_PI) {
                 m_plotPhaseDiffs[i] += 2 * M_PI;
             }

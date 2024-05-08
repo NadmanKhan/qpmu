@@ -40,8 +40,9 @@ public:
     static constexpr std::array<qreal, 6> SimulationFrequencyOptions = {
         0, 0.125, 0.25, 0.5, 1, 2
     };
-    static constexpr std::array<qreal, 6> PlotAmpliOptions[2] = { { 0, 60, 120, 180, 240, 300 },
-                                                                  { 0, 1, 2, 5, 10, 20 } };
+    static constexpr std::array<qreal, 7> PlotAmpliOptions[2] = {
+        { 0, 60, 120, 180, 240, 300, 360 }, { 0, 0.5, 1, 2, 4, 8, 16 }
+    };
 
     static constexpr char const *const TableHHeaders[] = { "Voltage", "Current", "Phase Diff.",
                                                            "Power" };
@@ -50,7 +51,9 @@ public:
     MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
 
 private slots:
-    void update();
+    void update(bool force = false);
+    void noForceUpdate();
+    void forceUpdate();
 
 private:
     Worker *m_worker;
