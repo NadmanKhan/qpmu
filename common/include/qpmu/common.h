@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <complex>
+#include <istream>
+#include <string>
 
 namespace qpmu {
 
@@ -14,7 +16,9 @@ using FloatType = double;
 #endif
 using ComplexType = std::complex<FloatType>;
 using SizeType = std::size_t;
-using UIntType = std::uint64_t;
+using U64 = std::uint64_t;
+using U32 = std::uint16_t;
+using U16 = std::uint16_t;
 
 constexpr SizeType NumChannels = 6;
 constexpr SizeType NumPhases = 3;
@@ -72,14 +76,17 @@ constexpr char signal_phase_char(const Signal &info)
 
 struct AdcSample
 {
-    UIntType seq_no; // Sequence number
-    UIntType ch[NumChannels]; // Channel values
-    UIntType ts; // Timestamp (in microseconds)
-    UIntType delta; // Timestamp difference from previous sample (in microseconds)
+    U64 seq_no; // Sequence number
+    U16 ch[NumChannels]; // Channel values
+    U64 ts; // Timestamp (in microseconds)
+    U16 delta; // Timestamp difference from previous sample (in microseconds)
 
     static std::string csv_header();
     friend std::string to_string(const AdcSample &sample);
     friend std::string to_csv(const AdcSample &sample);
+
+    static AdcSample from_string(const std::string &s);
+    static AdcSample from_csv(const std::string &s);
 };
 
 struct Estimations
@@ -98,6 +105,7 @@ struct Estimations
 // utility functions
 
 std::string phasor_to_string(const ComplexType &phasor);
+
 std::string phasor_polar_to_string(const ComplexType &phasor);
 
 } // namespace qpmu

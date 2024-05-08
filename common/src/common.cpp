@@ -1,3 +1,4 @@
+#include <cctype>
 #include <ios>
 #include <string>
 #include <sstream>
@@ -31,7 +32,7 @@ std::string to_string(const AdcSample &sample)
         ss << "ch" << i << "=" << std::setw(4) << sample.ch[i] << ",";
     }
     ss << "ts=" << sample.ts << ",\t";
-    ss << "delta=" << sample.delta;
+    ss << "delta=" << sample.delta << ",\n";
     return ss.str();
 }
 
@@ -69,7 +70,7 @@ std::string to_string(const Estimations &est)
            << phasor_polar_to_string(est.phasors[i]) << ",\t";
     }
     ss << "freq=" << est.freq << ",\t";
-    ss << "rocof=" << est.rocof;
+    ss << "rocof=" << est.rocof << ",\n";
     return ss.str();
 }
 
@@ -99,6 +100,49 @@ std::string to_csv(const Estimations &est)
     str += ',';
     str += std::to_string(est.rocof);
     return str;
+}
+
+/// Does the reverse of to_string on AdcSample
+AdcSample AdcSample::from_string(const std::string &s)
+{
+    AdcSample sample;
+
+    char last_char_before_equals = 0;
+    std::uint64_t value = 0;
+
+    char last_char = 0;
+    for (char c : s) {
+        switch (c) {
+        case '=':
+            last_char_before_equals = last_char;
+            value = 0;
+            break;
+        case ',':
+            switch (last_char_before_equals) {
+            case 'o':
+                sample.seq_no = value;
+                break;
+            case 's':
+                sample.ts = value;
+                break;
+            case 'a':
+                sample.delta = value;
+                break;
+            default:
+                if (std::isdigit(last_char_before_equals)) {
+                    int idx = last_char_before_equals - '0';
+                    sample.ch[idx] = value;
+                }
+                break;
+            }
+        default:
+            value = (value * 10) + (std::isdigit(c) * (c - '0'));
+            break;
+        }
+        last_char = c;
+    }
+
+    return sample;
 }
 
 } // namespace qpmu
