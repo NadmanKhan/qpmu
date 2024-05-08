@@ -131,66 +131,20 @@ int main(int argc, char *argv[])
     }
 
     vector<AdcSample> samples;
+    vector<string> lines;
     string line;
     while (std::getline(file, line)) {
         samples.push_back(AdcSample::from_string(line));
+        lines.push_back(line);
     }
-    // while (std::getline(file, line)) {
-    //     if (line.empty()) {
-    //         continue;
-    //     }
 
-    //     AdcSample sample;
-
-    //     vector<string> tokens;
-    //     boost::split(tokens, line, boost::is_any_of(","));
-
-    //     tokens.erase(std::remove_if(tokens.begin(), tokens.end(),
-    //                                 [](const string &str) { return str.empty(); }),
-    //                  tokens.end());
-
-    //     if (tokens.size() != NumTokensAdcSample) {
-    //         continue;
-    //     }
-
-    //     vector<pair<string, uint64_t>> kvs;
-    //     std::transform(
-    //             tokens.begin(), tokens.end(), std::back_inserter(kvs), [](const string &token) {
-    //                 vector<string> keyValuePair;
-    //                 boost::split(keyValuePair, token, boost::is_any_of("="));
-    //                 if (keyValuePair.size() != 2) {
-    //                     return pair<string, uint64_t>();
-    //                 }
-    //                 boost::trim(keyValuePair[0]);
-    //                 boost::trim(keyValuePair[1]);
-    //                 return std::make_pair(keyValuePair[0],
-    //                 (uint64_t)std::stoull(keyValuePair[1]));
-    //             });
-
-    //     kvs.erase(std::remove_if(kvs.begin(), kvs.end(),
-    //                              [](const pair<string, uint64_t> &keyValue) {
-    //                                  return keyValue.first.empty();
-    //                              }),
-    //               kvs.end());
-
-    //     for (const auto &[key, value] : kvs) {
-    //         if (key == "seq_no") {
-    //             sample.seq_no = value;
-    //         } else if (key == "ts") {
-    //             sample.ts = value;
-    //         } else if (key == "delta") {
-    //             sample.delta = value;
-    //         } else {
-    //             assert(key.size() == 3);
-    //             assert(key[0] == 'c' && key[1] == 'h');
-    //             int channel_idx = key[2] - '0';
-    //             assert(0 <= channel_idx && channel_idx < (int)NumChannels);
-    //             sample.ch[channel_idx] = value;
-    //         }
-    //     }
-
-    //     samples.push_back(sample);
-    // }
+    {
+        vector<string> parsed_lines;
+        for (const auto &sample : samples) {
+            parsed_lines.push_back(to_string(sample));
+        }
+        assert(parsed_lines == lines);
+    }
 
     /// Cycle through the samples and print them
     /// ----------------------------------------
