@@ -430,7 +430,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
     /// Simulate frequency
     {
-        auto groupBox = new QGroupBox(QStringLiteral("Simulate Frequency"));
+        auto groupBox = new QGroupBox(QStringLiteral("Simulate Rotation"));
         sideVBox->addWidget(groupBox);
         auto groupGrid = new QGridLayout(groupBox);
         QList<QRadioButton *> radioButtons;
@@ -663,7 +663,7 @@ void MonitorView::update(bool force)
         m_statusLabel->setForegroundRole(QPalette::Text);
         m_statusLabel->setBackgroundRole(QPalette::Base);
         m_statusLabel->setText(
-                QStringLiteral("Simulating signals at <strong>")
+                QStringLiteral("Simulating rotation at <strong>")
                 + QString::number(SimulationFrequencyOptions[m_simulationFrequencyIndex])
                 + QStringLiteral(" Hz</strong>"));
     } else {
