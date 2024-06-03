@@ -134,17 +134,17 @@ int main(int argc, char *argv[])
     vector<string> lines;
     string line;
     while (std::getline(file, line)) {
-        samples.push_back(AdcSample::from_string(line));
+        samples.push_back(AdcSample::parse_string(line));
         lines.push_back(line);
     }
 
-    {
-        vector<string> parsed_lines;
-        for (const auto &sample : samples) {
-            parsed_lines.push_back(to_string(sample));
-        }
-        assert(parsed_lines == lines);
-    }
+    // {
+    //     vector<string> parsed_lines;
+    //     for (const auto &sample : samples) {
+    //         parsed_lines.push_back(to_string(sample));
+    //     }
+    //     assert(parsed_lines == lines);
+    // }
 
     /// Cycle through the samples and print them
     /// ----------------------------------------

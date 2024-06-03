@@ -8,7 +8,7 @@
 
 namespace qpmu {
 
-std::string phasor_to_string(const ComplexType &phasor)
+std::string phasor_to_string(const Complex &phasor)
 {
     std::stringstream ss;
     ss << std::fixed << std::setprecision(2);
@@ -16,7 +16,7 @@ std::string phasor_to_string(const ComplexType &phasor)
     return ss.str();
 }
 
-std::string phasor_polar_to_string(const ComplexType &phasor)
+std::string phasor_polar_to_string(const Complex &phasor)
 {
     std::stringstream ss;
     ss << std::fixed << std::setprecision(2);
@@ -61,10 +61,10 @@ std::string to_csv(const AdcSample &sample)
     return str;
 }
 
-std::string to_string(const Estimations &est)
+std::string to_string(const Estimation &est)
 {
     std::stringstream ss;
-    ss << to_string(est.adc_sample) << ",\t";
+    ss << to_string(est.src_sample) << ",\t";
     for (size_t i = 0; i < NumChannels; ++i) {
         ss << "phasor" << i << "=" << phasor_to_string(est.phasors[i]) << "="
            << phasor_polar_to_string(est.phasors[i]) << ",\t";
@@ -74,7 +74,7 @@ std::string to_string(const Estimations &est)
     return ss.str();
 }
 
-std::string Estimations::csv_header()
+std::string Estimation::csv_header()
 {
     std::string header;
     header += AdcSample::csv_header() + ',';
@@ -86,10 +86,10 @@ std::string Estimations::csv_header()
     return header;
 }
 
-std::string to_csv(const Estimations &est)
+std::string to_csv(const Estimation &est)
 {
     std::string str;
-    str += to_csv(est.adc_sample);
+    str += to_csv(est.src_sample);
     for (size_t i = 0; i < NumChannels; ++i) {
         str += phasor_to_string(est.phasors[i]);
         str += ',';
@@ -103,7 +103,7 @@ std::string to_csv(const Estimations &est)
 }
 
 /// Does the reverse of to_string on AdcSample
-AdcSample AdcSample::from_string(const std::string &s)
+AdcSample AdcSample::parse_string(const std::string &s)
 {
     AdcSample sample;
 
@@ -128,11 +128,14 @@ AdcSample AdcSample::from_string(const std::string &s)
             case 'a':
                 sample.delta = value;
                 break;
-            default:
-                if (std::isdigit(last_char_before_equals)) {
-                    int idx = last_char_before_equals - '0';
-                    sample.ch[idx] = value;
-                }
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+                sample.ch[last_char_before_equals - '0'] = value;
+                break;
             }
             break;
         default:

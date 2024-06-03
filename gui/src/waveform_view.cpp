@@ -50,7 +50,7 @@ WaveformView::WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent)
 
     const auto colorWhite = QColor(QStringLiteral("white"));
 
-    for (SizeType i = 0; i < NumChannels; ++i) {
+    for (USize i = 0; i < NumChannels; ++i) {
         auto name = QString(Signals[i].name);
         auto color = QColor(Signals[i].colorHex);
 
@@ -100,7 +100,7 @@ void WaveformView::update()
     if (!isVisible())
         return;
 
-    Estimations est;
+    Estimation est;
     m_worker->getEstimations(est);
 
     const auto &phasors = est.phasors;
@@ -110,14 +110,14 @@ void WaveformView::update()
     std::array<FloatType, NumChannels> amplitudes;
 
     FloatType phaseRef = std::arg(phasors[0]);
-    for (SizeType i = 0; i < NumChannels; ++i) {
+    for (USize i = 0; i < NumChannels; ++i) {
         phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef);
         amplitudes[i] = std::abs(phasors[i]);
     }
 
     FloatType vmax = 0;
     FloatType imax = 0;
-    for (SizeType i = 0; i < NumChannels; ++i) {
+    for (USize i = 0; i < NumChannels; ++i) {
         if (signal_is_voltage(Signals[i])) {
             vmax = std::max(vmax, amplitudes[i]);
         } else {
@@ -129,8 +129,8 @@ void WaveformView::update()
     FloatType timeDelta = (timePeriod / PlotPointsPerCycle);
     FloatType _2_pi_f = 2 * M_PI * freq;
 
-    for (SizeType i = 0; i < NumChannels; ++i) {
-        for (SizeType j = 0; j < (SizeType)m_listSplineSeriesPoints[i].size(); ++j) {
+    for (USize i = 0; i < NumChannels; ++i) {
+        for (USize j = 0; j < (USize)m_listSplineSeriesPoints[i].size(); ++j) {
             FloatType t = j * timeDelta;
             FloatType x = amplitudes[i] * std::cos(_2_pi_f * t + phaseDiffs[i]);
             m_listSplineSeriesPoints[i][j] = QPointF(t, x);
@@ -142,7 +142,7 @@ void WaveformView::update()
     m_axisVoltage->setTickInterval(vmax);
     m_axisCurrent->setRange(-imax, +imax);
     m_axisCurrent->setTickInterval(imax);
-    for (SizeType i = 0; i < NumChannels; ++i) {
+    for (USize i = 0; i < NumChannels; ++i) {
         m_listSplineSeries[i]->replace(m_listSplineSeriesPoints[i]);
     }
 }

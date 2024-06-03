@@ -19,10 +19,13 @@ int main(int argc, char *argv[])
     using namespace qpmu;
 
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "produce help message")("strategy",
-                                                       po::value<string>()->default_value("fft"),
-                                                       "Estimation strategy to use (fft or sdft)")(
-            "window", po::value<SizeType>(), "Window size to use for estimation")(
+    desc.add_options()("help", "produce help message")(
+            "phasor-est", po::value<string>()->default_value("fft"),
+            "Phasor estimation strategy to use: fft, sdft")(
+            "freq-est", po::value<string>()->default_value("fft"),
+            "Frequency estimation strategy to use: cpd (consecutive phase differences), spc "
+            "(same-phase crossings), zc (zero crossings)")("window", po::value<USize>(),
+                                                           "Window size to use for estimation")(
             "vscale", po::value<FloatType>()->default_value(1.0), "Voltage scale factor")(
             "voffset", po::value<FloatType>()->default_value(0.0), "Voltage offset")(
             "iscale", po::value<FloatType>()->default_value(1.0), "Current scale factor")(
@@ -44,20 +47,31 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    EstimationStrategy strategy = EstimationStrategy::FFT;
-    if (varmap.count("strategy")) {
-        if (varmap["strategy"].as<string>() == "sdft") {
-            strategy = EstimationStrategy::SDFT;
+    PhasorEstimationStrategy phasor_est_strategy = PhasorEstimationStrategy::FFT;
+    if (varmap.count("phasor-est")) {
+        if (varmap["phasor-est"].as<string>() == "sdft") {
+            phasor_est_strategy = PhasorEstimationStrategy::SDFT;
         }
     }
 
-    SizeType window_size = 0;
+    FrequencyEstimationStrategy freq_est_strategy =
+            FrequencyEstimationStrategy::ConsecutivePhaseDifferences;
+    if (varmap.count("freq-est")) {
+        auto str = varmap["freq-est"].as<string>();
+        if (str == "spc") {
+            freq_est_strategy = FrequencyEstimationStrategy::SamePhaseCrossings;
+        } else if (str == "zc") {
+            freq_est_strategy = FrequencyEstimationStrategy::ZeroCrossings;
+        }
+    }
+
+    USize window_size = 0;
     if (!varmap.count("window")) {
         cerr << "Window size is required\n";
         cerr << desc << '\n';
         return 1;
     }
-    window_size = varmap["window"].as<SizeType>();
+    window_size = varmap["window"].as<USize>();
 
     FloatType vscale = varmap["vscale"].as<FloatType>();
     FloatType voffset = varmap["voffset"].as<FloatType>();
@@ -82,37 +96,38 @@ int main(int argc, char *argv[])
         outputFormat = FormatBinary;
     }
 
-    Estimator estimator(window_size, strategy, { vscale, voffset }, { iscale, ioffset });
-    Estimations measurement;
+    Estimator estimator(window_size, phasor_est_strategy, freq_est_strategy, { vscale, voffset },
+                        { iscale, ioffset });
+    Estimation estimation;
     AdcSample sample;
 
     auto print = [&] {
         switch (outputFormat) {
         case FormatBinary:
-            std::fwrite(&measurement, sizeof(Estimations), 1, stdout);
+            std::fwrite(&estimation, sizeof(Estimation), 1, stdout);
             break;
         case FormatCsv:
-            cout << to_csv(measurement) << '\n';
+            cout << to_csv(estimation) << '\n';
             break;
         default:
-            cout << to_string(measurement) << '\n';
+            cout << to_string(estimation) << '\n';
         }
     };
 
     if (outputFormat == FormatCsv) {
-        cout << Estimations::csv_header() << '\n';
+        cout << Estimation::csv_header() << '\n';
     }
 
     if (inputFormat == FormatReadableStr) {
         std::string line;
         while (std::getline(std::cin, line)) {
-            sample = AdcSample::from_string(line);
-            measurement = estimator.estimate_measurements(sample);
+            sample = AdcSample::parse_string(line);
+            estimation = estimator.add_estimation(sample);
             print();
         }
     } else if (inputFormat == FormatBinary) {
         while (fread(&sample, sizeof(AdcSample), 1, stdin)) {
-            measurement = estimator.estimate_measurements(sample);
+            estimation = estimator.add_estimation(sample);
             print();
         }
     }

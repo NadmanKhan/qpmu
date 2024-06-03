@@ -14,10 +14,10 @@ public:
     void run() override;
 
 public slots:
-    Q_INVOKABLE void getEstimations(qpmu::Estimations &out_measurement);
+    Q_INVOKABLE void getEstimations(qpmu::Estimation &out_measurement);
 
 private:
-    qpmu::Estimations m_estimations;
+    qpmu::Estimation m_estimations;
 };
 
 #endif // WORKER_H

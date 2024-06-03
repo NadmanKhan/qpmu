@@ -21,8 +21,8 @@ struct FFTW
   template <>                                                           \
   struct FFTW<type>                                                     \
   {                                                                     \
-    using ComplexType = fftw##suffix##_complex;                         \
-    using PlanType = fftw##suffix##_plan;                               \
+    using Complex = fftw##suffix##_complex;                             \
+    using Plan = fftw##suffix##_plan;                                   \
     static constexpr auto alloc_complex = fftw##suffix##_alloc_complex; \
     static constexpr auto malloc = fftw##suffix##_malloc;               \
     static constexpr auto plan_dft_1d = fftw##suffix##_plan_dft_1d;     \
@@ -36,9 +36,18 @@ SPECIALIZE(double, )
 SPECIALIZE(long double, l)
 #undef SPECIALIZE
 
-enum class EstimationStrategy {
+enum class PhasorEstimationStrategy {
     FFT, // Fast Fourier Transform
     SDFT, // Sliding-window Discrete Fourier Transform
+};
+
+enum class FrequencyEstimationStrategy {
+    ConsecutivePhaseDifferences, // Estimate frequency from the phase (angle) and time differences
+                                 // between consecutive phasors
+    SamePhaseCrossings, // Estimate frequency from time differences between zero-crossings of the
+                        // same phase
+    ZeroCrossings, // Estimate frequency from time differences between zero-crossings of the
+                   // signal samples with linear interpolation
 };
 
 class Estimator
@@ -47,22 +56,23 @@ public:
     // ****** Type definitions ******
 
     using FloatType = qpmu::FloatType;
-    using SizeType = qpmu::SizeType;
-    using ComplexType = qpmu::ComplexType;
+    using USize = qpmu::USize;
+    using ISize = qpmu::ISize;
+    using Complex = qpmu::Complex;
     using SdftType = sdft::SDFT<FloatType, FloatType>;
-    static constexpr SizeType NumChannels = qpmu::NumChannels;
+    static constexpr USize NumChannels = qpmu::NumChannels;
 
     struct FftwState
     {
-        FFTW<FloatType>::ComplexType *inputs[NumChannels];
-        FFTW<FloatType>::ComplexType *outputs[NumChannels];
-        FFTW<FloatType>::PlanType plans[NumChannels];
+        FFTW<FloatType>::Complex *inputs[NumChannels];
+        FFTW<FloatType>::Complex *outputs[NumChannels];
+        FFTW<FloatType>::Plan plans[NumChannels];
     };
 
     struct SdftState
     {
         std::vector<SdftType> workers;
-        std::vector<std::vector<ComplexType>> outputs;
+        std::vector<std::vector<Complex>> outputs;
     };
 
     // ****** Constructors and destructors ******
@@ -72,26 +82,31 @@ public:
     Estimator &operator=(const Estimator &) = default;
     Estimator &operator=(Estimator &&) = default;
     ~Estimator();
-    Estimator(SizeType window_size, EstimationStrategy strategy = EstimationStrategy::FFT,
+    Estimator(USize window_size,
+              PhasorEstimationStrategy phasor_strategy = PhasorEstimationStrategy::FFT,
+              FrequencyEstimationStrategy freq_strategy =
+                      FrequencyEstimationStrategy::ConsecutivePhaseDifferences,
               std::pair<FloatType, FloatType> voltage_params = { 1.0, 0.0 },
               std::pair<FloatType, FloatType> current_params = { 1.0, 0.0 });
 
     // ****** Public member functions ******
-    qpmu::Estimations estimate_measurements(qpmu::AdcSample sample);
+    qpmu::Estimation add_estimation(qpmu::AdcSample sample);
 
 private:
     // ****** Private member functions ******
 
     // ****** Private member variables ******
-    EstimationStrategy m_strategy = EstimationStrategy::FFT;
-    SizeType m_size = 0;
+    PhasorEstimationStrategy m_phasor_strategy = PhasorEstimationStrategy::FFT;
+    FrequencyEstimationStrategy m_freq_strategy =
+            FrequencyEstimationStrategy::ConsecutivePhaseDifferences;
+    USize m_size = 0;
     FloatType m_scale_voltage = 1.0;
     FloatType m_offset_voltage = 0.0;
     FloatType m_scale_current = 1.0;
     FloatType m_offset_current = 0.0;
     std::vector<qpmu::AdcSample> m_samples = {};
-    std::vector<qpmu::Estimations> m_estimations = {};
-    SizeType m_index = 0;
+    std::vector<qpmu::Estimation> m_estimations = {};
+    USize m_index = 0;
     FftwState m_fftw_state = {};
     SdftState m_sdft_state = {};
 };

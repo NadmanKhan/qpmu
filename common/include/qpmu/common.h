@@ -14,15 +14,21 @@ using FloatType = FLOAT_TYPE;
 #else
 using FloatType = double;
 #endif
-using ComplexType = std::complex<FloatType>;
-using SizeType = std::size_t;
+using Complex = std::complex<FloatType>;
+
+using USize = std::size_t;
 using U64 = std::uint64_t;
 using U32 = std::uint16_t;
 using U16 = std::uint16_t;
 
-constexpr SizeType NumChannels = 6;
-constexpr SizeType NumPhases = 3;
-constexpr SizeType NumTokensAdcSample = NumChannels + 3; // seq_no, ts, delta, ch0, ch1, ..., ch5
+using ISize = ssize_t;
+using I64 = std::int64_t;
+using I32 = std::int16_t;
+using I16 = std::int16_t;
+
+constexpr USize NumChannels = 6;
+constexpr USize NumPhases = 3;
+constexpr USize NumTokensAdcSample = NumChannels + 3; // seq_no, ts, delta, ch0, ch1, ..., ch5
 
 enum SignalType { Voltage, Current };
 enum SignalPhase { A, B, C };
@@ -47,7 +53,7 @@ constexpr Signal Signals[NumChannels] = { { "VA", "#404040", SignalType::Voltage
                                           { "IC", "#00c000", SignalType::Current,
                                             SignalPhase::C } };
 
-constexpr SizeType SignalPhasePairs[NumPhases][2] = { { 0, 3 }, { 1, 4 }, { 2, 5 } };
+constexpr USize SignalPhasePairs[NumPhases][2] = { { 0, 3 }, { 1, 4 }, { 2, 5 } };
 
 constexpr bool signal_is_voltage(const Signal &info)
 {
@@ -85,28 +91,28 @@ struct AdcSample
     friend std::string to_string(const AdcSample &sample);
     friend std::string to_csv(const AdcSample &sample);
 
-    static AdcSample from_string(const std::string &s);
+    static AdcSample parse_string(const std::string &s);
     static AdcSample from_csv(const std::string &s);
 };
 
-struct Estimations
+struct Estimation
 {
-    AdcSample adc_sample; // Original sample
-    ComplexType phasors[NumChannels]; // Estimated phasors
+    AdcSample src_sample; // Original sample
+    Complex phasors[NumChannels]; // Estimated phasors
     FloatType freq; // Estimated frequency in Hz
     FloatType rocof; // Estimated rate of change of frequency in Hz/s
     FloatType power[NumPhases]; // Estimated power in Watt
 
     static std::string csv_header();
-    friend std::string to_string(const Estimations &est);
-    friend std::string to_csv(const Estimations &est);
+    friend std::string to_string(const Estimation &est);
+    friend std::string to_csv(const Estimation &est);
 };
 
 // utility functions
 
-std::string phasor_to_string(const ComplexType &phasor);
+std::string phasor_to_string(const Complex &phasor);
 
-std::string phasor_polar_to_string(const ComplexType &phasor);
+std::string phasor_polar_to_string(const Complex &phasor);
 
 } // namespace qpmu
 
