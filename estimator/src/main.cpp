@@ -23,9 +23,9 @@ int main(int argc, char *argv[])
             "phasor-est", po::value<string>()->default_value("fft"),
             "Phasor estimation strategy to use: fft, sdft")(
             "freq-est", po::value<string>()->default_value("fft"),
-            "Frequency estimation strategy to use: cpd (consecutive phase differences), spc "
-            "(same-phase crossings), zc (zero crossings)")("window", po::value<USize>(),
-                                                           "Window size to use for estimation")(
+            "Frequency estimation strategy to use: pd (phase differences), spc "
+            "(same-phase crossings), zc (zero crossings), tbzc (time-bound zero crossings)")(
+            "window", po::value<USize>(), "Window size to use for estimation")(
             "vscale", po::value<FloatType>()->default_value(1.0), "Voltage scale factor")(
             "voffset", po::value<FloatType>()->default_value(0.0), "Voltage offset")(
             "iscale", po::value<FloatType>()->default_value(1.0), "Current scale factor")(
@@ -54,14 +54,15 @@ int main(int argc, char *argv[])
         }
     }
 
-    FrequencyEstimationStrategy freq_est_strategy =
-            FrequencyEstimationStrategy::ConsecutivePhaseDifferences;
+    FrequencyEstimationStrategy freq_est_strategy = FrequencyEstimationStrategy::PhaseDifferences;
     if (varmap.count("freq-est")) {
         auto str = varmap["freq-est"].as<string>();
         if (str == "spc") {
             freq_est_strategy = FrequencyEstimationStrategy::SamePhaseCrossings;
         } else if (str == "zc") {
             freq_est_strategy = FrequencyEstimationStrategy::ZeroCrossings;
+        } else if (str == "tbzc") {
+            freq_est_strategy = FrequencyEstimationStrategy::TimeBoundZeroCrossings;
         }
     }
 

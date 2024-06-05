@@ -16,6 +16,12 @@ constexpr bool is_positive(Numeric x)
     }
 }
 
+constexpr qpmu::FloatType zero_crossing_time(qpmu::FloatType t0, qpmu::FloatType v0,
+                                             qpmu::FloatType t1, qpmu::FloatType v1)
+{
+    return t0 + v0 * (t1 - t0) / (v1 - v0);
+}
+
 qpmu::Estimator::~Estimator()
 {
     if (m_phasor_strategy == PhasorEstimationStrategy::FFT) {
@@ -69,9 +75,8 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
 #define PREV(index) (((index) != 0) * ((index)-1) + ((index) == 0) * (m_size - 1))
 
     const auto &prv = m_estimations[PREV(m_index)];
-    // const auto &nxt = m_estimations[NEXT(m_index)];
-    // const auto old = m_estimations[m_index];
     auto &cur = m_estimations[m_index];
+    cur.src_sample = sample;
 
     for (USize i = 0; i < NumChannels; ++i) {
         const auto &scale = (signal_is_voltage(Signals[i]) ? m_scale_voltage : m_scale_current);
@@ -104,8 +109,19 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
         }
         // Phasor = output corresponding to the fundamental frequency
         for (USize i = 0; i < NumChannels; ++i) {
-            const auto &phasor = m_fftw_state.outputs[i][1];
-            cur.phasors[i] = Complex(phasor[0], phasor[1]);
+            // FloatType max_norm = 0;
+            // USize max_norm_index = 1;
+            // for (USize j = 1; j < m_size / 2; ++j) {
+            //     FloatType norm = m_fftw_state.outputs[i][j][0] * m_fftw_state.outputs[i][j][0]
+            //             + m_fftw_state.outputs[i][j][1] * m_fftw_state.outputs[i][j][1];
+            //     if (norm > max_norm) {
+            //         max_norm = norm;
+            //         max_norm_index = j;
+            //     }
+            // }
+            const auto &phasor =
+                    Complex(m_fftw_state.outputs[i][1][0], m_fftw_state.outputs[i][1][1]);
+            cur.phasors[i] = phasor;
         }
 
     } else if (m_phasor_strategy == PhasorEstimationStrategy::SDFT) {
@@ -130,17 +146,11 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
     /**
      * ***************************************************************************************
      * Estimate frequency and ROCOF from the window
-     * ---------------------------------------------------------------------------------------
-     *
-     * - ROCOF = delta(freq) / delta(time)
-     *
-     * Formula for PhasorAngle strategy:
-     * - Frequency = #cycles / delta(time) = (delta(phase) / 2PI) / delta(time)
      *
      * ***************************************************************************************
      */
 
-    if (m_freq_strategy == FrequencyEstimationStrategy::ConsecutivePhaseDifferences) {
+    if (m_freq_strategy == FrequencyEstimationStrategy::PhaseDifferences) {
         cur.freq = 0;
         USize cnt = 0;
         for (USize i = 0; i < NumChannels; ++i) {
@@ -229,7 +239,7 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
                     // Linear interpolation to find the zero crossing
                     const auto &t0 = m_estimations[PREV(j)].src_sample.ts;
                     const auto &t1 = m_estimations[j].src_sample.ts;
-                    auto t = t0 + v0 * FloatType(t1 - t0) / (v1 - v0);
+                    auto t = zero_crossing_time(t0, v0, t1, v1);
                     if (t_last != 0) {
                         auto delta_t_sec =
                                 std::abs(t - t_last) * 1e-6; // sample.ts is in microseconds
@@ -244,6 +254,41 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
             cur.freq = cnt_calcs / (2 * sum_delta_t_sec);
         } else {
             cur.freq = 0;
+        }
+    } else if (m_freq_strategy == FrequencyEstimationStrategy::TimeBoundZeroCrossings) {
+        if (m_tbw_start_micros == 0) {
+            m_tbw_start_micros = cur.src_sample.ts;
+            m_tbw_second_mark_micros = m_tbw_start_micros + (USize)1e6;
+        }
+
+        // See if there is a zero crossing
+        bool zc = is_positive(std::arg(prv.phasors[0])) != is_positive(std::arg(cur.phasors[0]));
+        if (zc) {
+            ++m_tbw_count_zc;
+            m_tbw_last_zc_micros = zero_crossing_time(prv.src_sample.ts, std::arg(prv.phasors[0]),
+                                                      cur.src_sample.ts, std::arg(cur.phasors[0]));
+            if (m_tbw_first_zc_micros <= 0) {
+                m_tbw_first_zc_micros = m_tbw_last_zc_micros;
+            }
+        }
+
+        if (m_tbw_second_mark_micros < cur.src_sample.ts) {
+            // One second has passed; calculate the frequency
+            m_tbw_second_mark_micros = m_tbw_start_micros + (USize)1e6;
+            auto residue_micros = (m_tbw_first_zc_micros - m_tbw_start_micros)
+                    + (m_tbw_second_mark_micros - m_tbw_last_zc_micros);
+            static constexpr FloatType DefaultTimePeriodMicros = 1e6 / 50; // 50 Hz
+            cur.freq = m_tbw_count_zc / 2.0; // 2 zero crossings per cycle
+            cur.freq += residue_micros / DefaultTimePeriodMicros; // Add the residue
+
+            // Reset the time-bound zero crossing variables
+            m_tbw_start_micros = cur.src_sample.ts;
+            m_tbw_second_mark_micros = m_tbw_start_micros + (USize)1e6;
+            m_tbw_count_zc = 0;
+            m_tbw_first_zc_micros = -1;
+            m_tbw_last_zc_micros = -1;
+        } else {
+            cur.freq = prv.freq;
         }
 
     } else {
@@ -260,8 +305,6 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
 
     // Update the index
     m_index = NEXT(m_index);
-
-    cur.src_sample = sample;
 
     return cur;
 

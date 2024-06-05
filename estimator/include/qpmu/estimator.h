@@ -42,12 +42,15 @@ enum class PhasorEstimationStrategy {
 };
 
 enum class FrequencyEstimationStrategy {
-    ConsecutivePhaseDifferences, // Estimate frequency from the phase (angle) and time differences
-                                 // between consecutive phasors
+    PhaseDifferences, // Estimate frequency from the phase (angle) and time differences
+                      // between consecutive phasors
     SamePhaseCrossings, // Estimate frequency from time differences between zero-crossings of the
                         // same phase
     ZeroCrossings, // Estimate frequency from time differences between zero-crossings of the
                    // signal samples with linear interpolation
+    TimeBoundZeroCrossings, // Estimate frequency from time differences between zero-crossings of
+                            // the signal samples with linear interpolation, but only within a
+                            // one-second window
 };
 
 class Estimator
@@ -85,7 +88,7 @@ public:
     Estimator(USize window_size,
               PhasorEstimationStrategy phasor_strategy = PhasorEstimationStrategy::FFT,
               FrequencyEstimationStrategy freq_strategy =
-                      FrequencyEstimationStrategy::ConsecutivePhaseDifferences,
+                      FrequencyEstimationStrategy::PhaseDifferences,
               std::pair<FloatType, FloatType> voltage_params = { 1.0, 0.0 },
               std::pair<FloatType, FloatType> current_params = { 1.0, 0.0 });
 
@@ -97,8 +100,7 @@ private:
 
     // ****** Private member variables ******
     PhasorEstimationStrategy m_phasor_strategy = PhasorEstimationStrategy::FFT;
-    FrequencyEstimationStrategy m_freq_strategy =
-            FrequencyEstimationStrategy::ConsecutivePhaseDifferences;
+    FrequencyEstimationStrategy m_freq_strategy = FrequencyEstimationStrategy::PhaseDifferences;
     USize m_size = 0;
     FloatType m_scale_voltage = 1.0;
     FloatType m_offset_voltage = 0.0;
@@ -109,6 +111,11 @@ private:
     USize m_index = 0;
     FftwState m_fftw_state = {};
     SdftState m_sdft_state = {};
+    qpmu::USize m_tbw_start_micros = 0;
+    qpmu::USize m_tbw_second_mark_micros = 0;
+    qpmu::USize m_tbw_count_zc = 0;
+    qpmu::FloatType m_tbw_first_zc_micros = -1;
+    qpmu::FloatType m_tbw_last_zc_micros = -1;
 };
 
 } // namespace qpmu

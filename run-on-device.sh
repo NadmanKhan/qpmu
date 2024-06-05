@@ -7,7 +7,7 @@ make &&
     ./estimator/qpmu-estimator \
         --window 24 \
         --phasor-est fft \
-        --freq-est cpd \
+        --freq-est tbzc \
         --vscale 0.3205000 \
         --voffset 0 \
         --iscale 0.0073663 \
