@@ -111,11 +111,15 @@ private:
     USize m_index = 0;
     FftwState m_fftw_state = {};
     SdftState m_sdft_state = {};
-    qpmu::USize m_tbw_start_micros = 0;
-    qpmu::USize m_tbw_second_mark_micros = 0;
-    qpmu::USize m_tbw_count_zc = 0;
-    qpmu::FloatType m_tbw_first_zc_micros = -1;
-    qpmu::FloatType m_tbw_last_zc_micros = -1;
+
+    std::vector<U64> m_tbzc_xs = {};
+    std::vector<U64> m_tbzc_ts = {};
+    USize m_tbzc_ptr = 0;
+    qpmu::USize m_tbzc_start_micros = 0;
+    qpmu::USize m_tbzc_second_mark_micros = 0;
+    qpmu::USize m_tbzc_count_zc = 0;
+    qpmu::FloatType m_tbzc_first_zc_micros = -1;
+    qpmu::FloatType m_tbzc_last_zc_micros = -1;
 };
 
 } // namespace qpmu

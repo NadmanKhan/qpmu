@@ -1,5 +1,6 @@
 #include "qpmu/estimator.h"
 #include "qpmu/common.h"
+#include <algorithm>
 #include <cmath>
 #include <cassert>
 #include <iostream>
@@ -16,10 +17,10 @@ constexpr bool is_positive(Numeric x)
     }
 }
 
-constexpr qpmu::FloatType zero_crossing_time(qpmu::FloatType t0, qpmu::FloatType v0,
-                                             qpmu::FloatType t1, qpmu::FloatType v1)
+constexpr qpmu::FloatType zero_crossing_time(qpmu::FloatType t0, qpmu::FloatType x0,
+                                             qpmu::FloatType t1, qpmu::FloatType x1)
 {
-    return t0 + v0 * (t1 - t0) / (v1 - v0);
+    return t0 + x0 * (t1 - t0) / (x1 - x0);
 }
 
 qpmu::Estimator::~Estimator()
@@ -65,6 +66,11 @@ qpmu::Estimator::Estimator(USize window_size, PhasorEstimationStrategy strategy,
         m_sdft_state.workers =
                 std::vector<SdftType>(NumChannels, SdftType(m_size, sdft::Window::Hann, 1));
         m_sdft_state.outputs.assign(NumChannels, std::vector<Complex>(m_size, 0));
+    }
+
+    if (m_freq_strategy == FrequencyEstimationStrategy::TimeBoundZeroCrossings) {
+        m_tbzc_xs.resize(2 * 50 * m_size);
+        m_tbzc_ts.resize(2 * 50 * m_size);
     }
 }
 
@@ -256,39 +262,61 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
             cur.freq = 0;
         }
     } else if (m_freq_strategy == FrequencyEstimationStrategy::TimeBoundZeroCrossings) {
-        if (m_tbw_start_micros == 0) {
-            m_tbw_start_micros = cur.src_sample.ts;
-            m_tbw_second_mark_micros = m_tbw_start_micros + (USize)1e6;
+        if (m_tbzc_start_micros == 0) {
+            m_tbzc_start_micros = cur.src_sample.ts;
+            m_tbzc_second_mark_micros = m_tbzc_start_micros + (USize)1e6;
         }
 
-        // See if there is a zero crossing
-        bool zc = is_positive(std::arg(prv.phasors[0])) != is_positive(std::arg(cur.phasors[0]));
-        if (zc) {
-            ++m_tbw_count_zc;
-            m_tbw_last_zc_micros = zero_crossing_time(prv.src_sample.ts, std::arg(prv.phasors[0]),
-                                                      cur.src_sample.ts, std::arg(cur.phasors[0]));
-            if (m_tbw_first_zc_micros <= 0) {
-                m_tbw_first_zc_micros = m_tbw_last_zc_micros;
-            }
-        }
+        // // See if there is a zero crossing
+        // bool zc = is_positive(std::arg(prv.phasors[0])) != is_positive(std::arg(cur.phasors[0]));
+        // if (zc) {
+        //     ++m_tbzc_count_zc;
+        //     m_tbzc_last_zc_micros = zero_crossing_time(prv.src_sample.ts,
+        //     std::arg(prv.phasors[0]),
+        //                                               cur.src_sample.ts,
+        //                                               std::arg(cur.phasors[0]));
+        //     if (m_tbzc_first_zc_micros <= 0) {
+        //         m_tbzc_first_zc_micros = m_tbzc_last_zc_micros;
+        //     }
+        // }
 
-        if (m_tbw_second_mark_micros < cur.src_sample.ts) {
+        if (m_tbzc_second_mark_micros < cur.src_sample.ts) {
             // One second has passed; calculate the frequency
-            m_tbw_second_mark_micros = m_tbw_start_micros + (USize)1e6;
-            auto residue_micros = (m_tbw_first_zc_micros - m_tbw_start_micros)
-                    + (m_tbw_second_mark_micros - m_tbw_last_zc_micros);
+            // First, caucluate the first and last zero crossing times
+            const auto max_value = *std::max_element(m_tbzc_xs.begin(), m_tbzc_xs.end());
+            const FloatType median_value = max_value / 2.0;
+            for (USize i = 1; i < m_tbzc_ptr; ++i) {
+                const auto &x0 = m_tbzc_xs[i - 1];
+                const auto &t1 = m_tbzc_ts[i];
+                const auto &t0 = m_tbzc_ts[i - 1] - median_value;
+                const auto &x1 = m_tbzc_xs[i] - median_value;
+                if (is_positive(x0) != is_positive(x1)) {
+                    auto t = zero_crossing_time(t0, x0, t1, x1);
+                    m_tbzc_last_zc_micros = t;
+                    if (m_tbzc_first_zc_micros <= 0) {
+                        m_tbzc_first_zc_micros = t;
+                    }
+                }
+            }
+
+            auto residue_micros = (m_tbzc_first_zc_micros - m_tbzc_start_micros)
+                    + (m_tbzc_second_mark_micros - m_tbzc_last_zc_micros);
             static constexpr FloatType DefaultTimePeriodMicros = 1e6 / 50; // 50 Hz
-            cur.freq = m_tbw_count_zc / 2.0; // 2 zero crossings per cycle
+            cur.freq = m_tbzc_count_zc / 2.0; // 2 zero crossings per cycle
             cur.freq += residue_micros / DefaultTimePeriodMicros; // Add the residue
 
             // Reset the time-bound zero crossing variables
-            m_tbw_start_micros = cur.src_sample.ts;
-            m_tbw_second_mark_micros = m_tbw_start_micros + (USize)1e6;
-            m_tbw_count_zc = 0;
-            m_tbw_first_zc_micros = -1;
-            m_tbw_last_zc_micros = -1;
+            m_tbzc_ptr = 0;
+            m_tbzc_start_micros = cur.src_sample.ts;
+            m_tbzc_second_mark_micros = m_tbzc_start_micros + (USize)1e6;
+            m_tbzc_count_zc = 0;
+            m_tbzc_first_zc_micros = -1;
+            m_tbzc_last_zc_micros = -1;
         } else {
             cur.freq = prv.freq;
+            m_tbzc_xs[m_tbzc_ptr] = cur.src_sample.ch[0];
+            m_tbzc_xs[m_tbzc_ptr] = cur.src_sample.ts;
+            ++m_tbzc_ptr;
         }
 
     } else {
