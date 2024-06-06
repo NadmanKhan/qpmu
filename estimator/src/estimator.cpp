@@ -283,7 +283,8 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
         if (m_tbzc_second_mark_micros < cur.src_sample.ts) {
             // One second has passed; calculate the frequency
             // First, caucluate the first and last zero crossing times
-            const auto max_value = *std::max_element(m_tbzc_xs.begin(), m_tbzc_xs.end());
+            const auto max_value =
+                    *std::max_element(m_tbzc_xs.begin(), m_tbzc_xs.begin() + m_tbzc_ptr);
             const FloatType median_value = max_value / 2.0;
             for (USize i = 1; i < m_tbzc_ptr; ++i) {
                 const auto &x0 = m_tbzc_xs[i - 1];
