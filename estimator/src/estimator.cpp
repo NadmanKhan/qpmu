@@ -288,34 +288,20 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
                     *std::max_element(m_tbzc_xs.begin(), m_tbzc_xs.begin() + m_tbzc_ptr);
             const FloatType median_value = max_value / 2.0;
             for (USize i = 1; i < m_tbzc_ptr; ++i) {
-                const auto &t0 = m_tbzc_ts[i - 1];
-                const auto &t1 = m_tbzc_ts[i];
                 const auto &x0 = m_tbzc_xs[i - 1] - median_value;
                 const auto &x1 = m_tbzc_xs[i] - median_value;
-                
                 if (is_positive(x0) != is_positive(x1)) {
                     ++m_tbzc_count_zc;
-                    auto t = zero_crossing_time(t0, x0, t1, x1);
-                    m_tbzc_last_zc_micros = t;
-                    if (m_tbzc_first_zc_micros <= 0) {
-                        m_tbzc_first_zc_micros = t;
-                    }
                 }
             }
 
-            auto residue_micros = (m_tbzc_first_zc_micros - m_tbzc_start_micros)
-                    + (m_tbzc_second_mark_micros - m_tbzc_last_zc_micros);
-            static constexpr FloatType DefaultTimePeriodMicros = 1e6 / 50; // 50 Hz
             cur.freq = m_tbzc_count_zc / 2.0; // 2 zero crossings per cycle
-            cur.freq += residue_micros / DefaultTimePeriodMicros; // Add the residue
 
             // Reset the time-bound zero crossing variables
             m_tbzc_ptr = 0;
             m_tbzc_start_micros = cur.src_sample.ts;
             m_tbzc_second_mark_micros = m_tbzc_start_micros + (USize)1e6;
             m_tbzc_count_zc = 0;
-            m_tbzc_first_zc_micros = -1;
-            m_tbzc_last_zc_micros = -1;
         } else {
             cur.freq = prv.freq;
             m_tbzc_xs[m_tbzc_ptr] = cur.src_sample.ch[0];

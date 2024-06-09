@@ -115,11 +115,9 @@ private:
     std::vector<U64> m_tbzc_xs = {};
     std::vector<U64> m_tbzc_ts = {};
     USize m_tbzc_ptr = 0;
-    qpmu::USize m_tbzc_start_micros = 0;
-    qpmu::USize m_tbzc_second_mark_micros = 0;
-    qpmu::USize m_tbzc_count_zc = 0;
-    qpmu::FloatType m_tbzc_first_zc_micros = -1;
-    qpmu::FloatType m_tbzc_last_zc_micros = -1;
+    qpmu::U64 m_tbzc_start_micros = 0;
+    qpmu::U64 m_tbzc_second_mark_micros = 0;
+    qpmu::U64 m_tbzc_count_zc = 0;
 };
 
 } // namespace qpmu
