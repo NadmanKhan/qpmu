@@ -33,7 +33,7 @@ public:
     static constexpr qreal PolarGraphWidth = 2;
     static constexpr qreal RectGraphWidth = 4;
 
-    static constexpr int NumCycles = 2;
+    static constexpr int NumCycles = 1;
     static constexpr int NumPointsPerCycle = 2 * 5;
 
     static constexpr quint32 UpdateIntervalMs = 100;
@@ -54,6 +54,7 @@ private slots:
     void update(bool force = false);
     void noForceUpdate();
     void forceUpdate();
+    bool isSimulating() const;
 
 private:
     Worker *m_worker;
@@ -74,6 +75,7 @@ private:
     QVector<QPointF> m_connectorPointsList[qpmu::NumChannels];
 
     QLabel *m_statusLabel;
+    QLabel *m_frequencyLabel;
     QLabel *m_phasorLabels[qpmu::NumChannels];
     QLabel *m_phaseDiffLabels[qpmu::NumPhases];
     QLabel *m_phasePowerLabels[qpmu::NumPhases];

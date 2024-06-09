@@ -35,25 +35,44 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     auto dataVBox = new QVBoxLayout();
     outerHBox->addLayout(dataVBox, 1);
 
-    /// Status label
-    m_statusLabel = new QLabel();
-    dataVBox->addWidget(m_statusLabel);
-    m_statusLabel->setAutoFillBackground(true);
-    m_statusLabel->setAlignment(Qt::AlignLeft);
-    m_statusLabel->setContentsMargins(QMargins(10, 5, 10, 5));
-    m_statusLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    {
-        auto font = m_statusLabel->font();
-        font.setPointSize(font.pointSize() * 1.25);
-        m_statusLabel->setFont(font);
-    }
-
     /// ChartView
     auto chartView = new QChartView();
     dataVBox->addWidget(chartView, 1);
     chartView->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
     chartView->setRenderHint(QPainter::Antialiasing, true);
     chartView->setContentsMargins(QMargins(0, 0, 0, 0));
+
+    /// Status and frqequency labels
+    auto labelsHBox = new QHBoxLayout();
+    dataVBox->addLayout(labelsHBox);
+    m_statusLabel = new QLabel();
+    m_frequencyLabel = new QLabel();
+    labelsHBox->addWidget(m_statusLabel, 0);
+    labelsHBox->addWidget(m_frequencyLabel, 1);
+    m_statusLabel->setAlignment(Qt::AlignLeft);
+    m_frequencyLabel->setAlignment(Qt::AlignRight);
+    for (auto label : { m_statusLabel, m_frequencyLabel }) {
+        label->setAutoFillBackground(true);
+        label->setBackgroundRole(QPalette::Highlight);
+        label->setForegroundRole(QPalette::BrightText);
+        label->setContentsMargins(QMargins(10, 5, 10, 5));
+        label->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+        {
+            auto font = label->font();
+            font.setPointSize(font.pointSize() * 1.5);
+            label->setFont(font);
+        }
+    }
+    {
+        auto palette = m_statusLabel->palette();
+        palette.setColor(QPalette::Highlight, QStringLiteral("#22bb45"));
+        m_statusLabel->setPalette(palette);
+    }
+    {
+        auto font = m_frequencyLabel->font();
+        font.setFamily(QStringLiteral("monospace"));
+        m_frequencyLabel->setFont(font);
+    }
 
     /// Chart
     auto chart = new EquallyScaledAxesChart();
@@ -99,10 +118,9 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
                                     (PolarGraphWidth + Spacing + RectGraphWidth) / 2 };
         for (bool b : { 0, 1 }) {
             auto &seriesList = m_phasorFakeAxesSeriesList[b];
-            for (int radiusPoint = 1; radiusPoint <= 4; ++radiusPoint) {
-                const qreal radius = qreal(radiusPoint) / 4 * PolarGraphWidth / 2;
-                auto circle = makeFakeAxisSeries(QAbstractSeries::SeriesTypeSpline,
-                                                 1 + bool(radiusPoint == 4) * 1,
+            for (int radiusPercent : { 100, 89, 67 }) {
+                const qreal radius = qreal(radiusPercent) / 100 * PolarGraphWidth / 2;
+                auto circle = makeFakeAxisSeries(QAbstractSeries::SeriesTypeSpline, 1.5,
                                                  QStringLiteral("Angular Axis"));
                 for (int i = 0; i <= (360 / 10); ++i) {
                     const qreal theta = qreal(i) / (360.0 / 10) * (2 * M_PI);
@@ -282,6 +300,10 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     }
 
     /// Layout for controls (side panel)
+    auto verticalLine = new QFrame();
+    verticalLine->setFrameShape(QFrame::VLine);
+    verticalLine->setFrameShadow(QFrame::Sunken);
+    outerHBox->addWidget(verticalLine);
     auto sideVBox = new QVBoxLayout();
     outerHBox->addLayout(sideVBox, 0);
     sideVBox->setContentsMargins(QMargins(0, 0, 0, 0));
@@ -289,6 +311,12 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     /// Pause/play
     m_pausePlayButton = new QPushButton(this);
     sideVBox->addWidget(m_pausePlayButton);
+    {
+        auto font = m_pausePlayButton->font();
+        font.setPointSize(font.pointSize() * 1.5);
+        m_pausePlayButton->setFont(font);
+    }
+    m_pausePlayButton->setAutoFillBackground(true);
     m_pausePlayButton->setBackgroundRole(QPalette::Highlight);
     m_pausePlayButton->setIcon(QIcon(QStringLiteral(":/pause.png")));
     m_pausePlayButton->setText(QStringLiteral("Pause"));
@@ -297,15 +325,25 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         if (m_playing) {
             m_pausePlayButton->setIcon(QIcon(QStringLiteral(":/pause.png")));
             m_pausePlayButton->setText(QStringLiteral("Pause"));
+            m_statusLabel->setText(QStringLiteral("<strong>")
+                                   + (isSimulating() ? QStringLiteral("SIMULATING ROTATION")
+                                                     : QStringLiteral("LIVE"))
+                                   + QStringLiteral("</strong>"));
+            auto palette = m_statusLabel->palette();
+            palette.setColor(
+                    QPalette::Highlight,
+                    (isSimulating() ? QStringLiteral("#808080") : QStringLiteral("#22bb45")));
+            m_statusLabel->setPalette(palette);
         } else {
             m_pausePlayButton->setIcon(QIcon(QStringLiteral(":/play.png")));
             m_pausePlayButton->setText(QStringLiteral("Play"));
-            m_statusLabel->setText(QStringLiteral("<strong>Paused ")
-                                   + ((m_simulationFrequencyIndex > 0)
-                                              ? QStringLiteral("simulation")
-                                              : QStringLiteral("live"))
-                                   + QStringLiteral("</strong>"));
-            m_statusLabel->setForegroundRole(QPalette::Text);
+            m_statusLabel->setText(
+                    QStringLiteral("<strong>PAUSED ")
+                    + (isSimulating() ? QStringLiteral("SIMULATION") : QStringLiteral("LIVE"))
+                    + QStringLiteral("</strong>"));
+            auto palette = m_statusLabel->palette();
+            palette.setColor(QPalette::Highlight, QStringLiteral("#dc143c"));
+            m_statusLabel->setPalette(palette);
         }
         forceUpdate();
     });
@@ -378,17 +416,22 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
         m_connectorCheckBox->setIcon(QIcon(QStringLiteral(":/dashed-line.png")));
         m_connectorCheckBox->setChecked(true);
 
+        /// Horizontal line
+        auto horizontalLine = new QFrame();
+        horizontalLine->setFrameShape(QFrame::HLine);
+        horizontalLine->setFrameShadow(QFrame::Sunken);
+
         auto vizGroupBox = new QGroupBox(QStringLiteral("Toggle Visibility"));
         sideVBox->addWidget(vizGroupBox);
 
         auto vizGroupGrid = new QGridLayout(vizGroupBox);
-
         vizGroupGrid->addWidget(m_phasorCheckBox, 0, 0, 1, 2);
         vizGroupGrid->addWidget(m_waveformCheckBox, 1, 0, 1, 2);
         vizGroupGrid->addWidget(m_connectorCheckBox, 2, 0, 1, 2);
+        vizGroupGrid->addWidget(horizontalLine, 3, 0, 1, 2);
         for (int i = 0; i < 2; ++i) {
             for (int j = 0; j < (int)m_signalCheckBoxList[i].size(); ++j) {
-                vizGroupGrid->addWidget(m_signalCheckBoxList[i][j], 3 + j, i);
+                vizGroupGrid->addWidget(m_signalCheckBoxList[i][j], 4 + j, i);
             }
         }
 
@@ -406,7 +449,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     }
 
     { /// Plot max amplitude options
-        auto ampliGroupBox = new QGroupBox(QStringLiteral("Set Max. Amplitude to Plot"));
+        auto ampliGroupBox = new QGroupBox(QStringLiteral("Set Upper Bound"));
         sideVBox->addWidget(ampliGroupBox);
         auto ampliGroupGrid = new QGridLayout(ampliGroupBox);
 
@@ -421,8 +464,8 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
                 combo->addItem(text);
             }
             combo->setCurrentIndex(0);
-            auto label = new QLabel((type == SignalType::Voltage ? QStringLiteral("Voltage:")
-                                                                 : QStringLiteral("Current:")));
+            auto label = new QLabel((type == SignalType::Voltage ? QStringLiteral("Voltage")
+                                                                 : QStringLiteral("Current")));
             ampliGroupGrid->addWidget(label, type, 0);
             ampliGroupGrid->addWidget(combo, type, 1);
         }
@@ -464,6 +507,11 @@ void MonitorView::forceUpdate()
     update(true);
 }
 
+bool MonitorView::isSimulating() const
+{
+    return m_simulationFrequencyIndex > 0;
+}
+
 void MonitorView::update(bool force)
 {
     using namespace qpmu;
@@ -472,15 +520,13 @@ void MonitorView::update(bool force)
         return;
     }
 
-    bool is_simulating = m_simulationFrequencyIndex > 0;
-
     if (!m_playing) {
         return;
     }
 
     Estimation est; // Filled only if not simulating
 
-    if (is_simulating) {
+    if (isSimulating()) {
         /// simulating; nudge the phasors according to the chosen frequency
         FloatType f = SimulationFrequencyOptions[m_simulationFrequencyIndex];
         FloatType delta = f * (2 * M_PI * UpdateIntervalMs / 1000.0);
@@ -658,24 +704,27 @@ void MonitorView::update(bool force)
         }
     }
 
-    /// Update status label
-    if (is_simulating) {
-        m_statusLabel->setForegroundRole(QPalette::Text);
-        m_statusLabel->setBackgroundRole(QPalette::Base);
-        m_statusLabel->setText(
-                QStringLiteral("Simulating rotation at <strong>")
+    /// Update status and frequency labels
+    if (isSimulating()) {
+        m_statusLabel->setText(QStringLiteral("<strong>SIMULATING ROTATION</strong>"));
+        m_frequencyLabel->setText(
+                QStringLiteral("<strong>")
                 + QString::number(SimulationFrequencyOptions[m_simulationFrequencyIndex])
                 + QStringLiteral(" Hz</strong>"));
+        auto palette = m_statusLabel->palette();
+        palette.setColor(QPalette::Highlight, QStringLiteral("#808080"));
+        m_statusLabel->setPalette(palette);
     } else {
-        m_statusLabel->setForegroundRole(QPalette::Text);
-        m_statusLabel->setBackgroundRole(QPalette::Base);
-        m_statusLabel->setText(
-                QStringLiteral("Live signals at <strong>") + QString::number(est.freq, 'f', 1)
-                + QStringLiteral(" Hz</strong> (phases relative to %1)").arg(Signals[0].name));
+        m_statusLabel->setText(QStringLiteral("<strong>LIVE</strong>"));
+        m_frequencyLabel->setText(QStringLiteral("<strong>") + QString::number(est.freq, 'f', 1)
+                                  + QStringLiteral(" Hz</strong>"));
+        auto palette = m_statusLabel->palette();
+        palette.setColor(QPalette::Highlight, QStringLiteral("#22bb45"));
+        m_statusLabel->setPalette(palette);
     }
 
     /// Update table
-    if (is_simulating) {
+    if (isSimulating()) {
         for (USize p = 0; p < NumPhases; ++p) {
             const auto &[vIdx, iIdx] = SignalPhasePairs[p];
             const auto &vAmpli = m_plotAmplitudes[vIdx];

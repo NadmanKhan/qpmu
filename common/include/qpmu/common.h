@@ -48,9 +48,9 @@ struct Signal
 constexpr Signal Signals[NumChannels] = { { "VA", "#404040", SignalType::Voltage, SignalPhase::A },
                                           { "VB", "#ff0000", SignalType::Voltage, SignalPhase::B },
                                           { "VC", "#00ffff", SignalType::Voltage, SignalPhase::C },
-                                          { "IA", "#eeee00", SignalType::Current, SignalPhase::A },
+                                          { "IA", "#f1dd38", SignalType::Current, SignalPhase::A },
                                           { "IB", "#0000ff", SignalType::Current, SignalPhase::B },
-                                          { "IC", "#00c000", SignalType::Current,
+                                          { "IC", "#22bb45", SignalType::Current,
                                             SignalPhase::C } };
 
 constexpr USize SignalPhasePairs[NumPhases][2] = { { 0, 3 }, { 1, 4 }, { 2, 5 } };
