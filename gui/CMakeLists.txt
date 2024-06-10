@@ -9,12 +9,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(
   QT NAMES Qt6 Qt5
-  COMPONENTS Core Widgets Charts Quick
+  COMPONENTS Core Widgets Charts
   REQUIRED)
 
 find_package(
   Qt${QT_VERSION_MAJOR}
-  COMPONENTS Core Widgets Charts Quick
+  COMPONENTS Core Widgets Charts
   REQUIRED)
 
 set(PROJECT_SOURCES
@@ -59,7 +59,7 @@ target_compile_definitions(
 target_link_libraries(
   ${PROJECT_NAME}-gui
   PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Widgets
-          Qt${QT_VERSION_MAJOR}::Charts Qt${QT_VERSION_MAJOR}::Quick fftw3)
+          Qt${QT_VERSION_MAJOR}::Charts fftw3)
 
 set_target_properties(
   ${PROJECT_NAME}-gui
@@ -71,6 +71,5 @@ set_target_properties(
              WIN32_EXECUTABLE TRUE)
 
 if(QT_VERSION_MAJOR EQUAL 6)
-  qt_import_qml_plugins(${PROJECT_NAME}-gui)
   qt_finalize_executable(${PROJECT_NAME}-gui)
 endif()
