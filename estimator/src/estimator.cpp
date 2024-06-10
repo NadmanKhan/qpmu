@@ -283,7 +283,7 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
             auto time_residue_s = 1.0 - time_window_s;
 
             FloatType f = (m_tbzc_count_zc - 1) / 2.0; // 2 zero crossings per cycle
-            cur.freq = f + (time_residue_s * 50.0);
+            cur.freq = f + (time_residue_s * f);
 
             // Reset the time-bound zero crossing variables
             m_tbzc_ptr = 0;
