@@ -68,7 +68,7 @@ std::string to_string(const Estimation &est)
     ss << std::to_string(est.timestamp_micros) << ",\t";
     for (size_t i = 0; i < NumChannels; ++i) {
         ss << "phasor_" << i << "="
-           << phasor_to_string(std::polar(est.phasor_mag[i], est.phasor_ang[i])) << ",\t";
+           << phasor_polar_to_string(std::polar(est.phasor_mag[i], est.phasor_ang[i])) << ",\t";
     }
     ss << "freq=" << est.freq << ",\t";
     ss << "rocof=" << est.rocof << ",";
