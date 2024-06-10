@@ -173,16 +173,14 @@ void PhasorView::update()
     Estimation est;
     m_worker->getEstimations(est);
 
-    const auto &phasors = est.phasors;
-
     std::array<FloatType, NumChannels> phaseDiffs;
     std::array<FloatType, NumChannels> amplitudes;
 
-    FloatType phaseRef = std::arg(phasors[0]);
+    FloatType phaseRef = est.phasor_ang[0];
     for (USize i = 0; i < NumChannels; ++i) {
-        phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef) * (180 / M_PI);
+        phaseDiffs[i] = (est.phasor_ang[i] - phaseRef) * (180 / M_PI);
         phaseDiffs[i] = std::fmod(phaseDiffs[i] + 360, 360);
-        amplitudes[i] = std::abs(phasors[i]);
+        amplitudes[i] = est.phasor_mag[i];
     }
 
     std::array<QPointF, NumChannels> polars;

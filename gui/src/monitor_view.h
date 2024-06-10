@@ -44,9 +44,8 @@ public:
         { 0, 60, 120, 180, 240, 300, 360 }, { 0, 0.5, 1, 2, 4, 8, 16 }
     };
 
-    static constexpr char const *const TableHHeaders[] = { "Voltage", "Current", "Phase Diff.",
-                                                           "Power" };
-    static constexpr int NumTableColumns = 4;
+    static constexpr std::array<char const *const, 3> TableHHeaders = { "Voltage", "Current",
+                                                                        "Phase Diff." };
 
     MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
 

@@ -97,11 +97,11 @@ struct AdcSample
 
 struct Estimation
 {
-    AdcSample src_sample; // Original sample
-    Complex phasors[NumChannels]; // Estimated phasors
+    U64 timestamp_micros; // Timestamp (in microseconds)
+    FloatType phasor_mag[NumChannels]; // Phasor magnitudes
+    FloatType phasor_ang[NumChannels]; // Phasor angles (in radians)
     FloatType freq; // Estimated frequency in Hz
     FloatType rocof; // Estimated rate of change of frequency in Hz/s
-    FloatType power[NumPhases]; // Estimated power in Watt
 
     static std::string csv_header();
     friend std::string to_string(const Estimation &est);

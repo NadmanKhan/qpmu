@@ -1,4 +1,5 @@
 #include <cctype>
+#include <complex>
 #include <ios>
 #include <string>
 #include <sstream>
@@ -64,10 +65,10 @@ std::string to_csv(const AdcSample &sample)
 std::string to_string(const Estimation &est)
 {
     std::stringstream ss;
-    ss << to_string(est.src_sample) << ",\t";
+    ss << std::to_string(est.timestamp_micros) << ",\t";
     for (size_t i = 0; i < NumChannels; ++i) {
-        ss << "phasor" << i << "=" << phasor_to_string(est.phasors[i]) << "="
-           << phasor_polar_to_string(est.phasors[i]) << ",\t";
+        ss << "phasor_" << i << "="
+           << phasor_to_string(std::polar(est.phasor_mag[i], est.phasor_ang[i])) << ",\t";
     }
     ss << "freq=" << est.freq << ",\t";
     ss << "rocof=" << est.rocof << ",";
@@ -77,10 +78,9 @@ std::string to_string(const Estimation &est)
 std::string Estimation::csv_header()
 {
     std::string header;
-    header += AdcSample::csv_header() + ',';
+    header += "timestamp_micros,";
     for (size_t i = 0; i < NumChannels; ++i) {
-        header += "phasor" + std::to_string(i) + ',';
-        header += "phasor" + std::to_string(i) + "_polar" + ',';
+        header += "phasor_" + std::to_string(i) + ',';
     }
     header += "freq,rocof";
     return header;
@@ -89,11 +89,9 @@ std::string Estimation::csv_header()
 std::string to_csv(const Estimation &est)
 {
     std::string str;
-    str += to_csv(est.src_sample);
+    str += std::to_string(est.timestamp_micros);
     for (size_t i = 0; i < NumChannels; ++i) {
-        str += phasor_to_string(est.phasors[i]);
-        str += ',';
-        str += phasor_polar_to_string(est.phasors[i]);
+        str += phasor_polar_to_string(std::polar(est.phasor_mag[i], est.phasor_ang[i]));
         str += ',';
     }
     str += std::to_string(est.freq);

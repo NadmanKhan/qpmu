@@ -83,7 +83,7 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
 
     const auto &prv = m_estimations[PREV(m_index)];
     auto &cur = m_estimations[m_index];
-    cur.src_sample = sample;
+    cur.timestamp_micros = sample.ts;
 
     for (USize i = 0; i < NumChannels; ++i) {
         const auto &scale = (signal_is_voltage(Signals[i]) ? m_scale_voltage : m_scale_current);
@@ -116,19 +116,11 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
         }
         // Phasor = output corresponding to the fundamental frequency
         for (USize i = 0; i < NumChannels; ++i) {
-            // FloatType max_norm = 0;
-            // USize max_norm_index = 1;
-            // for (USize j = 1; j < m_size / 2; ++j) {
-            //     FloatType norm = m_fftw_state.outputs[i][j][0] * m_fftw_state.outputs[i][j][0]
-            //             + m_fftw_state.outputs[i][j][1] * m_fftw_state.outputs[i][j][1];
-            //     if (norm > max_norm) {
-            //         max_norm = norm;
-            //         max_norm_index = j;
-            //     }
-            // }
             const auto &phasor =
-                    Complex(m_fftw_state.outputs[i][1][0], m_fftw_state.outputs[i][1][1]);
-            cur.phasors[i] = phasor;
+                    Complex(m_fftw_state.outputs[i][1][0], m_fftw_state.outputs[i][1][1])
+                    / FloatType(m_size);
+            cur.phasor_mag[i] = std::abs(phasor);
+            cur.phasor_ang[i] = std::arg(phasor);
         }
 
     } else if (m_phasor_strategy == PhasorEstimationStrategy::SDFT) {
@@ -138,16 +130,13 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
         }
         // Phasor = output corresponding to the fundamental frequency
         for (USize i = 0; i < NumChannels; ++i) {
-            cur.phasors[i] = m_sdft_state.outputs[i][1];
+            const auto &phasor = m_sdft_state.outputs[i][1] / FloatType(m_size);
+            cur.phasor_mag[i] = std::abs(phasor);
+            cur.phasor_ang[i] = std::arg(phasor);
         }
     } else {
         std::cerr << "Unknown phasor estimation strategy\n";
         std::abort();
-    }
-
-    // scale the phasors down by the window size
-    for (USize i = 0; i < NumChannels; ++i) {
-        cur.phasors[i] /= FloatType(m_size);
     }
 
     /**
@@ -165,7 +154,7 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
                 continue;
             }
             ++cnt;
-            auto phase_diff = std::arg(cur.phasors[i]) - std::arg(prv.phasors[i]);
+            auto phase_diff = cur.phasor_ang[i] - prv.phasor_ang[i];
             phase_diff = std::fmod(phase_diff + FloatType(2 * M_PI), FloatType(2 * M_PI));
             cur.freq += phase_diff;
         }
@@ -183,21 +172,21 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
                 continue;
             }
             for (USize j = 0; j < m_estimations.size(); ++j) {
-                if (m_estimations[j].src_sample.ts == 0) {
+                if (m_estimations[j].timestamp_micros == 0) {
                     continue;
                 }
                 USize cnt_zc = 0;
 
-                auto phase_j = std::arg(m_estimations[j].phasors[i]);
-                I64 t0 = m_estimations[j].src_sample.ts;
+                auto phase_j = m_estimations[j].phasor_ang[i];
+                I64 t0 = m_estimations[j].timestamp_micros;
 
                 for (USize k = j + 1; k < m_estimations.size(); ++k) {
-                    if (m_estimations[k].src_sample.ts == 0) {
+                    if (m_estimations[k].timestamp_micros == 0) {
                         continue;
                     }
 
-                    auto phase_k = std::arg(m_estimations[k].phasors[i]);
-                    auto phase_prev_k = std::arg(m_estimations[k - 1].phasors[i]);
+                    const auto &phase_k = m_estimations[k].phasor_ang[i];
+                    const auto &phase_prev_k = m_estimations[k - 1].phasor_ang[i];
 
                     // Check if there is a zero crossing, and increment the count
                     if (is_positive(phase_k) != is_positive(phase_prev_k)) {
@@ -209,7 +198,7 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
                     phase_diff = std::abs(std::min(phase_diff, M_PI - phase_diff));
                     static constexpr FloatType MaxAllowedPhaseDiff = (M_PI / 180) * 2; // 2 degrees
                     if (phase_diff <= MaxAllowedPhaseDiff) {
-                        I64 t1 = m_estimations[k].src_sample.ts;
+                        I64 t1 = m_estimations[k].timestamp_micros;
                         auto delta_t_sec = std::abs(t1 - t0) * 1e-6; // sample.ts is in microseconds
                         auto cnt_cycles = cnt_zc / 2.0;
 
@@ -230,23 +219,21 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
             if (!signal_is_voltage(Signals[i])) {
                 continue;
             }
-            I64 max_value = 0;
-            for (USize j = 0; j < m_estimations.size(); ++j) {
-                max_value = std::max(max_value, (I64)(m_estimations[j].src_sample.ch[i]));
-            }
-            I64 median_value = max_value / 2;
             FloatType t_last = 0;
             for (USize j = NEXT(m_index); j != m_index; j = NEXT(j)) {
-                if (m_estimations[j].src_sample.ts == 0) {
+                if (m_estimations[j].timestamp_micros == 0) {
                     continue;
                 }
-                const auto &v0 = m_estimations[PREV(j)].src_sample.ch[i] - median_value;
-                const auto &v1 = m_estimations[j].src_sample.ch[i] - median_value;
-                if (is_positive(v0) != is_positive(v1)) {
+
+                const auto &x0 = m_estimations[PREV(j)].phasor_ang[i];
+                const auto &x1 = m_estimations[j].phasor_ang[i];
+
+                if (is_positive(x0) != is_positive(x1)) {
                     // Linear interpolation to find the zero crossing
-                    const auto &t0 = m_estimations[PREV(j)].src_sample.ts;
-                    const auto &t1 = m_estimations[j].src_sample.ts;
-                    auto t = zero_crossing_time(t0, v0, t1, v1);
+                    const auto &t0 = m_estimations[PREV(j)].timestamp_micros;
+                    const auto &t1 = m_estimations[j].timestamp_micros;
+                    auto t = zero_crossing_time(t0, x0, t1, x1);
+
                     if (t_last != 0) {
                         auto delta_t_sec =
                                 std::abs(t - t_last) * 1e-6; // sample.ts is in microseconds
@@ -264,50 +251,52 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
         }
     } else if (m_freq_strategy == FrequencyEstimationStrategy::TimeBoundZeroCrossings) {
         if (m_tbzc_start_micros == 0) {
-            m_tbzc_start_micros = cur.src_sample.ts;
+            m_tbzc_start_micros = sample.ts;
             m_tbzc_second_mark_micros = m_tbzc_start_micros + (USize)1e6;
         }
 
-        // // See if there is a zero crossing
-        // bool zc = is_positive(std::arg(prv.phasors[0])) != is_positive(std::arg(cur.phasors[0]));
-        // if (zc) {
-        //     ++m_tbzc_count_zc;
-        //     m_tbzc_last_zc_micros = zero_crossing_time(prv.src_sample.ts,
-        //     std::arg(prv.phasors[0]),
-        //                                               cur.src_sample.ts,
-        //                                               std::arg(cur.phasors[0]));
-        //     if (m_tbzc_first_zc_micros <= 0) {
-        //         m_tbzc_first_zc_micros = m_tbzc_last_zc_micros;
-        //     }
-        // }
-
-        if (m_tbzc_second_mark_micros < cur.src_sample.ts) {
+        if (m_tbzc_second_mark_micros < sample.ts) {
             // One second has passed; calculate the frequency
-            // First, caucluate the first and last zero crossing times
             const auto max_value =
                     *std::max_element(m_tbzc_xs.begin(), m_tbzc_xs.begin() + m_tbzc_ptr);
             const FloatType median_value = max_value / 2.0;
+
+            U64 first_zc_micros = 0;
+            U64 last_zc_micros = 0;
             for (USize i = 1; i < m_tbzc_ptr; ++i) {
                 const auto &x0 = m_tbzc_xs[i - 1] - median_value;
                 const auto &x1 = m_tbzc_xs[i] - median_value;
+                const auto &t0 = m_tbzc_ts[i - 1];
+                const auto &t1 = m_tbzc_ts[i];
+
                 if (is_positive(x0) != is_positive(x1)) {
                     ++m_tbzc_count_zc;
+                    auto t = zero_crossing_time(t0, x0, t1, x1);
+                    if (first_zc_micros == 0) {
+                        first_zc_micros = t;
+                    }
+                    last_zc_micros = t;
                 }
             }
 
-            cur.freq = m_tbzc_count_zc / 2.0; // 2 zero crossings per cycle
+            auto time_window_micros = last_zc_micros - first_zc_micros;
+            // auto time_residue_micros = (U64)1e6 - time_window_micros;
+
+            cur.freq = ((FloatType)m_tbzc_count_zc / 2.0) // 2 zero crossings per cycle
+                    / ((FloatType)time_window_micros / 1e6);
 
             // Reset the time-bound zero crossing variables
             m_tbzc_ptr = 0;
-            m_tbzc_start_micros = cur.src_sample.ts;
+            m_tbzc_start_micros = sample.ts;
             m_tbzc_second_mark_micros = m_tbzc_start_micros + (USize)1e6;
             m_tbzc_count_zc = 0;
         } else {
             cur.freq = prv.freq;
-            m_tbzc_xs[m_tbzc_ptr] = cur.src_sample.ch[0];
-            m_tbzc_ts[m_tbzc_ptr] = cur.src_sample.ts;
-            ++m_tbzc_ptr;
         }
+
+        m_tbzc_xs[m_tbzc_ptr] = sample.ch[0];
+        m_tbzc_ts[m_tbzc_ptr] = sample.ts;
+        ++m_tbzc_ptr;
 
     } else {
         std::cerr << "Unknown frequency estimation strategy\n";
@@ -315,11 +304,6 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
     }
 
     cur.rocof = (cur.freq - prv.freq) / sample.delta;
-
-    for (USize p = 0; p < NumPhases; ++p) {
-        const auto &[v_index, i_index] = SignalPhasePairs[p];
-        cur.power[p] = (cur.phasors[v_index] * std::conj(cur.phasors[i_index])).real();
-    }
 
     // Update the index
     m_index = NEXT(m_index);

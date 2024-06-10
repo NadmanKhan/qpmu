@@ -103,16 +103,13 @@ void WaveformView::update()
     Estimation est;
     m_worker->getEstimations(est);
 
-    const auto &phasors = est.phasors;
-    const auto &freq = est.freq;
-
     std::array<FloatType, NumChannels> phaseDiffs; // in radians
     std::array<FloatType, NumChannels> amplitudes;
 
-    FloatType phaseRef = std::arg(phasors[0]);
+    FloatType phaseRef = est.phasor_ang[0];
     for (USize i = 0; i < NumChannels; ++i) {
-        phaseDiffs[i] = (std::arg(phasors[i]) - phaseRef);
-        amplitudes[i] = std::abs(phasors[i]);
+        amplitudes[i] = est.phasor_mag[i];
+        phaseDiffs[i] = est.phasor_ang[i] - phaseRef;
     }
 
     FloatType vmax = 0;
@@ -125,9 +122,9 @@ void WaveformView::update()
         }
     }
 
-    FloatType timePeriod = 1.0 / freq;
+    FloatType timePeriod = 1.0 / est.freq;
     FloatType timeDelta = (timePeriod / PlotPointsPerCycle);
-    FloatType _2_pi_f = 2 * M_PI * freq;
+    FloatType _2_pi_f = 2 * M_PI * est.freq;
 
     for (USize i = 0; i < NumChannels; ++i) {
         for (USize j = 0; j < (USize)m_listSplineSeriesPoints[i].size(); ++j) {

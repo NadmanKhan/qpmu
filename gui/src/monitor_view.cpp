@@ -213,7 +213,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     auto table = new QTableWidget();
     dataVBox->addWidget(table, 0);
     table->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    table->setColumnCount(NumTableColumns);
+    table->setColumnCount(TableHHeaders.size());
     table->setRowCount(NumPhases);
     table->setContentsMargins(QMargins(10, 0, 10, 0));
     table->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -243,7 +243,7 @@ MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     table->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
     {
         QStringList hHeaderLabels;
-        for (int i = 0; i < NumTableColumns; ++i) {
+        for (int i = 0; i < (int)TableHHeaders.size(); ++i) {
             hHeaderLabels << TableHHeaders[i];
         }
         table->setHorizontalHeaderLabels(hHeaderLabels);
@@ -546,11 +546,10 @@ void MonitorView::update(bool force)
 
         m_worker->getEstimations(est);
 
-        FloatType phaseRef = std::arg(est.phasors[0]);
+        FloatType phaseRef = est.phasor_ang[0];
         for (USize i = 0; i < NumChannels; ++i) {
-            m_plotAmplitudes[i] = std::abs(est.phasors[i]);
-            m_plotPhaseDiffs[i] =
-                    std::fmod(std::arg(est.phasors[i]) - phaseRef + 2 * M_PI, 2 * M_PI);
+            m_plotAmplitudes[i] = est.phasor_mag[i];
+            m_plotPhaseDiffs[i] = std::fmod(est.phasor_ang[i] - phaseRef + 2 * M_PI, 2 * M_PI);
             if (m_plotPhaseDiffs[i] < M_PI) {
                 m_plotPhaseDiffs[i] += 2 * M_PI;
             }
@@ -753,7 +752,6 @@ void MonitorView::update(bool force)
             const auto &iPhase = m_plotPhaseDiffs[iIdx] * 180 / M_PI;
             auto diff = std::abs(vPhase - iPhase);
             const auto &phaseDiff = std::min(diff, 360 - diff);
-            const auto &power = est.power[p];
 
             auto vPhasorText = QStringLiteral("<pre><strong>%1</strong><small>V ∠ "
                                               "</small><strong>%2</strong><small>°</small></pre>")
@@ -765,13 +763,10 @@ void MonitorView::update(bool force)
                                        .arg(iPhase, 6, 'f', 1, ' ');
             auto phaseDiffText = QStringLiteral("<pre><strong>%1</strong><small>°</small></pre>")
                                          .arg(phaseDiff, 6, 'f', 1, ' ');
-            auto powerText = QStringLiteral("<pre><strong>%1</strong><small>W</small></pre>")
-                                     .arg(power, 8, 'f', 1, ' ');
 
             m_phasorLabels[vIdx]->setText(vPhasorText);
             m_phasorLabels[iIdx]->setText(iPhasorText);
             m_phaseDiffLabels[p]->setText(phaseDiffText);
-            m_phasePowerLabels[p]->setText(powerText);
         }
     }
 }
