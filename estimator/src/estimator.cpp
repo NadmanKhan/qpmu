@@ -282,9 +282,10 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
             auto time_window_s = (last_zc_micros - first_zc_micros) * 1e-6;
             auto time_residue_s = 1.0 - time_window_s;
 
-            auto f = (FloatType)m_tbzc_count_zc / 2.0; // 2 zero crossings per cycle
+            FloatType f = m_tbzc_count_zc / 2.0; // 2 zero crossings per cycle
             // cur.freq = f / time_window_s;
-            cur.freq = f + (f * time_residue_s);
+            // cur.freq = f + (time_residue_s * f);
+            cur.freq = f + (time_residue_s * 50.0);
 
             // Reset the time-bound zero crossing variables
             m_tbzc_ptr = 0;
