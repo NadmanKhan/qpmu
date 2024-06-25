@@ -65,7 +65,7 @@ std::string to_csv(const AdcSample &sample)
 std::string to_string(const Estimation &est)
 {
     std::stringstream ss;
-    ss << std::to_string(est.timestamp_micros) << ",\t";
+    ss << "timestamp_micro=" << std::to_string(est.timestamp_micros) << ",\t";
     for (size_t i = 0; i < NumChannels; ++i) {
         ss << "phasor_" << i << "="
            << phasor_polar_to_string(std::polar(est.phasor_mag[i], est.phasor_ang[i])) << ",\t";
