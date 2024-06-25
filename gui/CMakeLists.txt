@@ -9,12 +9,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(
   QT NAMES Qt6 Qt5
-  COMPONENTS Core Widgets Charts
+  COMPONENTS Core Widgets Charts Network
   REQUIRED)
 
 find_package(
   Qt${QT_VERSION_MAJOR}
-  COMPONENTS Core Widgets Charts
+  COMPONENTS Core Widgets Charts Network
   REQUIRED)
 
 set(PROJECT_SOURCES
@@ -59,7 +59,7 @@ target_compile_definitions(
 target_link_libraries(
   ${PROJECT_NAME}-gui
   PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Widgets
-          Qt${QT_VERSION_MAJOR}::Charts fftw3)
+          Qt${QT_VERSION_MAJOR}::Charts Qt${QT_VERSION_MAJOR}::Network fftw3)
 
 set_target_properties(
   ${PROJECT_NAME}-gui
