@@ -20,6 +20,5 @@ make &&
         --ch4-offset 0 \
         --ch5-scale 0.0073663 \
         --ch5-offset 0 \
-        --ioffset 0 \
         --infmt s |
         ./gui/qpmu-gui
