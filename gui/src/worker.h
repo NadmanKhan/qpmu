@@ -2,6 +2,7 @@
 #define WORKER_H
 
 #include <QThread>
+#include <QtNetwork/QUdpSocket>
 
 #include "qpmu/common.h"
 
@@ -18,6 +19,7 @@ public slots:
 
 private:
     qpmu::Estimation m_estimations;
+    QUdpSocket *m_socket;
 };
 
 #endif // WORKER_H
