@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
         vector<string> tokens;
         auto first_non_digit = voltage_str.find_first_not_of("0123456789");
 
-        auto voltage_unit = voltage_str.substr(first_non_digit);
+        auto voltage_unit = voltage_str.substr(std::min(voltage_str.size(), first_non_digit));
         voltage = std::stoull(voltage_str.substr(0, first_non_digit));
 
         boost::to_lower(voltage_unit);
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
         vector<string> tokens;
         auto first_non_digit = power_str.find_first_not_of("0123456789");
 
-        auto power_unit = power_str.substr(first_non_digit);
+        auto power_unit = power_str.substr(std::min(power_str.size(), first_non_digit));
         power = std::stoull(power_str.substr(0, first_non_digit));
 
         boost::to_lower(power_unit);

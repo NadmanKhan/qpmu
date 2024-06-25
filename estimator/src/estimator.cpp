@@ -36,17 +36,14 @@ qpmu::Estimator::~Estimator()
     // The SDFT state is trivially destructible
 }
 
-qpmu::Estimator::Estimator(USize window_size, PhasorEstimationStrategy strategy,
-                           FrequencyEstimationStrategy freq_strategy,
-                           std::pair<FloatType, FloatType> voltage_params,
-                           std::pair<FloatType, FloatType> current_params)
+qpmu::Estimator::Estimator(
+        USize window_size, PhasorEstimationStrategy strategy,
+        FrequencyEstimationStrategy freq_strategy,
+        std::array<std::pair<FloatType, FloatType>, NumChannels> adjusting_params)
     : m_phasor_strategy(strategy),
       m_freq_strategy(freq_strategy),
       m_size(window_size),
-      m_scale_voltage(voltage_params.first),
-      m_offset_voltage(voltage_params.second),
-      m_scale_current(current_params.first),
-      m_offset_current(current_params.second),
+      m_adjusting_params(adjusting_params),
       m_samples(window_size),
       m_estimations(window_size)
 {
@@ -86,8 +83,7 @@ qpmu::Estimation qpmu::Estimator::add_estimation(qpmu::AdcSample sample)
     cur.timestamp_micros = sample.ts;
 
     for (USize i = 0; i < NumChannels; ++i) {
-        const auto &scale = (signal_is_voltage(Signals[i]) ? m_scale_voltage : m_scale_current);
-        const auto &offset = (signal_is_voltage(Signals[i]) ? m_offset_voltage : m_offset_current);
+        const auto &[scale, offset] = m_adjusting_params[i];
         sample.ch[i] = (sample.ch[i] * scale) + offset;
     }
 

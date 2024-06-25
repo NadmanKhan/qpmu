@@ -89,8 +89,13 @@ public:
               PhasorEstimationStrategy phasor_strategy = PhasorEstimationStrategy::FFT,
               FrequencyEstimationStrategy freq_strategy =
                       FrequencyEstimationStrategy::PhaseDifferences,
-              std::pair<FloatType, FloatType> voltage_params = { 1.0, 0.0 },
-              std::pair<FloatType, FloatType> current_params = { 1.0, 0.0 });
+              std::array<std::pair<FloatType, FloatType>, NumChannels> adjusting_params = {
+                      std::make_pair<FloatType, FloatType>(1.0, 0.0),
+                      std::make_pair<FloatType, FloatType>(1.0, 0.0),
+                      std::make_pair<FloatType, FloatType>(1.0, 0.0),
+                      std::make_pair<FloatType, FloatType>(1.0, 0.0),
+                      std::make_pair<FloatType, FloatType>(1.0, 0.0),
+                      std::make_pair<FloatType, FloatType>(1.0, 0.0) });
 
     // ****** Public member functions ******
     qpmu::Estimation add_estimation(qpmu::AdcSample sample);
@@ -102,10 +107,14 @@ private:
     PhasorEstimationStrategy m_phasor_strategy = PhasorEstimationStrategy::FFT;
     FrequencyEstimationStrategy m_freq_strategy = FrequencyEstimationStrategy::PhaseDifferences;
     USize m_size = 0;
-    FloatType m_scale_voltage = 1.0;
-    FloatType m_offset_voltage = 0.0;
-    FloatType m_scale_current = 1.0;
-    FloatType m_offset_current = 0.0;
+    std::array<std::pair<FloatType, FloatType>, NumChannels> m_adjusting_params = {
+        std::make_pair<FloatType, FloatType>(1.0, 0.0),
+        std::make_pair<FloatType, FloatType>(1.0, 0.0),
+        std::make_pair<FloatType, FloatType>(1.0, 0.0),
+        std::make_pair<FloatType, FloatType>(1.0, 0.0),
+        std::make_pair<FloatType, FloatType>(1.0, 0.0),
+        std::make_pair<FloatType, FloatType>(1.0, 0.0)
+    };
     std::vector<qpmu::AdcSample> m_samples = {};
     std::vector<qpmu::Estimation> m_estimations = {};
     USize m_index = 0;
