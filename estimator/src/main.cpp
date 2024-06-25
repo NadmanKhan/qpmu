@@ -86,14 +86,14 @@ int main(int argc, char *argv[])
     FloatType ch0_offset = varmap["ch0-offset"].as<FloatType>();
     FloatType ch1_scale = varmap["ch1-scale"].as<FloatType>();
     FloatType ch1_offset = varmap["ch1-offset"].as<FloatType>();
-    FloatType ch2_scale = varmap["ch1-scale"].as<FloatType>();
-    FloatType ch2_offset = varmap["ch1-offset"].as<FloatType>();
-    FloatType ch3_scale = varmap["ch1-scale"].as<FloatType>();
-    FloatType ch3_offset = varmap["ch1-offset"].as<FloatType>();
-    FloatType ch4_scale = varmap["ch1-scale"].as<FloatType>();
-    FloatType ch4_offset = varmap["ch1-offset"].as<FloatType>();
-    FloatType ch5_scale = varmap["ch1-scale"].as<FloatType>();
-    FloatType ch5_offset = varmap["ch1-offset"].as<FloatType>();
+    FloatType ch2_scale = varmap["ch2-scale"].as<FloatType>();
+    FloatType ch2_offset = varmap["ch2-offset"].as<FloatType>();
+    FloatType ch3_scale = varmap["ch3-scale"].as<FloatType>();
+    FloatType ch3_offset = varmap["ch3-offset"].as<FloatType>();
+    FloatType ch4_scale = varmap["ch4-scale"].as<FloatType>();
+    FloatType ch4_offset = varmap["ch4-offset"].as<FloatType>();
+    FloatType ch5_scale = varmap["ch5-scale"].as<FloatType>();
+    FloatType ch5_offset = varmap["ch5-offset"].as<FloatType>();
 
     std::array<std::pair<FloatType, FloatType>, NumChannels> adjusting_params = {
         std::make_pair(ch0_scale, ch0_offset), std::make_pair(ch1_scale, ch1_offset),
