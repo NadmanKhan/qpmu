@@ -19,12 +19,12 @@ public:
     App(int &argc, char **argv);
 
     QSettings *settings();
-    QTimer *updateTimer();
+    QTimer *timer();
     Worker *worker();
 
 private:
     QSettings *m_settings = nullptr;
-    QTimer *m_updateTimer = nullptr;
+    QTimer *m_timer = nullptr;
     Worker *m_worker = nullptr;
 };
 

@@ -18,9 +18,9 @@ App::App(int &argc, char **argv) : QApplication(argc, argv)
     // and `QCoreApplication::setOrganizationName`. The file path is created using them.
     m_settings = new QSettings(this);
 
-    m_updateTimer = new QTimer(this);
-    m_updateTimer->setInterval(20);
-    m_updateTimer->start();
+    m_timer = new QTimer(this);
+    m_timer->setInterval(20);
+    m_timer->start();
 
     m_worker = new Worker();
     m_worker->start();
@@ -31,9 +31,9 @@ QSettings *App::settings()
     return m_settings;
 }
 
-QTimer *App::updateTimer()
+QTimer *App::timer()
 {
-    return m_updateTimer;
+    return m_timer;
 }
 
 Worker *App::worker()

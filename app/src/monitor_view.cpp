@@ -19,10 +19,10 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
     hide();
 
     /// Timeout notifiers
-    m_simulationUpdateNotifier = new TimeoutNotifier(APP->updateTimer(), UpdateIntervalMs);
+    m_simulationUpdateNotifier = new TimeoutNotifier(APP->timer(), UpdateIntervalMs);
     connect(m_simulationUpdateNotifier, &TimeoutNotifier::timeout, this,
             &MonitorView::noForceUpdate);
-    m_updateNotifier = new TimeoutNotifier(APP->updateTimer(), UpdateIntervalMs * 5);
+    m_updateNotifier = new TimeoutNotifier(APP->timer(), UpdateIntervalMs * 5);
     connect(m_updateNotifier, &TimeoutNotifier::timeout, this, &MonitorView::noForceUpdate);
 
     /// Main outer layout

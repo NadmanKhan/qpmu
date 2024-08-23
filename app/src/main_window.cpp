@@ -29,7 +29,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow{ parent }
 
         dateLabel->setFont(font);
         timeLabel->setFont(font);
-        connect(APP->updateTimer(), &QTimer::timeout, [=] {
+        connect(APP->timer(), &QTimer::timeout, [=] {
             auto now = QDateTime::currentDateTime();
             dateLabel->setText(now.date().toString());
             timeLabel->setText(now.time().toString());

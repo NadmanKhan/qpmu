@@ -150,10 +150,10 @@ PhasorView::PhasorView(QWidget *parent) : QWidget(parent)
     m_table2->setFixedHeight(m_table2->verticalHeader()->length() + 2);
 
     // update every 400 ms (2.5 fps)
-    m_timeoutTarget = 400 / APP->updateTimer()->interval();
+    m_timeoutTarget = 400 / APP->timer()->interval();
     Q_ASSERT(m_timeoutTarget > 0);
     m_timeoutCounter = 0;
-    connect(APP->updateTimer(), &QTimer::timeout, this, &PhasorView::update);
+    connect(APP->timer(), &QTimer::timeout, this, &PhasorView::update);
 }
 
 void PhasorView::update()
