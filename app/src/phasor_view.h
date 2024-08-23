@@ -13,19 +13,20 @@
 #include <QColor>
 
 #include <cmath>
+
+#include "app.h"
 #include "worker.h"
 
 class PhasorView : public QWidget
 {
     Q_OBJECT
 public:
-    PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
+    PhasorView(QWidget *parent = nullptr);
 
 private slots:
     void update();
 
 private:
-    Worker *m_worker;
 
     QList<QLineSeries *> m_listLineSeries;
     QList<QVector<QPointF>> m_listLineSeriesPoints;

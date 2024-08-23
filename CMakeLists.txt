@@ -24,4 +24,4 @@ link_libraries(${COMMON_LIB})
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/simulator)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/estimator)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/gui)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/app)

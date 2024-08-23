@@ -30,4 +30,4 @@ make &&
         --ch5-scale 0.0073663 \
         --ch5-offset 0 \
         --infmt b --outfmt b |
-        ./gui/qpmu-gui
+        ./app/qpmu-app

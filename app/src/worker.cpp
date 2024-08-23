@@ -8,8 +8,8 @@ Worker::Worker() : QThread()
 void Worker::run()
 {
     while (fread(&m_estimations, sizeof(m_estimations), 1, stdin)) {
-        m_socket->writeDatagram((const char *)(void *)(&m_estimations), sizeof(m_estimations),
-                                QHostAddress::LocalHost, 12345);
+        // m_socket->writeDatagram((const char *)(void *)(&m_estimations), sizeof(m_estimations),
+        //                         QHostAddress::LocalHost, 12345);
     }
 }
 

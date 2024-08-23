@@ -9,13 +9,14 @@
 #include <QBoxLayout>
 #include <QColor>
 
+#include "app.h"
 #include "worker.h"
 
 class WaveformView : public QWidget
 {
     Q_OBJECT
 public:
-    WaveformView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
+    WaveformView(QWidget *parent = nullptr);
 
 private slots:
     void update();
@@ -23,8 +24,6 @@ private slots:
 private:
     static constexpr int PlotPointsPerCycle = 8;
     static constexpr double PlotNumCycles = 2;
-
-    Worker *m_worker;
 
     QChart *m_chart;
     QList<QSplineSeries *> m_listSplineSeries;

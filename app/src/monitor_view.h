@@ -21,6 +21,7 @@
 #include <qlineseries.h>
 
 #include "qpmu/common.h"
+#include "app.h"
 #include "worker.h"
 #include "timeout_notifier.h"
 #include "equally_scaled_axes_chart.h"
@@ -47,7 +48,7 @@ public:
     static constexpr std::array<char const *const, 3> TableHHeaders = { "Voltage", "Current",
                                                                         "Phase Diff." };
 
-    MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent = nullptr);
+    MonitorView(QWidget *parent = nullptr);
 
 private slots:
     void update(bool force = false);
@@ -56,7 +57,6 @@ private slots:
     bool isSimulating() const;
 
 private:
-    Worker *m_worker;
     TimeoutNotifier *m_updateNotifier;
     TimeoutNotifier *m_simulationUpdateNotifier;
     qpmu::FloatType m_plotAmplitudes[qpmu::NumChannels];

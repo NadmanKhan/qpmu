@@ -12,20 +12,17 @@
 #include <qpushbutton.h>
 #include <qstringliteral.h>
 
-MonitorView::MonitorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
-    : QWidget(parent), m_worker(worker)
+MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
 {
     using namespace qpmu;
-    assert(updateTimer != nullptr);
-    assert(worker != nullptr);
 
     hide();
 
-    /// Update notifiers
-    m_simulationUpdateNotifier = new TimeoutNotifier(updateTimer, UpdateIntervalMs);
+    /// Timeout notifiers
+    m_simulationUpdateNotifier = new TimeoutNotifier(APP->updateTimer(), UpdateIntervalMs);
     connect(m_simulationUpdateNotifier, &TimeoutNotifier::timeout, this,
             &MonitorView::noForceUpdate);
-    m_updateNotifier = new TimeoutNotifier(updateTimer, UpdateIntervalMs * 5);
+    m_updateNotifier = new TimeoutNotifier(APP->updateTimer(), UpdateIntervalMs * 5);
     connect(m_updateNotifier, &TimeoutNotifier::timeout, this, &MonitorView::noForceUpdate);
 
     /// Main outer layout
@@ -544,7 +541,7 @@ void MonitorView::update(bool force)
             return;
         }
 
-        m_worker->getEstimations(est);
+        APP->worker()->getEstimations(est);
 
         FloatType phaseRef = est.phasor_ang[0];
         for (USize i = 0; i < NumChannels; ++i) {

@@ -1,11 +1,9 @@
 #include "main_window.h"
 
-MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
+MainWindow::MainWindow(QWidget *parent) : QMainWindow{ parent }
 {
     // init members
     m_stack = new QStackedWidget(this);
-    m_timer = new QTimer(this);
-    m_timer->setInterval(20);
 
     { // modify `this` (MainWindow)
         setCentralWidget(m_stack);
@@ -31,12 +29,11 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
 
         dateLabel->setFont(font);
         timeLabel->setFont(font);
-        connect(m_timer, &QTimer::timeout, [=] {
+        connect(APP->updateTimer(), &QTimer::timeout, [=] {
             auto now = QDateTime::currentDateTime();
             dateLabel->setText(now.date().toString());
             timeLabel->setText(now.time().toString());
         });
-        m_timer->start();
         statusBar()->show();
     }
 
@@ -51,13 +48,11 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
     using OptionModel = std::tuple<QString, QString, QWidget *>;
     QList<OptionModel> optionsModel;
     optionsModel.append(OptionModel{ QStringLiteral("Monitor Waveforms"),
-                                     QStringLiteral(":/waves.png"),
-                                     new WaveformView(m_timer, worker, this) });
+                                     QStringLiteral(":/waves.png"), new WaveformView(this) });
     optionsModel.append(OptionModel{ QStringLiteral("Monitor Phasors"),
-                                     QStringLiteral(":/vector.png"),
-                                     new PhasorView(m_timer, worker, this) });
+                                     QStringLiteral(":/vector.png"), new PhasorView(this) });
     optionsModel.append(OptionModel{ QStringLiteral("Monitor"), QStringLiteral(":/meter.png"),
-                                     new MonitorView(m_timer, worker, this) });
+                                     new MonitorView(this) });
 
     const int rowCount = 2;
     const int colCount = 2;
@@ -109,4 +104,6 @@ MainWindow::MainWindow(Worker *worker, QWidget *parent) : QMainWindow{ parent }
         m_stack->removeWidget(m_stack->widget(idx));
     });
     toolBar->addAction(goBackAction);
+
+    resize(1000, 500);
 }

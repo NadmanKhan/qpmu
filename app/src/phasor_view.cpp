@@ -24,12 +24,9 @@ QTableWidgetItem *newCellItem(int row = -1)
     return item;
 }
 
-PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
-    : QWidget(parent), m_worker(worker)
+PhasorView::PhasorView(QWidget *parent) : QWidget(parent)
 {
     using namespace qpmu;
-    assert(updateTimer != nullptr);
-    assert(worker != nullptr);
 
     hide();
 
@@ -153,10 +150,10 @@ PhasorView::PhasorView(QTimer *updateTimer, Worker *worker, QWidget *parent)
     m_table2->setFixedHeight(m_table2->verticalHeader()->length() + 2);
 
     // update every 400 ms (2.5 fps)
-    m_timeoutTarget = 400 / updateTimer->interval();
+    m_timeoutTarget = 400 / APP->updateTimer()->interval();
     Q_ASSERT(m_timeoutTarget > 0);
     m_timeoutCounter = 0;
-    connect(updateTimer, &QTimer::timeout, this, &PhasorView::update);
+    connect(APP->updateTimer(), &QTimer::timeout, this, &PhasorView::update);
 }
 
 void PhasorView::update()
@@ -171,7 +168,7 @@ void PhasorView::update()
     using namespace qpmu;
 
     Estimation est;
-    m_worker->getEstimations(est);
+    APP->worker()->getEstimations(est);
 
     std::array<FloatType, NumChannels> phaseDiffs;
     std::array<FloatType, NumChannels> amplitudes;

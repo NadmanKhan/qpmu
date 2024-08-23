@@ -9,9 +9,8 @@
 #include <QStackedWidget>
 #include <QProcess>
 #include <QLabel>
-#include <QTimer>
 
-#include "worker.h"
+#include "app.h"
 #include "phasor_view.h"
 #include "waveform_view.h"
 #include "monitor_view.h"
@@ -20,13 +19,12 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 public:
-    explicit MainWindow(Worker *worker, QWidget *parent = nullptr);
+    explicit MainWindow(QWidget *parent = nullptr);
 
 signals:
 
 private:
     QStackedWidget *m_stack = nullptr;
-    QTimer *m_timer;
 };
 
 #endif // MAIN_WINDOW_H
