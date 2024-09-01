@@ -19,7 +19,6 @@
 #include <QTableWidget>
 
 #include "qpmu/common.h"
-#include "app.h"
 #include "timeout_notifier.h"
 #include "equally_scaled_axes_chart.h"
 
@@ -56,8 +55,8 @@ private slots:
 private:
     TimeoutNotifier *m_updateNotifier;
     TimeoutNotifier *m_simulationUpdateNotifier;
-    qpmu::FloatType m_plotAmplitudes[qpmu::CountSignals];
-    qpmu::FloatType m_plotPhaseDiffs[qpmu::CountSignals];
+    qpmu::Float m_plotAmplitudes[qpmu::CountSignals];
+    qpmu::Float m_plotPhaseDiffs[qpmu::CountSignals];
 
     QList<QLineSeries *> m_phasorFakeAxesSeriesList[2];
     QList<QLineSeries *> m_waveformFakeAxesSeriesList[2];

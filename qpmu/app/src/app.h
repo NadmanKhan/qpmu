@@ -8,8 +8,10 @@
 #include <QTimer>
 #include <QIODevice>
 #include <QStringList>
+#include <QMainWindow>
 
 #include "qpmu/common.h"
+#include "settings.h"
 
 class Router;
 
@@ -22,13 +24,17 @@ class App : public QApplication
 public:
     App(int &argc, char **argv);
 
-    QSettings *settings() const;
+    Settings *settings() const;
     QTimer *timer() const;
     Router *router() const;
+    QMainWindow *mainWindow() const;
+
+    void setMainWindow(QMainWindow *mainWindow);
 
 private:
-    QSettings *m_settings = nullptr;
+    Settings *m_settings = nullptr;
     QTimer *m_timer = nullptr;
+    QMainWindow *m_mainWindow = nullptr;
     Router *m_router = nullptr;
 };
 

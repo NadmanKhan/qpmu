@@ -1,12 +1,16 @@
 set(PROJECT_SOURCES
     src/app.h
     src/app.cpp
+    src/calibration_dialog.h
+    src/calibration_dialog.cpp
     src/main_window.h
     src/main_window.cpp
     src/monitor_view.h
     src/monitor_view.cpp
     src/router.h
     src/router.cpp
+    src/settings.h
+    src/settings.cpp
     src/main.cpp
     src/timeout_notifier.h
     src/timeout_notifier.cpp

@@ -56,18 +56,18 @@ enum class FrequencyEstimationStrategy {
 class Estimator
 {
 public:
-    using FloatType = qpmu::FloatType;
+    using Float = qpmu::Float;
     using USize = qpmu::USize;
     using ISize = qpmu::ISize;
     using Complex = qpmu::Complex;
-    using SdftType = sdft::SDFT<FloatType, FloatType>;
+    using SdftType = sdft::SDFT<Float, Float>;
     static constexpr USize NumChannels = qpmu::CountSignals;
 
     struct FftwState
     {
-        FFTW<FloatType>::Complex *inputs[NumChannels];
-        FFTW<FloatType>::Complex *outputs[NumChannels];
-        FFTW<FloatType>::Plan plans[NumChannels];
+        FFTW<Float>::Complex *inputs[NumChannels];
+        FFTW<Float>::Complex *outputs[NumChannels];
+        FFTW<Float>::Plan plans[NumChannels];
     };
 
     struct SdftState
@@ -84,13 +84,13 @@ public:
     Estimator &operator=(Estimator &&) = default;
     ~Estimator();
     Estimator(USize window_size,
-              std::array<std::pair<FloatType, FloatType>, NumChannels>
-                      calib_params = { std::make_pair<FloatType, FloatType>(1.0, 0.0),
-                                       std::make_pair<FloatType, FloatType>(1.0, 0.0),
-                                       std::make_pair<FloatType, FloatType>(1.0, 0.0),
-                                       std::make_pair<FloatType, FloatType>(1.0, 0.0),
-                                       std::make_pair<FloatType, FloatType>(1.0, 0.0),
-                                       std::make_pair<FloatType, FloatType>(1.0, 0.0) },
+              std::array<std::pair<Float, Float>, NumChannels>
+                      calib_params = { std::make_pair<Float, Float>(1.0, 0.0),
+                                       std::make_pair<Float, Float>(1.0, 0.0),
+                                       std::make_pair<Float, Float>(1.0, 0.0),
+                                       std::make_pair<Float, Float>(1.0, 0.0),
+                                       std::make_pair<Float, Float>(1.0, 0.0),
+                                       std::make_pair<Float, Float>(1.0, 0.0) },
               PhasorEstimationStrategy phasor_strategy = PhasorEstimationStrategy::FFT,
               FrequencyEstimationStrategy freq_strategy =
                       FrequencyEstimationStrategy::TimeBoundZeroCrossings);
@@ -106,13 +106,13 @@ private:
     PhasorEstimationStrategy m_phasor_strategy = PhasorEstimationStrategy::FFT;
     FrequencyEstimationStrategy m_freq_strategy = FrequencyEstimationStrategy::PhaseDifferences;
     USize m_size = 0;
-    std::array<std::pair<FloatType, FloatType>, NumChannels> m_calib_params = {
-        std::make_pair<FloatType, FloatType>(1.0, 0.0),
-        std::make_pair<FloatType, FloatType>(1.0, 0.0),
-        std::make_pair<FloatType, FloatType>(1.0, 0.0),
-        std::make_pair<FloatType, FloatType>(1.0, 0.0),
-        std::make_pair<FloatType, FloatType>(1.0, 0.0),
-        std::make_pair<FloatType, FloatType>(1.0, 0.0)
+    std::array<std::pair<Float, Float>, NumChannels> m_calib_params = {
+        std::make_pair<Float, Float>(1.0, 0.0),
+        std::make_pair<Float, Float>(1.0, 0.0),
+        std::make_pair<Float, Float>(1.0, 0.0),
+        std::make_pair<Float, Float>(1.0, 0.0),
+        std::make_pair<Float, Float>(1.0, 0.0),
+        std::make_pair<Float, Float>(1.0, 0.0)
     };
     std::vector<qpmu::Sample> m_samples = {};
     std::vector<qpmu::Synchrophasor> m_estimations = {};

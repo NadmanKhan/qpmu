@@ -2,6 +2,7 @@
 #include "qpmu/common.h"
 #include "util.h"
 #include "router.h"
+#include "app.h"
 
 #include <cmath>
 #include <qabstractseries.h>
@@ -16,9 +17,10 @@
 MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
 {
     using namespace qpmu;
-    using namespace qpmu::conf;
 
     hide();
+
+    const auto &settings = *APP->settings();
 
     /// Timeout notifiers
     m_simulationUpdateNotifier = new TimeoutNotifier(APP->timer(), UpdateIntervalMs);
@@ -26,6 +28,7 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
             &MonitorView::noForceUpdate);
     m_updateNotifier = new TimeoutNotifier(APP->timer(), UpdateIntervalMs * 5);
     connect(m_updateNotifier, &TimeoutNotifier::timeout, this, &MonitorView::noForceUpdate);
+    m_updateNotifier->start();
 
     /// Main outer layout
     auto outerHBox = new QHBoxLayout(this);
@@ -169,8 +172,8 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
 
     /// Data
     for (USize i = 0; i < CountSignals; ++i) {
-        auto name = QString(SignalConfigs[i].name);
-        auto color = QColor(SignalConfigs[i].color);
+        auto name = QString(Signals[i].name);
+        auto color = settings.get(Settings::list.appearance.signalColors[i]).value<QColor>();
         auto phasorPen = QPen(color, 3, Qt::SolidLine);
         auto waveformPen = QPen(color, 2, Qt::SolidLine);
         auto connectorPen = QPen(color, 1, Qt::DotLine);
@@ -266,22 +269,24 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
         auto vColorLabel = new QLabel();
         auto vWidget = new QWidget();
         auto vHBox = new QHBoxLayout(vWidget);
+        auto vColor = settings.get(Settings::list.appearance.signalColors[vIdx]).value<QColor>();
         vHBox->addWidget(vColorLabel, 0);
         vHBox->addWidget(vPhasorLabel, 1);
         vHBox->setSpacing(0);
         vHBox->setAlignment(Qt::AlignCenter);
-        vColorLabel->setPixmap(rectPixmap(QColor(SignalConfigs[vIdx].color), 8, 20));
+        vColorLabel->setPixmap(rectPixmap(vColor, 8, 20));
         vColorLabel->setContentsMargins(QMargins(0, 0, 0, 0));
         vHBox->setContentsMargins(QMargins(0, 0, 0, 0));
 
         auto iColorLabel = new QLabel();
         auto iWidget = new QWidget();
         auto iHBox = new QHBoxLayout(iWidget);
+        auto iColor = settings.get(Settings::list.appearance.signalColors[iIdx]).value<QColor>();
         iHBox->addWidget(iColorLabel, 0);
         iHBox->addWidget(iPhasorLabel, 1);
         iHBox->setSpacing(0);
         iHBox->setAlignment(Qt::AlignCenter);
-        iColorLabel->setPixmap(rectPixmap(QColor(SignalConfigs[iIdx].color), 8, 20));
+        iColorLabel->setPixmap(rectPixmap(iColor, 8, 20));
         iColorLabel->setContentsMargins(QMargins(0, 0, 0, 0));
         iHBox->setContentsMargins(QMargins(0, 0, 0, 0));
 
@@ -352,14 +357,15 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
         m_waveformCheckBox = new QCheckBox();
         m_connectorCheckBox = new QCheckBox();
 
-        for (SignalConfig::Type type :
-             { SignalConfig::Type::Voltage, SignalConfig::Type::Current }) {
+        for (Signal::Type type : { Signal::Type::Voltage, Signal::Type::Current }) {
             /// Individual signals of SignalConfig::Type == type
             for (USize i = 0; i < CountSignals; ++i) {
-                if (SignalConfigs[i].type == type) {
+                if (Signals[i].type == type) {
                     auto check = new QCheckBox();
-                    check->setIcon(circlePixmap(QColor(SignalConfigs[i].color), 10));
-                    check->setText(SignalConfigs[i].name);
+                    auto color =
+                            settings.get(Settings::list.appearance.signalColors[i]).value<QColor>();
+                    check->setIcon(circlePixmap(color, 10));
+                    check->setText(Signals[i].name);
                     m_signalCheckBoxList[(int)(type)].append(check);
                     check->setChecked(true);
                 }
@@ -367,7 +373,7 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
 
             /// All signals of current type
             auto checkAll = new QCheckBox();
-            if (type == SignalConfig::Type::Voltage) {
+            if (type == Signal::Type::Voltage) {
                 checkAll->setText(QStringLiteral("Voltages"));
             } else {
                 checkAll->setText(QStringLiteral("Currents"));
@@ -453,21 +459,19 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
         sideVBox->addWidget(ampliGroupBox);
         auto ampliGroupGrid = new QGridLayout(ampliGroupBox);
 
-        for (SignalConfig::Type type :
-             { SignalConfig::Type::Voltage, SignalConfig::Type::Current }) {
+        for (Signal::Type type : { Signal::Type::Voltage, Signal::Type::Current }) {
             auto combo = m_maxPlotAmplitude[(int)(type)] = new QComboBox();
             for (int i = 0; i < (int)PlotAmpliOptions[(int)(type)].size(); ++i) {
                 auto text = PlotAmpliOptions[(int)(type)][i] == 0
                         ? QStringLiteral("Auto")
                         : (QString::number(PlotAmpliOptions[(int)(type)][i])
-                           + (type == SignalConfig::Type::Voltage ? QStringLiteral(" V")
-                                                                  : QStringLiteral(" A")));
+                           + (type == Signal::Type::Voltage ? QStringLiteral(" V")
+                                                            : QStringLiteral(" A")));
                 combo->addItem(text);
             }
             combo->setCurrentIndex(0);
-            auto label =
-                    new QLabel((type == SignalConfig::Type::Voltage ? QStringLiteral("Voltage")
-                                                                    : QStringLiteral("Current")));
+            auto label = new QLabel((type == Signal::Type::Voltage ? QStringLiteral("Voltage")
+                                                                   : QStringLiteral("Current")));
             ampliGroupGrid->addWidget(label, (int)(type), 0);
             ampliGroupGrid->addWidget(combo, (int)(type), 1);
         }
@@ -517,7 +521,6 @@ bool MonitorView::isSimulating() const
 void MonitorView::update(bool force)
 {
     using namespace qpmu;
-    using namespace qpmu::conf;
 
     // return;
 
@@ -533,8 +536,8 @@ void MonitorView::update(bool force)
 
     if (isSimulating()) {
         /// simulating; nudge the phasors according to the chosen frequency
-        FloatType f = SimulationFrequencyOptions[m_simulationFrequencyIndex];
-        FloatType delta = f * (2 * M_PI * UpdateIntervalMs / 1000.0);
+        Float f = SimulationFrequencyOptions[m_simulationFrequencyIndex];
+        Float delta = f * (2 * M_PI * UpdateIntervalMs / 1000.0);
         for (USize i = 0; i < CountSignals; ++i) {
             m_plotPhaseDiffs[i] = std::fmod(m_plotPhaseDiffs[i] + delta, 2 * M_PI);
             if (m_plotPhaseDiffs[i] < M_PI) {
@@ -549,9 +552,9 @@ void MonitorView::update(bool force)
             return;
         }
 
-        synchrophasor = APP->router()->currentSynchrophasor();
+        synchrophasor = APP->router()->lastSynchrophasor();
 
-        FloatType phaseRef = synchrophasor.phasor_ang[0];
+        Float phaseRef = synchrophasor.phasor_ang[0];
         for (USize i = 0; i < CountSignals; ++i) {
             m_plotAmplitudes[i] = synchrophasor.phasor_mag[i];
             m_plotPhaseDiffs[i] =
@@ -565,21 +568,21 @@ void MonitorView::update(bool force)
         }
     }
 
-    FloatType plotMaxAmpli[2] = { 0, 0 };
+    Float plotMaxAmpli[2] = { 0, 0 };
     for (USize i = 0; i < CountSignals; ++i) {
-        auto selected = m_maxPlotAmplitude[(int)(SignalConfigs[i].type)]->currentIndex();
+        auto selected = m_maxPlotAmplitude[(int)(Signals[i].type)]->currentIndex();
         if (selected > 0) {
-            plotMaxAmpli[(int)(SignalConfigs[i].type)] =
-                    PlotAmpliOptions[(int)(SignalConfigs[i].type)][selected];
+            plotMaxAmpli[(int)(Signals[i].type)] =
+                    PlotAmpliOptions[(int)(Signals[i].type)][selected];
         } else {
-            plotMaxAmpli[(int)(SignalConfigs[i].type)] =
-                    std::max(plotMaxAmpli[(int)(SignalConfigs[i].type)], m_plotAmplitudes[i]);
+            plotMaxAmpli[(int)(Signals[i].type)] =
+                    std::max(plotMaxAmpli[(int)(Signals[i].type)], m_plotAmplitudes[i]);
         }
     }
 
     /// Update points
     for (USize i = 0; i < CountSignals; ++i) {
-        auto ampli = m_plotAmplitudes[i] / plotMaxAmpli[(int)(SignalConfigs[i].type)];
+        auto ampli = m_plotAmplitudes[i] / plotMaxAmpli[(int)(Signals[i].type)];
         auto phase = m_plotPhaseDiffs[i];
         bool ampliExceedsPlot = ampli > 1 + 1e-9;
 
@@ -613,9 +616,9 @@ void MonitorView::update(bool force)
 
         /// Waveform points are generated by simulating the sinusoid
         for (USize j = 0; j < (NumPointsPerCycle * NumCycles + 1); ++j) {
-            FloatType t = j * (1.0 / NumPointsPerCycle);
-            FloatType y = ampli * std::sin(-2 * M_PI * t + phase);
-            FloatType x = j * (RectGraphWidth / (NumCycles * NumPointsPerCycle));
+            Float t = j * (1.0 / NumPointsPerCycle);
+            Float y = ampli * std::sin(-2 * M_PI * t + phase);
+            Float x = j * (RectGraphWidth / (NumCycles * NumPointsPerCycle));
             m_waveformPointsList[i][j] = QPointF(x, y);
         }
 
@@ -650,7 +653,7 @@ void MonitorView::update(bool force)
 
     /// Set visibility
     for (USize i = 0; i < CountSignals; ++i) {
-        bool checked = m_signalCheckBoxList[(int)(SignalConfigs[i].type)][i % 3]->isChecked();
+        bool checked = m_signalCheckBoxList[(int)(Signals[i].type)][i % 3]->isChecked();
         m_phasorSeriesList[i]->setVisible(checked && m_phasorCheckBox->isChecked());
         m_waveformSeriesList[i]->setVisible(checked && m_waveformCheckBox->isChecked());
         m_connectorSeriesList[i]->setVisible(checked && m_connectorCheckBox->isChecked()

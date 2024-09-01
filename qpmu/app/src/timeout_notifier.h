@@ -9,7 +9,6 @@ class TimeoutNotifier : public QObject
 {
     Q_OBJECT
 public:
-    explicit TimeoutNotifier(QObject *parent = nullptr);
     TimeoutNotifier(QTimer *timer, QObject *parent = nullptr);
     TimeoutNotifier(QTimer *timer, quint32 targetIntervalMs, QObject *parent = nullptr);
 
@@ -26,8 +25,9 @@ signals:
     void timeout();
 
 private:
-    QTimer *m_timer;
-    quint32 m_target = 1;
+    QTimer *m_timer = nullptr;
+    int m_targetIntervalMs = 0;
+    quint32 m_targetCount = 1;
     quint32 m_counter = 0;
     bool m_running = false;
 };

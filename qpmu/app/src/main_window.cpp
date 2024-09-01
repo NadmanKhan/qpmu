@@ -1,4 +1,5 @@
 #include "main_window.h"
+#include "calibration_dialog.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow{ parent }
 {
@@ -49,6 +50,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow{ parent }
     QList<OptionModel> optionsModel;
     optionsModel.append(OptionModel{ QStringLiteral("Monitor"), QStringLiteral(":/meter.png"),
                                      new MonitorView(this) });
+    optionsModel.append(OptionModel{ QStringLiteral("Calibrate"), QStringLiteral(":/control-panel.png"),
+                                     new CalibrationDialog(this) });
 
     const int rowCount = 2;
     const int colCount = 2;

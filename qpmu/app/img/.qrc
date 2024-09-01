@@ -3,10 +3,13 @@
         <file>control-panel.png</file>
         <file>meter.png</file>
         <file>return.png</file>
+        <file>delete.png</file>
         <file>vector.png</file>
         <file>waves.png</file>
         <file>pause.png</file>
         <file>play.png</file>
         <file>dashed-line.png</file>
+        <file>reload.png</file>
+        <file>x.png</file>
     </qresource>
 </RCC>

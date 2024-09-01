@@ -18,8 +18,8 @@ constexpr bool is_positive(Numeric x)
     }
 }
 
-constexpr qpmu::FloatType zero_crossing_time(qpmu::FloatType t0, qpmu::FloatType x0,
-                                             qpmu::FloatType t1, qpmu::FloatType x1)
+constexpr qpmu::Float zero_crossing_time(qpmu::Float t0, qpmu::Float x0, qpmu::Float t1,
+                                         qpmu::Float x1)
 {
     return t0 + x0 * (t1 - t0) / (x1 - x0);
 }
@@ -28,16 +28,16 @@ qpmu::Estimator::~Estimator()
 {
     if (m_phasor_strategy == PhasorEstimationStrategy::FFT) {
         for (USize i = 0; i < NumChannels; ++i) {
-            FFTW<FloatType>::destroy_plan(m_fftw_state.plans[i]);
-            FFTW<FloatType>::free(m_fftw_state.inputs[i]);
-            FFTW<FloatType>::free(m_fftw_state.outputs[i]);
+            FFTW<Float>::destroy_plan(m_fftw_state.plans[i]);
+            FFTW<Float>::free(m_fftw_state.inputs[i]);
+            FFTW<Float>::free(m_fftw_state.outputs[i]);
         }
     }
     // The SDFT state is trivially destructible
 }
 
 qpmu::Estimator::Estimator(USize window_size,
-                           std::array<std::pair<FloatType, FloatType>, NumChannels> calib_params,
+                           std::array<std::pair<Float, Float>, NumChannels> calib_params,
                            PhasorEstimationStrategy strategy,
                            FrequencyEstimationStrategy freq_strategy)
     : m_phasor_strategy(strategy),
@@ -50,11 +50,11 @@ qpmu::Estimator::Estimator(USize window_size,
     assert(m_size > 2);
     if (m_phasor_strategy == PhasorEstimationStrategy::FFT) {
         for (USize i = 0; i < NumChannels; ++i) {
-            m_fftw_state.inputs[i] = FFTW<FloatType>::alloc_complex(m_size);
-            m_fftw_state.outputs[i] = FFTW<FloatType>::alloc_complex(m_size);
-            m_fftw_state.plans[i] = FFTW<FloatType>::plan_dft_1d(m_size, m_fftw_state.inputs[i],
-                                                                 m_fftw_state.outputs[i],
-                                                                 FFTW_FORWARD, FFTW_ESTIMATE);
+            m_fftw_state.inputs[i] = FFTW<Float>::alloc_complex(m_size);
+            m_fftw_state.outputs[i] = FFTW<Float>::alloc_complex(m_size);
+            m_fftw_state.plans[i] =
+                    FFTW<Float>::plan_dft_1d(m_size, m_fftw_state.inputs[i],
+                                             m_fftw_state.outputs[i], FFTW_FORWARD, FFTW_ESTIMATE);
             for (USize j = 0; j < m_size; ++j) {
                 m_fftw_state.inputs[i][j][0] = 0;
                 m_fftw_state.inputs[i][j][1] = 0;
@@ -86,11 +86,11 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
 
     const auto &prv = m_estimations[PREV(m_index)];
     auto &cur = m_estimations[m_index];
-    cur.timestamp_us = sample.ts;
+    cur.timestamp_us = sample.timestampMicrosec;
 
     for (USize i = 0; i < NumChannels; ++i) {
         const auto &[scale, offset] = m_calib_params[i];
-        sample.ch[i] = (sample.ch[i] * scale) + offset;
+        sample.channel[i] = (sample.channel[i] * scale) + offset;
     }
 
     /**
@@ -109,18 +109,18 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
         }
         // Add the new sample's data
         for (USize i = 0; i < NumChannels; ++i) {
-            m_fftw_state.inputs[i][m_size - 1][0] = sample.ch[i];
+            m_fftw_state.inputs[i][m_size - 1][0] = sample.channel[i];
             m_fftw_state.inputs[i][m_size - 1][1] = 0;
         }
         // Execute the FFT plan
         for (USize i = 0; i < NumChannels; ++i) {
-            FFTW<FloatType>::execute(m_fftw_state.plans[i]);
+            FFTW<Float>::execute(m_fftw_state.plans[i]);
         }
         // Phasor = output corresponding to the fundamental frequency
         for (USize i = 0; i < NumChannels; ++i) {
             const auto &phasor =
                     Complex(m_fftw_state.outputs[i][1][0], m_fftw_state.outputs[i][1][1])
-                    / FloatType(m_size);
+                    / Float(m_size);
             cur.phasor_mag[i] = std::abs(phasor);
             cur.phasor_ang[i] = std::arg(phasor);
         }
@@ -128,11 +128,11 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
     } else if (m_phasor_strategy == PhasorEstimationStrategy::SDFT) {
         // Run the SDFT on the new sample
         for (USize i = 0; i < NumChannels; ++i) {
-            m_sdft_state.workers[i].sdft(sample.ch[i], m_sdft_state.outputs[i].data());
+            m_sdft_state.workers[i].sdft(sample.channel[i], m_sdft_state.outputs[i].data());
         }
         // Phasor = output corresponding to the fundamental frequency
         for (USize i = 0; i < NumChannels; ++i) {
-            const auto &phasor = m_sdft_state.outputs[i][1] / FloatType(m_size);
+            const auto &phasor = m_sdft_state.outputs[i][1] / Float(m_size);
             cur.phasor_mag[i] = std::abs(phasor);
             cur.phasor_ang[i] = std::arg(phasor);
         }
@@ -152,16 +152,16 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
         cur.freq = 0;
         USize cnt = 0;
         for (USize i = 0; i < NumChannels; ++i) {
-            if (conf::SignalConfigs[i].type != SignalConfig::Type::Voltage) {
+            if (Signals[i].type != Signal::Type::Voltage) {
                 continue;
             }
             ++cnt;
             auto phase_diff = cur.phasor_ang[i] - prv.phasor_ang[i];
-            phase_diff = std::fmod(phase_diff + FloatType(2 * M_PI), FloatType(2 * M_PI));
+            phase_diff = std::fmod(phase_diff + Float(2 * M_PI), Float(2 * M_PI));
             cur.freq += phase_diff;
         }
         cur.freq /= cnt;
-        cur.freq /= sample.delta;
+        cur.freq /= sample.timeDeltaMicrosec;
         cur.freq *= 1e6; // sample.delta is in microseconds
         cur.freq /= (2 * M_PI); // Convert from angular frequency to frequency
 
@@ -170,7 +170,7 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
         cur.freq = 0;
         USize cnt_calcs = 0;
         for (USize i = 0; i < NumChannels; ++i) {
-            if (conf::SignalConfigs[i].type != SignalConfig::Type::Voltage) {
+            if (Signals[i].type != Signal::Type::Voltage) {
                 continue;
             }
             for (USize j = 0; j < m_estimations.size(); ++j) {
@@ -197,9 +197,9 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
 
                     // Check if phase_i and phase_j are almost equal
                     auto phase_diff = std::abs(phase_j - phase_k);
-                    phase_diff = std::min(phase_diff,
-                                          std::abs(static_cast<FloatType>(M_PI) - phase_diff));
-                    static constexpr FloatType MaxAllowedPhaseDiff = (M_PI / 180) * 2; // 2 degrees
+                    phase_diff =
+                            std::min(phase_diff, std::abs(static_cast<Float>(M_PI) - phase_diff));
+                    static constexpr Float MaxAllowedPhaseDiff = (M_PI / 180) * 2; // 2 degrees
                     if (phase_diff <= MaxAllowedPhaseDiff) {
                         I64 t1 = m_estimations[k].timestamp_us;
                         auto delta_t_sec = std::abs(t1 - t0) * 1e-6; // sample.ts is in microseconds
@@ -216,13 +216,13 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
 
     } else if (m_freq_strategy == FrequencyEstimationStrategy::ZeroCrossings) {
         // Find (approximate) zero crossings of the signal samples
-        FloatType sum_delta_t_sec = 0;
+        Float sum_delta_t_sec = 0;
         USize cnt_calcs = 0;
         for (USize i = 0; i < NumChannels; ++i) {
-            if (!(conf::SignalConfigs[i].type == SignalConfig::Type::Voltage)) {
+            if (!(Signals[i].type == Signal::Type::Voltage)) {
                 continue;
             }
-            FloatType t_last = 0;
+            Float t_last = 0;
             for (USize j = NEXT(m_index); j != m_index; j = NEXT(j)) {
                 if (m_estimations[j].timestamp_us == 0) {
                     continue;
@@ -254,18 +254,18 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
         }
     } else if (m_freq_strategy == FrequencyEstimationStrategy::TimeBoundZeroCrossings) {
         if (m_tbzc_start_micros == 0) {
-            m_tbzc_start_micros = sample.ts;
+            m_tbzc_start_micros = sample.timestampMicrosec;
             m_tbzc_second_mark_micros = m_tbzc_start_micros + (USize)1e6;
         }
 
-        if (m_tbzc_second_mark_micros < sample.ts) {
+        if (m_tbzc_second_mark_micros < sample.timestampMicrosec) {
             // One second has passed; calculate the frequency
             const auto max_value =
                     *std::max_element(m_tbzc_xs.begin(), m_tbzc_xs.begin() + m_tbzc_ptr);
-            const FloatType median_value = max_value / 2.0;
+            const Float median_value = max_value / 2.0;
 
-            FloatType first_zc_micros = 0;
-            FloatType last_zc_micros = 0;
+            Float first_zc_micros = 0;
+            Float last_zc_micros = 0;
             for (USize i = 1; i < m_tbzc_ptr; ++i) {
                 const auto &x0 = m_tbzc_xs[i - 1] - median_value;
                 const auto &x1 = m_tbzc_xs[i] - median_value;
@@ -285,20 +285,20 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
             auto time_window_s = (last_zc_micros - first_zc_micros) * 1e-6;
             auto time_residue_s = 1.0 - time_window_s;
 
-            FloatType f = (m_tbzc_count_zc - 1) / 2.0; // 2 zero crossings per cycle
+            Float f = (m_tbzc_count_zc - 1) / 2.0; // 2 zero crossings per cycle
             cur.freq = f + (time_residue_s * f);
 
             // Reset the time-bound zero crossing variables
             m_tbzc_ptr = 0;
-            m_tbzc_start_micros = sample.ts;
+            m_tbzc_start_micros = sample.timestampMicrosec;
             m_tbzc_second_mark_micros = m_tbzc_start_micros + (USize)1e6;
             m_tbzc_count_zc = 0;
         } else {
             cur.freq = prv.freq;
         }
 
-        m_tbzc_xs[m_tbzc_ptr] = sample.ch[0];
-        m_tbzc_ts[m_tbzc_ptr] = sample.ts;
+        m_tbzc_xs[m_tbzc_ptr] = sample.channel[0];
+        m_tbzc_ts[m_tbzc_ptr] = sample.timestampMicrosec;
         ++m_tbzc_ptr;
 
     } else {
@@ -306,7 +306,7 @@ void qpmu::Estimator::update_estimation(qpmu::Sample sample)
         std::abort();
     }
 
-    cur.rocof = (cur.freq - prv.freq) / sample.delta;
+    cur.rocof = (cur.freq - prv.freq) / sample.timeDeltaMicrosec;
 
     // Update the index
     m_index = NEXT(m_index);

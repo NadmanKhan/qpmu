@@ -24,12 +24,12 @@ std::string phasor_polar_to_string(const Complex &phasor)
 std::string to_string(const Sample &sample)
 {
     std::stringstream ss;
-    ss << "seq_no=" << sample.seq_no << ",\t";
+    ss << "seq_no=" << sample.seqNo << ",\t";
     for (USize i = 0; i < CountSignals; ++i) {
-        ss << "ch" << i << "=" << std::setw(4) << sample.ch[i] << ", ";
+        ss << "ch" << i << "=" << std::setw(4) << sample.channel[i] << ", ";
     }
-    ss << "ts=" << sample.ts << ",\t";
-    ss << "delta=" << sample.delta << ",";
+    ss << "ts=" << sample.timestampMicrosec << ",\t";
+    ss << "delta=" << sample.timeDeltaMicrosec << ",";
     return ss.str();
 }
 
@@ -70,7 +70,7 @@ std::string csv_header_for_synchrophasor()
 }
 
 bool parse_as_sample(Sample &out_sample, const char *const s,
-                     const SampleFieldOrdering &filed_ordering)
+                     const SampleFieldOrderingConfig &filed_ordering)
 {
     bool reading_value = false;
     USize field_index = 0;
@@ -98,31 +98,31 @@ bool parse_as_sample(Sample &out_sample, const char *const s,
         case '\n':
             switch (filed_ordering[field_index]) {
             case SampleField::SequenceNumber:
-                out_sample.seq_no = value;
+                out_sample.seqNo = value;
                 break;
             case SampleField::VA:
-                out_sample.ch[0] = value;
+                out_sample.channel[0] = value;
                 break;
             case SampleField::VB:
-                out_sample.ch[1] = value;
+                out_sample.channel[1] = value;
                 break;
             case SampleField::VC:
-                out_sample.ch[2] = value;
+                out_sample.channel[2] = value;
                 break;
             case SampleField::IA:
-                out_sample.ch[3] = value;
+                out_sample.channel[3] = value;
                 break;
             case SampleField::IB:
-                out_sample.ch[4] = value;
+                out_sample.channel[4] = value;
                 break;
             case SampleField::IC:
-                out_sample.ch[5] = value;
+                out_sample.channel[5] = value;
                 break;
             case SampleField::Timestamp:
-                out_sample.ts = value;
+                out_sample.timestampMicrosec = value;
                 break;
             case SampleField::TimeDelta:
-                out_sample.delta = value;
+                out_sample.timeDeltaMicrosec = value;
                 break;
             default:
                 exit(1);
@@ -157,14 +157,14 @@ bool parse_as_sample(Sample &out_sample, const char *const s,
 std::string to_csv(const Sample &sample)
 {
     std::string str;
-    str += std::to_string(sample.seq_no);
+    str += std::to_string(sample.seqNo);
     for (size_t i = 0; i < CountSignals; ++i) {
-        str += std::to_string(sample.ch[i]);
+        str += std::to_string(sample.channel[i]);
         str += ',';
     }
-    str += std::to_string(sample.ts);
+    str += std::to_string(sample.timestampMicrosec);
     str += ',';
-    str += std::to_string(sample.delta);
+    str += std::to_string(sample.timeDeltaMicrosec);
     return str;
 }
 

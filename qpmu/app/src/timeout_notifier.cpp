@@ -1,20 +1,16 @@
 #include "timeout_notifier.h"
 
-TimeoutNotifier::TimeoutNotifier(QObject *parent) : QObject(parent) { }
-
-TimeoutNotifier::TimeoutNotifier(QTimer *timer, QObject *parent) : QObject(parent), m_timer(timer)
+TimeoutNotifier::TimeoutNotifier(QTimer *timer, QObject *parent)
+    : TimeoutNotifier(timer, timer->interval(), parent)
 {
-    connect(m_timer, &QTimer::timeout, this, &TimeoutNotifier::update);
-    m_running = true;
 }
 
 TimeoutNotifier::TimeoutNotifier(QTimer *timer, quint32 targetIntervalMs, QObject *parent)
-    : QObject(parent), m_timer(timer), m_target(targetIntervalMs)
+    : QObject(parent), m_timer(timer), m_targetIntervalMs(targetIntervalMs)
 {
     auto intervalMs = m_timer->interval();
-    m_target = (targetIntervalMs + intervalMs - 1) / intervalMs;
+    m_targetCount = (targetIntervalMs + intervalMs - 1) / intervalMs;
     connect(m_timer, &QTimer::timeout, this, &TimeoutNotifier::update);
-    m_running = true;
 }
 
 bool TimeoutNotifier::isTimeout() const
@@ -35,10 +31,15 @@ void TimeoutNotifier::stop()
 
 void TimeoutNotifier::update()
 {
-    if (!m_running)
+    if (!m_running) {
         return;
-    ++m_counter;
-    m_counter *= bool(m_counter < m_target);
-    if (m_counter == 0)
+    }
+    {
+        /// counter = (counter + 1) % targetCount
+        ++m_counter;
+        m_counter *= bool(m_counter < m_targetCount);
+    }
+    if (m_counter == 0) {
         emit timeout();
+    }
 }

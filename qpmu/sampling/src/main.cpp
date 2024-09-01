@@ -172,8 +172,8 @@ int main(int argc, char *argv[])
 
     for (size_t i = 1;; ++i) {
         auto sample = samples[i % samples.size()];
-        sample.seq_no = i;
-        sample.ts = lastSample.ts + sample.delta;
+        sample.seqNo = i;
+        sample.timestampMicrosec = lastSample.timestampMicrosec + sample.timeDeltaMicrosec;
 
         print(sample);
 
@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 
         if (do_sleep) {
             // sleep for the delta time
-            std::this_thread::sleep_for(std::chrono::microseconds(sample.delta));
+            std::this_thread::sleep_for(std::chrono::microseconds(sample.timeDeltaMicrosec));
         }
     }
 

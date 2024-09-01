@@ -6,6 +6,7 @@
 #include <QMutex>
 
 #include <functional>
+#include <array>
 
 #include "qpmu/common.h"
 #include "qpmu/estimator.h"
@@ -19,17 +20,22 @@ public:
     explicit Router();
 
     void run() override;
-    qpmu::Synchrophasor currentSynchrophasor();
+    qpmu::Synchrophasor lastSynchrophasor();
 
 public slots:
     void updateSampleSource();
 
+signals:
+    void newSampleObtained(qpmu::Sample sample);
+    void newSynchrophasorObtained(qpmu::Synchrophasor synchrophasor);
+
 private:
     QMutex m_mutex;
 
+    qpmu::Sample m_sample;
     qpmu::Synchrophasor m_synchrophasor;
 
-    qpmu::SampleSourceConfig m_sampleSourceConfig = qpmu::conf::SampleSourceConfig;
+    bool m_sampleSourceIsBinary = false;
     QIODevice *m_sampleSourceDevice = nullptr;
     std::function<bool()> m_sampleSourceDeviceReady = nullptr;
 

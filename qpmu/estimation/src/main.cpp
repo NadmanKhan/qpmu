@@ -25,18 +25,18 @@ int main(int argc, char *argv[])
             "Frequency estimation strategy to use: pd (phase differences), spc "
             "(same-phase crossings), zc (zero crossings), tbzc (time-bound zero crossings)")(
             "window", po::value<USize>(), "Window size to use for estimation")(
-            "ch0-scale", po::value<FloatType>()->default_value(1.0), "Scale factor - channel 0")(
-            "ch0-offset", po::value<FloatType>()->default_value(0.0), "Offset - channel 0")(
-            "ch1-scale", po::value<FloatType>()->default_value(1.0), "Scale factor - channel 1")(
-            "ch1-offset", po::value<FloatType>()->default_value(0.0), "Offset - channel 1")(
-            "ch2-scale", po::value<FloatType>()->default_value(1.0), "Scale factor - channel 2")(
-            "ch2-offset", po::value<FloatType>()->default_value(0.0), "Offset - channel 2")(
-            "ch3-scale", po::value<FloatType>()->default_value(1.0), "Scale factor - channel 3")(
-            "ch3-offset", po::value<FloatType>()->default_value(0.0), "Offset - channel 3")(
-            "ch4-scale", po::value<FloatType>()->default_value(1.0), "Scale factor - channel 4")(
-            "ch4-offset", po::value<FloatType>()->default_value(0.0), "Offset - channel 4")(
-            "ch5-scale", po::value<FloatType>()->default_value(1.0), "Scale factor - channel 5")(
-            "ch5-offset", po::value<FloatType>()->default_value(0.0), "Offset - channel 5")(
+            "ch0-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 0")(
+            "ch0-offset", po::value<Float>()->default_value(0.0), "Offset - channel 0")(
+            "ch1-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 1")(
+            "ch1-offset", po::value<Float>()->default_value(0.0), "Offset - channel 1")(
+            "ch2-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 2")(
+            "ch2-offset", po::value<Float>()->default_value(0.0), "Offset - channel 2")(
+            "ch3-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 3")(
+            "ch3-offset", po::value<Float>()->default_value(0.0), "Offset - channel 3")(
+            "ch4-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 4")(
+            "ch4-offset", po::value<Float>()->default_value(0.0), "Offset - channel 4")(
+            "ch5-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 5")(
+            "ch5-offset", po::value<Float>()->default_value(0.0), "Offset - channel 5")(
             "infmt", po::value<string>()->default_value("b"),
             "Input format: b (binary), s (human-readable string), c (comma separated "
             "\"key=value\" "
@@ -81,20 +81,20 @@ int main(int argc, char *argv[])
     }
     window_size = varmap["window"].as<USize>();
 
-    FloatType ch0_scale = varmap["ch0-scale"].as<FloatType>();
-    FloatType ch0_offset = varmap["ch0-offset"].as<FloatType>();
-    FloatType ch1_scale = varmap["ch1-scale"].as<FloatType>();
-    FloatType ch1_offset = varmap["ch1-offset"].as<FloatType>();
-    FloatType ch2_scale = varmap["ch2-scale"].as<FloatType>();
-    FloatType ch2_offset = varmap["ch2-offset"].as<FloatType>();
-    FloatType ch3_scale = varmap["ch3-scale"].as<FloatType>();
-    FloatType ch3_offset = varmap["ch3-offset"].as<FloatType>();
-    FloatType ch4_scale = varmap["ch4-scale"].as<FloatType>();
-    FloatType ch4_offset = varmap["ch4-offset"].as<FloatType>();
-    FloatType ch5_scale = varmap["ch5-scale"].as<FloatType>();
-    FloatType ch5_offset = varmap["ch5-offset"].as<FloatType>();
+    Float ch0_scale = varmap["ch0-scale"].as<Float>();
+    Float ch0_offset = varmap["ch0-offset"].as<Float>();
+    Float ch1_scale = varmap["ch1-scale"].as<Float>();
+    Float ch1_offset = varmap["ch1-offset"].as<Float>();
+    Float ch2_scale = varmap["ch2-scale"].as<Float>();
+    Float ch2_offset = varmap["ch2-offset"].as<Float>();
+    Float ch3_scale = varmap["ch3-scale"].as<Float>();
+    Float ch3_offset = varmap["ch3-offset"].as<Float>();
+    Float ch4_scale = varmap["ch4-scale"].as<Float>();
+    Float ch4_offset = varmap["ch4-offset"].as<Float>();
+    Float ch5_scale = varmap["ch5-scale"].as<Float>();
+    Float ch5_offset = varmap["ch5-offset"].as<Float>();
 
-    std::array<std::pair<FloatType, FloatType>, CountSignals> adjusting_params = {
+    std::array<std::pair<Float, Float>, CountSignals> adjusting_params = {
         std::make_pair(ch0_scale, ch0_offset), std::make_pair(ch1_scale, ch1_offset),
         std::make_pair(ch2_scale, ch2_offset), std::make_pair(ch3_scale, ch3_offset),
         std::make_pair(ch4_scale, ch4_offset), std::make_pair(ch5_scale, ch5_offset)
