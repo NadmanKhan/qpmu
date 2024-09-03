@@ -1,5 +1,7 @@
 #include "main_window.h"
-#include "calibration_dialog.h"
+#include "settings_widget.h"
+
+#include <QSettings>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow{ parent }
 {
@@ -50,8 +52,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow{ parent }
     QList<OptionModel> optionsModel;
     optionsModel.append(OptionModel{ QStringLiteral("Monitor"), QStringLiteral(":/meter.png"),
                                      new MonitorView(this) });
-    optionsModel.append(OptionModel{ QStringLiteral("Calibrate"), QStringLiteral(":/control-panel.png"),
-                                     new CalibrationDialog(this) });
+    optionsModel.append(OptionModel{ QStringLiteral("Settings"),
+                                     QStringLiteral(":/control-panel.png"),
+                                     new SettingsWidget(this) });
 
     const int rowCount = 2;
     const int colCount = 2;
@@ -105,4 +108,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow{ parent }
     toolBar->addAction(goBackAction);
 
     resize(1000, 500);
+}
+
+MainWindow::~MainWindow()
+{
+    QSettings settings;
+    settings.beginGroup("MainWindow");
+    settings.setValue("size", size());
+    settings.setValue("pos", pos());
+    settings.endGroup();
 }
