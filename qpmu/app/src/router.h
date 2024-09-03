@@ -20,7 +20,9 @@ public:
     explicit Router();
 
     void run() override;
-    qpmu::Synchrophasor lastSynchrophasor();
+    const qpmu::Synchrophasor &lastSynchrophasor();
+    const qpmu::Sample &lastSample();
+    const std::array<qpmu::Float, qpmu::CountSignals> &channelMagnitudes();
 
 public slots:
     void updateSampleSource();

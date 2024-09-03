@@ -1,10 +1,12 @@
 
+#include <boost/program_options/options_description.hpp>
 #include <cstdio>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
 
 #include <boost/program_options.hpp>
+#include <string>
 
 #include "qpmu/common.h"
 #include "qpmu/estimator.h"
@@ -18,32 +20,29 @@ int main(int argc, char *argv[])
     using namespace qpmu::util;
 
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "produce help message")(
-            "phasor-est", po::value<string>()->default_value("fft"),
-            "Phasor estimation strategy to use: fft, sdft")(
-            "freq-est", po::value<string>()->default_value("fft"),
-            "Frequency estimation strategy to use: pd (phase differences), spc "
-            "(same-phase crossings), zc (zero crossings), tbzc (time-bound zero crossings)")(
-            "window", po::value<USize>(), "Window size to use for estimation")(
-            "ch0-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 0")(
-            "ch0-offset", po::value<Float>()->default_value(0.0), "Offset - channel 0")(
-            "ch1-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 1")(
-            "ch1-offset", po::value<Float>()->default_value(0.0), "Offset - channel 1")(
-            "ch2-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 2")(
-            "ch2-offset", po::value<Float>()->default_value(0.0), "Offset - channel 2")(
-            "ch3-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 3")(
-            "ch3-offset", po::value<Float>()->default_value(0.0), "Offset - channel 3")(
-            "ch4-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 4")(
-            "ch4-offset", po::value<Float>()->default_value(0.0), "Offset - channel 4")(
-            "ch5-scale", po::value<Float>()->default_value(1.0), "Scale factor - channel 5")(
-            "ch5-offset", po::value<Float>()->default_value(0.0), "Offset - channel 5")(
-            "infmt", po::value<string>()->default_value("b"),
-            "Input format: b (binary), s (human-readable string), c (comma separated "
-            "\"key=value\" "
-            "pairs)")("outfmt", po::value<string>()->default_value("b"),
-                      "Output format: b (binary), s (human-readable string), c (comma separated "
-                      "\"key=value\" "
-                      "pairs)");
+    {
+        auto new_option = [](const char *name, const po::value_semantic *s,
+                             const char *description) {
+            return boost::shared_ptr<po::option_description>(
+                    new po::option_description(name, s, description));
+        };
+
+        desc.add(new_option("help", po::value<string>(), "Produce help message"));
+        desc.add(new_option("fn", po::value<USize>(),
+                            "Nominal frequency of the system in Hz (required)"));
+        desc.add(new_option("fs", po::value<USize>(),
+                            "Sampling frequency of the system in Hz (required)"));
+        desc.add(new_option("phasor-estimator", po::value<string>()->default_value("fft"),
+                            "Phasor estimation strategy to use: fft, sdft"));
+        desc.add(new_option(
+                "infmt", po::value<string>()->default_value("b"),
+                "Input format: b (binary), s (human-readable string), c (comma separated "
+                "\"key=value\" pairs)"));
+        desc.add(new_option(
+                "outfmt", po::value<string>()->default_value("b"),
+                "Output format: b (binary), s (human-readable string), c (comma separated "
+                "\"key=value\" pairs)"));
+    }
 
     po::variables_map varmap;
     po::store(po::parse_command_line(argc, argv, desc), varmap);
@@ -55,50 +54,27 @@ int main(int argc, char *argv[])
     }
 
     PhasorEstimationStrategy phasor_strategy = PhasorEstimationStrategy::FFT;
-    if (varmap.count("phasor-est")) {
-        if (varmap["phasor-est"].as<string>() == "sdft") {
+    if (varmap.count("phasor-estimator")) {
+        if (varmap["phasor-estimator"].as<string>() == "sdft") {
             phasor_strategy = PhasorEstimationStrategy::SDFT;
         }
     }
 
-    FrequencyEstimationStrategy freq_strategy = FrequencyEstimationStrategy::PhaseDifferences;
-    if (varmap.count("freq-est")) {
-        auto str = varmap["freq-est"].as<string>();
-        if (str == "spc") {
-            freq_strategy = FrequencyEstimationStrategy::SamePhaseCrossings;
-        } else if (str == "zc") {
-            freq_strategy = FrequencyEstimationStrategy::ZeroCrossings;
-        } else if (str == "tbzc") {
-            freq_strategy = FrequencyEstimationStrategy::TimeBoundZeroCrossings;
-        }
-    }
-
-    USize window_size = 0;
-    if (!varmap.count("window")) {
-        cerr << "Window size is required\n";
+    USize fn = 0;
+    if (!varmap.count("fn")) {
+        cerr << "Nominal frequency (`fn`) is required\n";
         cerr << desc << '\n';
         return 1;
     }
-    window_size = varmap["window"].as<USize>();
+    fn = varmap["fn"].as<USize>();
 
-    Float ch0_scale = varmap["ch0-scale"].as<Float>();
-    Float ch0_offset = varmap["ch0-offset"].as<Float>();
-    Float ch1_scale = varmap["ch1-scale"].as<Float>();
-    Float ch1_offset = varmap["ch1-offset"].as<Float>();
-    Float ch2_scale = varmap["ch2-scale"].as<Float>();
-    Float ch2_offset = varmap["ch2-offset"].as<Float>();
-    Float ch3_scale = varmap["ch3-scale"].as<Float>();
-    Float ch3_offset = varmap["ch3-offset"].as<Float>();
-    Float ch4_scale = varmap["ch4-scale"].as<Float>();
-    Float ch4_offset = varmap["ch4-offset"].as<Float>();
-    Float ch5_scale = varmap["ch5-scale"].as<Float>();
-    Float ch5_offset = varmap["ch5-offset"].as<Float>();
-
-    std::array<std::pair<Float, Float>, CountSignals> adjusting_params = {
-        std::make_pair(ch0_scale, ch0_offset), std::make_pair(ch1_scale, ch1_offset),
-        std::make_pair(ch2_scale, ch2_offset), std::make_pair(ch3_scale, ch3_offset),
-        std::make_pair(ch4_scale, ch4_offset), std::make_pair(ch5_scale, ch5_offset)
-    };
+    USize fs = 0;
+    if (!varmap.count("fs")) {
+        cerr << "Sampling frequency (`fs`) is required\n";
+        cerr << desc << '\n';
+        return 1;
+    }
+    fs = varmap["fs"].as<USize>();
 
     enum Format { FormatReadableStr, FormatCsv, FormatBinary };
     Format inputFormat;
@@ -118,7 +94,7 @@ int main(int argc, char *argv[])
         outputFormat = FormatBinary;
     }
 
-    Estimator estimator(window_size, adjusting_params, phasor_strategy, freq_strategy);
+    Estimator estimator(fn, fs, phasor_strategy);
     Synchrophasor synchrophasor;
     Sample sample;
 
@@ -146,14 +122,14 @@ int main(int argc, char *argv[])
                 cerr << "Failed to parse line: " << line << '\n';
                 return 1;
             }
-            estimator.update_estimation(sample);
-            synchrophasor = estimator.synchrophasor();
+            estimator.updateEstimation(sample);
+            synchrophasor = estimator.lastSynchrophasor();
             print();
         }
     } else if (inputFormat == FormatBinary) {
         while (fread(&sample, sizeof(Sample), 1, stdin)) {
-            estimator.update_estimation(sample);
-            synchrophasor = estimator.synchrophasor();
+            estimator.updateEstimation(sample);
+            synchrophasor = estimator.lastSynchrophasor();
             print();
         }
     }

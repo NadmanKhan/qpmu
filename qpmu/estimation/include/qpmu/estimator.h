@@ -12,12 +12,12 @@
 
 namespace qpmu {
 
-template <typename _FloatType = void>
+template <typename FloatType = double>
 struct FFTW
 {
 };
 
-#define SPECIALIZE(type, suffix)                                        \
+#define SPECIALIZE_FFTW(type, suffix)                                   \
   template <>                                                           \
   struct FFTW<type>                                                     \
   {                                                                     \
@@ -31,26 +31,14 @@ struct FFTW
     static constexpr auto free = fftw##suffix##_free;                   \
   };
 
-SPECIALIZE(float, f)
-SPECIALIZE(double, )
-SPECIALIZE(long double, l)
-#undef SPECIALIZE
+SPECIALIZE_FFTW(float, f)
+SPECIALIZE_FFTW(double, )
+SPECIALIZE_FFTW(long double, l)
+#undef SPECIALIZE_FFTW
 
 enum class PhasorEstimationStrategy {
     FFT, // Fast Fourier Transform
     SDFT, // Sliding-window Discrete Fourier Transform
-};
-
-enum class FrequencyEstimationStrategy {
-    PhaseDifferences, // Estimate frequency from the phase (angle) and time differences
-                      // between consecutive phasors
-    SamePhaseCrossings, // Estimate frequency from time differences between zero-crossings of the
-                        // same phase
-    ZeroCrossings, // Estimate frequency from time differences between zero-crossings of the
-                   // signal samples with linear interpolation
-    TimeBoundZeroCrossings, // Estimate frequency from time differences between zero-crossings of
-                            // the signal samples with linear interpolation, but only within a
-                            // one-second window
 };
 
 class Estimator
@@ -61,13 +49,13 @@ public:
     using ISize = qpmu::ISize;
     using Complex = qpmu::Complex;
     using SdftType = sdft::SDFT<Float, Float>;
-    static constexpr USize NumChannels = qpmu::CountSignals;
+    static constexpr USize CountSignals = qpmu::CountSignals;
 
     struct FftwState
     {
-        FFTW<Float>::Complex *inputs[NumChannels];
-        FFTW<Float>::Complex *outputs[NumChannels];
-        FFTW<Float>::Plan plans[NumChannels];
+        FFTW<Float>::Complex *inputs[CountSignals];
+        FFTW<Float>::Complex *outputs[CountSignals];
+        FFTW<Float>::Plan plans[CountSignals];
     };
 
     struct SdftState
@@ -77,55 +65,36 @@ public:
     };
 
     // ****** Constructors and destructors ******
-    Estimator() : Estimator(64) { }
     Estimator(const Estimator &) = default;
     Estimator(Estimator &&) = default;
     Estimator &operator=(const Estimator &) = default;
     Estimator &operator=(Estimator &&) = default;
     ~Estimator();
-    Estimator(USize window_size,
-              std::array<std::pair<Float, Float>, NumChannels>
-                      calib_params = { std::make_pair<Float, Float>(1.0, 0.0),
-                                       std::make_pair<Float, Float>(1.0, 0.0),
-                                       std::make_pair<Float, Float>(1.0, 0.0),
-                                       std::make_pair<Float, Float>(1.0, 0.0),
-                                       std::make_pair<Float, Float>(1.0, 0.0),
-                                       std::make_pair<Float, Float>(1.0, 0.0) },
-              PhasorEstimationStrategy phasor_strategy = PhasorEstimationStrategy::FFT,
-              FrequencyEstimationStrategy freq_strategy =
-                      FrequencyEstimationStrategy::TimeBoundZeroCrossings);
+    Estimator(USize fn, USize fs,
+              PhasorEstimationStrategy phasorStrategy = PhasorEstimationStrategy::FFT);
 
-    // ****** Public member functions ******
-    qpmu::Synchrophasor synchrophasor() const;
-    void update_estimation(qpmu::Sample sample);
+    void updateEstimation(qpmu::Sample sample);
+
+    const qpmu::Synchrophasor &lastSynchrophasor() const;
+    const qpmu::Sample &lastSample() const;
+    const std::array<Float, CountSignals> &channelMagnitudes() const;
 
 private:
-    // ****** Private member functions ******
+    PhasorEstimationStrategy m_phasorStrategy = PhasorEstimationStrategy::FFT;
+    FftwState m_fftwState = {};
+    SdftState m_sdftState = {};
 
-    // ****** Private member variables ******
-    PhasorEstimationStrategy m_phasor_strategy = PhasorEstimationStrategy::FFT;
-    FrequencyEstimationStrategy m_freq_strategy = FrequencyEstimationStrategy::PhaseDifferences;
-    USize m_size = 0;
-    std::array<std::pair<Float, Float>, NumChannels> m_calib_params = {
-        std::make_pair<Float, Float>(1.0, 0.0),
-        std::make_pair<Float, Float>(1.0, 0.0),
-        std::make_pair<Float, Float>(1.0, 0.0),
-        std::make_pair<Float, Float>(1.0, 0.0),
-        std::make_pair<Float, Float>(1.0, 0.0),
-        std::make_pair<Float, Float>(1.0, 0.0)
-    };
-    std::vector<qpmu::Sample> m_samples = {};
-    std::vector<qpmu::Synchrophasor> m_estimations = {};
-    USize m_index = 0;
-    FftwState m_fftw_state = {};
-    SdftState m_sdft_state = {};
+    std::vector<qpmu::Synchrophasor> m_syncphBuffer = {};
+    USize m_syncphBufIdx = 0;
 
-    std::vector<U64> m_tbzc_xs = {};
-    std::vector<U64> m_tbzc_ts = {};
-    USize m_tbzc_ptr = 0;
-    qpmu::U64 m_tbzc_start_micros = 0;
-    qpmu::U64 m_tbzc_second_mark_micros = 0;
-    qpmu::U64 m_tbzc_count_zc = 0;
+    qpmu::U64 m_windowStartTimeUs = 0;
+    qpmu::U64 m_windowEndTimeUs = 0;
+
+    std::vector<qpmu::Sample> m_sampleBuffer = {};
+    USize m_sampleBufIdx = 0;
+    qpmu::U64 m_zeroCrossingCount = 0;
+
+    std::array<Float, CountSignals> m_channelMagnitudes = {};
 };
 
 } // namespace qpmu

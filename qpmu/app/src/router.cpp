@@ -22,19 +22,10 @@ Router::Router() : QThread()
     /// Initialize the Estimator object
 
     USize fs = settings.get(Settings::list.fundamentals.adc.samplingFrequency).toUInt();
-    USize f0 = settings.get(Settings::list.fundamentals.powerSource.nominalFrequency).toUInt();
-    Q_ASSERT(fs % f0 == 0);
-    USize windowSize = fs / f0;
+    USize fn = settings.get(Settings::list.fundamentals.powerSource.nominalFrequency).toUInt();
+    Q_ASSERT(fs % fn == 0);
 
-    std::array<std::pair<Float, Float>, CountSignals> calibParams;
-
-    for (USize i = 0; i < CountSignals; ++i) {
-        auto gain = settings.get(Settings::list.sampling.calibration[i * 2 + 0]).toFloat();
-        auto bias = settings.get(Settings::list.sampling.calibration[i * 2 + 1]).toFloat();
-        calibParams[i] = std::make_pair(gain, bias);
-    }
-
-    m_estimator = new Estimator(windowSize, calibParams);
+    m_estimator = new Estimator(fn, fs);
 
     updateSampleSource();
 }
@@ -164,14 +155,22 @@ void Router::updateSampleSource()
     }
 }
 
-qpmu::Synchrophasor Router::lastSynchrophasor()
+const qpmu::Synchrophasor &Router::lastSynchrophasor()
 {
-    qpmu::Synchrophasor synchrophasor;
-    {
-        QMutexLocker locker(&m_mutex);
-        synchrophasor = m_estimator->synchrophasor();
-    }
-    return synchrophasor;
+    QMutexLocker locker(&m_mutex);
+    return m_estimator->lastSynchrophasor();
+}
+
+const qpmu::Sample &Router::lastSample()
+{
+    QMutexLocker locker(&m_mutex);
+    return m_estimator->lastSample();
+}
+
+const std::array<Float, CountSignals> &Router::channelMagnitudes()
+{
+    QMutexLocker locker(&m_mutex);
+    return m_estimator->channelMagnitudes();
 }
 
 void Router::run()
@@ -202,8 +201,8 @@ void Router::run()
                 Synchrophasor syncph;
                 {
                     QMutexLocker locker(&m_mutex);
-                    m_estimator->update_estimation(m_sample);
-                    syncph = m_estimator->synchrophasor();
+                    m_estimator->updateEstimation(m_sample);
+                    syncph = m_estimator->lastSynchrophasor();
                 }
                 emit newSynchrophasorObtained(syncph);
 

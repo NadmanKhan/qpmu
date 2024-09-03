@@ -1,15 +1,19 @@
 #include "qpmu/estimator.h"
 #include "qpmu/common.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cassert>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <numeric>
 
+using namespace qpmu;
+
 template <class Numeric>
-constexpr bool is_positive(Numeric x)
+constexpr bool isPositive(Numeric x)
 {
     if constexpr (std::is_integral<Numeric>::value) {
         return x > 0;
@@ -18,299 +22,237 @@ constexpr bool is_positive(Numeric x)
     }
 }
 
-constexpr qpmu::Float zero_crossing_time(qpmu::Float t0, qpmu::Float x0, qpmu::Float t1,
-                                         qpmu::Float x1)
+constexpr Float zeroCrossingTime(Float t0, Float x0, Float t1, Float x1)
 {
-    return t0 + x0 * (t1 - t0) / (x1 - x0);
+    return t0 + (0 - x0) * (t1 - t0) / (x1 - x0);
 }
 
-qpmu::Estimator::~Estimator()
+Estimator::~Estimator()
 {
-    if (m_phasor_strategy == PhasorEstimationStrategy::FFT) {
-        for (USize i = 0; i < NumChannels; ++i) {
-            FFTW<Float>::destroy_plan(m_fftw_state.plans[i]);
-            FFTW<Float>::free(m_fftw_state.inputs[i]);
-            FFTW<Float>::free(m_fftw_state.outputs[i]);
+    if (m_phasorStrategy == PhasorEstimationStrategy::FFT) {
+        for (USize i = 0; i < CountSignals; ++i) {
+            FFTW<Float>::destroy_plan(m_fftwState.plans[i]);
+            FFTW<Float>::free(m_fftwState.inputs[i]);
+            FFTW<Float>::free(m_fftwState.outputs[i]);
         }
     }
+
     // The SDFT state is trivially destructible
 }
 
-qpmu::Estimator::Estimator(USize window_size,
-                           std::array<std::pair<Float, Float>, NumChannels> calib_params,
-                           PhasorEstimationStrategy strategy,
-                           FrequencyEstimationStrategy freq_strategy)
-    : m_phasor_strategy(strategy),
-      m_freq_strategy(freq_strategy),
-      m_size(window_size),
-      m_calib_params(calib_params),
-      m_samples(window_size),
-      m_estimations(window_size)
+Estimator::Estimator(USize fn, USize fs, PhasorEstimationStrategy phasorStrategy)
+    : m_phasorStrategy(phasorStrategy)
 {
-    assert(m_size > 2);
-    if (m_phasor_strategy == PhasorEstimationStrategy::FFT) {
-        for (USize i = 0; i < NumChannels; ++i) {
-            m_fftw_state.inputs[i] = FFTW<Float>::alloc_complex(m_size);
-            m_fftw_state.outputs[i] = FFTW<Float>::alloc_complex(m_size);
-            m_fftw_state.plans[i] =
-                    FFTW<Float>::plan_dft_1d(m_size, m_fftw_state.inputs[i],
-                                             m_fftw_state.outputs[i], FFTW_FORWARD, FFTW_ESTIMATE);
-            for (USize j = 0; j < m_size; ++j) {
-                m_fftw_state.inputs[i][j][0] = 0;
-                m_fftw_state.inputs[i][j][1] = 0;
+    assert(fn > 0);
+    assert(fs % fn == 0);
+
+    m_syncphBuffer.resize(fs / fn); // hold one full cycle (fs / fn = number of samples per cycle)
+    m_sampleBuffer.resize(5 * fs); // hold at least 1 second of samples
+
+    if (m_phasorStrategy == PhasorEstimationStrategy::FFT) {
+        for (USize i = 0; i < CountSignals; ++i) {
+            m_fftwState.inputs[i] = FFTW<Float>::alloc_complex(m_syncphBuffer.size());
+            m_fftwState.outputs[i] = FFTW<Float>::alloc_complex(m_syncphBuffer.size());
+            m_fftwState.plans[i] =
+                    FFTW<Float>::plan_dft_1d(m_syncphBuffer.size(), m_fftwState.inputs[i],
+                                             m_fftwState.outputs[i], FFTW_FORWARD, FFTW_ESTIMATE);
+            for (USize j = 0; j < m_syncphBuffer.size(); ++j) {
+                m_fftwState.inputs[i][j][0] = 0;
+                m_fftwState.inputs[i][j][1] = 0;
             }
         }
-    } else if (m_phasor_strategy == PhasorEstimationStrategy::SDFT) {
-        m_sdft_state.workers =
-                std::vector<SdftType>(NumChannels, SdftType(m_size, sdft::Window::Hann, 1));
-        m_sdft_state.outputs.assign(NumChannels, std::vector<Complex>(m_size, 0));
-    }
 
-    if (m_freq_strategy == FrequencyEstimationStrategy::TimeBoundZeroCrossings) {
-        m_tbzc_xs.resize(2 * 50 * m_size);
-        m_tbzc_ts.resize(2 * 50 * m_size);
+    } else if (m_phasorStrategy == PhasorEstimationStrategy::SDFT) {
+        m_sdftState.workers = std::vector<SdftType>(
+                CountSignals, SdftType(m_syncphBuffer.size(), sdft::Window::Hann, 1));
+        m_sdftState.outputs.assign(CountSignals, std::vector<Complex>(m_syncphBuffer.size(), 0));
     }
 }
 
-qpmu::Synchrophasor qpmu::Estimator::synchrophasor() const
+#define NEXT(i, x) (((i) != (m_##x##Buffer.size() - 1)) * ((i) + 1))
+#define PREV(i, x) (((i) != 0) * ((i)-1) + ((i) == 0) * (m_##x##Buffer.size() - 1))
+
+#define SYNCPH_NEXT(i) NEXT(i, syncph)
+#define SYNCPH_PREV(i) PREV(i, syncph)
+
+#define SAMPLE_NEXT(i) NEXT(i, sample)
+#define SAMPLE_PREV(i) PREV(i, sample)
+
+const Synchrophasor &Estimator::lastSynchrophasor() const
 {
-    return m_estimations[m_index];
+    return m_syncphBuffer[m_syncphBufIdx];
 }
 
-void qpmu::Estimator::update_estimation(qpmu::Sample sample)
+const Sample &Estimator::lastSample() const
 {
-    using namespace qpmu;
+    return m_sampleBuffer[m_sampleBufIdx];
+}
 
-#define NEXT(index) (((index) != (m_size - 1)) * ((index) + 1))
-#define PREV(index) (((index) != 0) * ((index)-1) + ((index) == 0) * (m_size - 1))
+const std::array<Float, CountSignals> &Estimator::channelMagnitudes() const
+{
+    return m_channelMagnitudes;
+}
 
-    const auto &prv = m_estimations[PREV(m_index)];
-    auto &cur = m_estimations[m_index];
-    cur.timestamp_us = sample.timestampMicrosec;
+void Estimator::updateEstimation(Sample sample)
+{
+    m_sampleBuffer[m_sampleBufIdx] = sample;
 
-    for (USize i = 0; i < NumChannels; ++i) {
-        const auto &[scale, offset] = m_calib_params[i];
-        sample.channel[i] = (sample.channel[i] * scale) + offset;
+    const Synchrophasor &prevSyncph = m_syncphBuffer[SYNCPH_PREV(m_syncphBufIdx)];
+    Synchrophasor &currSyncph = m_syncphBuffer[m_syncphBufIdx];
+
+    currSyncph.timestampUs = sample.timestampUs;
+
+    { /// Estimate phasors
+
+        if (m_phasorStrategy == PhasorEstimationStrategy::FFT) {
+            // Shift the previous inputs
+            for (USize i = 0; i < CountSignals; ++i) {
+                for (USize j = 1; j < m_syncphBuffer.size(); ++j) {
+                    m_fftwState.inputs[i][j - 1][0] = m_fftwState.inputs[i][j][0];
+                    m_fftwState.inputs[i][j - 1][1] = m_fftwState.inputs[i][j][1];
+                }
+            }
+            // Add the new sample's data
+            for (USize i = 0; i < CountSignals; ++i) {
+                m_fftwState.inputs[i][m_syncphBuffer.size() - 1][0] = sample.channels[i];
+                m_fftwState.inputs[i][m_syncphBuffer.size() - 1][1] = 0;
+            }
+            // Execute the FFT plan
+            for (USize i = 0; i < CountSignals; ++i) {
+                FFTW<Float>::execute(m_fftwState.plans[i]);
+            }
+            // Phasor = output corresponding to the fundamental frequency
+            for (USize i = 0; i < CountSignals; ++i) {
+                Complex phasor = { m_fftwState.outputs[i][1][0], m_fftwState.outputs[i][1][1] };
+                phasor /= Float(m_syncphBuffer.size());
+                currSyncph.magnitudes[i] = std::abs(phasor);
+                currSyncph.phaseAngles[i] = std::arg(phasor);
+            }
+
+        } else if (m_phasorStrategy == PhasorEstimationStrategy::SDFT) {
+            // Run the SDFT on the new sample
+            for (USize i = 0; i < CountSignals; ++i) {
+                m_sdftState.workers[i].sdft(sample.channels[i], m_sdftState.outputs[i].data());
+            }
+            // Phasor = output corresponding to the fundamental frequency
+            for (USize i = 0; i < CountSignals; ++i) {
+                const auto &phasor = m_sdftState.outputs[i][1] / Float(m_syncphBuffer.size());
+                currSyncph.magnitudes[i] = std::abs(phasor);
+                currSyncph.phaseAngles[i] = std::arg(phasor);
+            }
+        }
     }
 
-    /**
-     * ***************************************************************************************
-     * Add the new sample's data; estimate phasors from the window using the chosen strategy
-     * ***************************************************************************************
-     */
+    { /// Estimate frequency and ROCOF; update
 
-    if (m_phasor_strategy == PhasorEstimationStrategy::FFT) {
-        // Shift the previous inputs
-        for (USize i = 0; i < NumChannels; ++i) {
-            for (USize j = 1; j < m_size; ++j) {
-                m_fftw_state.inputs[i][j - 1][0] = m_fftw_state.inputs[i][j][0];
-                m_fftw_state.inputs[i][j - 1][1] = m_fftw_state.inputs[i][j][1];
+        if (m_windowStartTimeUs == 0) {
+            m_windowStartTimeUs = sample.timestampUs;
+            m_windowEndTimeUs = m_windowStartTimeUs + (USize)1e6;
+        }
+
+        std::cerr << "Previous frequency: " << currSyncph.frequency << "\n";
+        currSyncph.frequency = prevSyncph.frequency;
+
+        if (m_windowEndTimeUs < sample.timestampUs) {
+            /// The 1s window has ended, hence
+            /// - estimate frequency a new,
+            /// - update channel magnitudes, and
+            /// - reset the window variables
+
+            /// Count zero crossings for frequency estimation
+            /// ---
+
+            constexpr USize FreqEstimChannel = 0;
+
+            U64 maxValue = 0;
+            for (USize i = 0; i <= m_sampleBufIdx; ++i) {
+                if (m_sampleBuffer[i].channels[FreqEstimChannel] > maxValue) {
+                    maxValue = m_sampleBuffer[i].channels[FreqEstimChannel];
+                }
             }
-        }
-        // Add the new sample's data
-        for (USize i = 0; i < NumChannels; ++i) {
-            m_fftw_state.inputs[i][m_size - 1][0] = sample.channel[i];
-            m_fftw_state.inputs[i][m_size - 1][1] = 0;
-        }
-        // Execute the FFT plan
-        for (USize i = 0; i < NumChannels; ++i) {
-            FFTW<Float>::execute(m_fftw_state.plans[i]);
-        }
-        // Phasor = output corresponding to the fundamental frequency
-        for (USize i = 0; i < NumChannels; ++i) {
-            const auto &phasor =
-                    Complex(m_fftw_state.outputs[i][1][0], m_fftw_state.outputs[i][1][1])
-                    / Float(m_size);
-            cur.phasor_mag[i] = std::abs(phasor);
-            cur.phasor_ang[i] = std::arg(phasor);
+
+            const U64 zeroValue = maxValue / 2;
+            U64 firstCrossingUs = 0;
+            U64 lastCrossingUs = 0;
+
+            for (USize i = 1; i <= m_sampleBufIdx; ++i) {
+                const I64 &x0 = (I64)m_sampleBuffer[i - 1].channels[FreqEstimChannel] - zeroValue;
+                const I64 &x1 = (I64)m_sampleBuffer[i].channels[FreqEstimChannel] - zeroValue;
+                const U64 &t0 = m_sampleBuffer[i - 1].timestampUs;
+                const U64 &t1 = m_sampleBuffer[i].timestampUs;
+
+                if (isPositive(x0) != isPositive(x1)) {
+                    ++m_zeroCrossingCount;
+                    auto t = (U64)std::round(zeroCrossingTime(t0, x0, t1, x1));
+                    if (firstCrossingUs == 0) {
+                        firstCrossingUs = t;
+                    }
+                    lastCrossingUs = t;
+                }
+            }
+
+            auto crossingWindowSec = (Float)(lastCrossingUs - firstCrossingUs) * 1e-6;
+            auto residueSec = (Float)1.0 - crossingWindowSec;
+
+            /// 2 zero crossings per cycle + 1 crossing starts the count
+            Float f = (Float)(m_zeroCrossingCount - 1) / 2.0;
+
+            currSyncph.frequency = f + (residueSec * f);
+
+            /// Update channel magnitudes
+            /// ---
+
+            for (USize i = 0; i < CountSignals; ++i) {
+                USize sum = 0;
+                USize count = 0;
+
+                Sample *s0 = &m_sampleBuffer[0];
+                Sample *s1 = &m_sampleBuffer[1];
+                Sample *s2 = &m_sampleBuffer[2];
+                Sample *s3 = &m_sampleBuffer[3];
+                Sample *s4 = &m_sampleBuffer[4];
+
+                for (USize j = 4; j <= m_sampleBufIdx; ++j) {
+                    if (s0->channels[i] <= s1->channels[i] && s1->channels[i] <= s2->channels[i]
+                        && s2->channels[i] >= s3->channels[i]
+                        && s3->channels[i] >= s4->channels[i]) {
+
+                        sum += s2->channels[i];
+                        count += 1;
+                    }
+
+                    ++s0;
+                    ++s1;
+                    ++s2;
+                    ++s3;
+                    ++s4;
+                }
+
+                m_channelMagnitudes[i] = (Float)sum / (Float)count;
+            }
+
+            /// Reset window variables
+            /// ---
+
+            m_sampleBufIdx = 0;
+            m_windowStartTimeUs = sample.timestampUs;
+            m_windowEndTimeUs = m_windowStartTimeUs + (USize)1e6;
+            m_zeroCrossingCount = 0;
         }
 
-    } else if (m_phasor_strategy == PhasorEstimationStrategy::SDFT) {
-        // Run the SDFT on the new sample
-        for (USize i = 0; i < NumChannels; ++i) {
-            m_sdft_state.workers[i].sdft(sample.channel[i], m_sdft_state.outputs[i].data());
-        }
-        // Phasor = output corresponding to the fundamental frequency
-        for (USize i = 0; i < NumChannels; ++i) {
-            const auto &phasor = m_sdft_state.outputs[i][1] / Float(m_size);
-            cur.phasor_mag[i] = std::abs(phasor);
-            cur.phasor_ang[i] = std::arg(phasor);
-        }
-    } else {
-        std::cerr << "Unknown phasor estimation strategy\n";
-        std::abort();
+        currSyncph.rocof = (currSyncph.frequency - prevSyncph.frequency) / sample.timeDeltaUs * 1e6;
     }
 
-    /**
-     * ***************************************************************************************
-     * Estimate frequency and ROCOF from the window
-     *
-     * ***************************************************************************************
-     */
-
-    if (m_freq_strategy == FrequencyEstimationStrategy::PhaseDifferences) {
-        cur.freq = 0;
-        USize cnt = 0;
-        for (USize i = 0; i < NumChannels; ++i) {
-            if (Signals[i].type != Signal::Type::Voltage) {
-                continue;
-            }
-            ++cnt;
-            auto phase_diff = cur.phasor_ang[i] - prv.phasor_ang[i];
-            phase_diff = std::fmod(phase_diff + Float(2 * M_PI), Float(2 * M_PI));
-            cur.freq += phase_diff;
-        }
-        cur.freq /= cnt;
-        cur.freq /= sample.timeDeltaMicrosec;
-        cur.freq *= 1e6; // sample.delta is in microseconds
-        cur.freq /= (2 * M_PI); // Convert from angular frequency to frequency
-
-    } else if (m_freq_strategy == FrequencyEstimationStrategy::SamePhaseCrossings) {
-        // Find two phasors with equal phase, and count zero crossings in between
-        cur.freq = 0;
-        USize cnt_calcs = 0;
-        for (USize i = 0; i < NumChannels; ++i) {
-            if (Signals[i].type != Signal::Type::Voltage) {
-                continue;
-            }
-            for (USize j = 0; j < m_estimations.size(); ++j) {
-                if (m_estimations[j].timestamp_us == 0) {
-                    continue;
-                }
-                USize cnt_zc = 0;
-
-                auto phase_j = m_estimations[j].phasor_ang[i];
-                I64 t0 = m_estimations[j].timestamp_us;
-
-                for (USize k = j + 1; k < m_estimations.size(); ++k) {
-                    if (m_estimations[k].timestamp_us == 0) {
-                        continue;
-                    }
-
-                    const auto &phase_k = m_estimations[k].phasor_ang[i];
-                    const auto &phase_prev_k = m_estimations[k - 1].phasor_ang[i];
-
-                    // Check if there is a zero crossing, and increment the count
-                    if (is_positive(phase_k) != is_positive(phase_prev_k)) {
-                        ++cnt_zc;
-                    }
-
-                    // Check if phase_i and phase_j are almost equal
-                    auto phase_diff = std::abs(phase_j - phase_k);
-                    phase_diff =
-                            std::min(phase_diff, std::abs(static_cast<Float>(M_PI) - phase_diff));
-                    static constexpr Float MaxAllowedPhaseDiff = (M_PI / 180) * 2; // 2 degrees
-                    if (phase_diff <= MaxAllowedPhaseDiff) {
-                        I64 t1 = m_estimations[k].timestamp_us;
-                        auto delta_t_sec = std::abs(t1 - t0) * 1e-6; // sample.ts is in microseconds
-                        auto cnt_cycles = cnt_zc / 2.0;
-
-                        cur.freq += cnt_cycles / delta_t_sec;
-                        ++cnt_calcs;
-                        break;
-                    }
-                }
-            }
-        }
-        cur.freq /= cnt_calcs;
-
-    } else if (m_freq_strategy == FrequencyEstimationStrategy::ZeroCrossings) {
-        // Find (approximate) zero crossings of the signal samples
-        Float sum_delta_t_sec = 0;
-        USize cnt_calcs = 0;
-        for (USize i = 0; i < NumChannels; ++i) {
-            if (!(Signals[i].type == Signal::Type::Voltage)) {
-                continue;
-            }
-            Float t_last = 0;
-            for (USize j = NEXT(m_index); j != m_index; j = NEXT(j)) {
-                if (m_estimations[j].timestamp_us == 0) {
-                    continue;
-                }
-
-                const auto &x0 = m_estimations[PREV(j)].phasor_ang[i];
-                const auto &x1 = m_estimations[j].phasor_ang[i];
-
-                if (is_positive(x0) != is_positive(x1)) {
-                    // Linear interpolation to find the zero crossing
-                    const auto &t0 = m_estimations[PREV(j)].timestamp_us;
-                    const auto &t1 = m_estimations[j].timestamp_us;
-                    auto t = zero_crossing_time(t0, x0, t1, x1);
-
-                    if (t_last != 0) {
-                        auto delta_t_sec =
-                                std::abs(t - t_last) * 1e-6; // sample.ts is in microseconds
-                        sum_delta_t_sec += delta_t_sec;
-                        ++cnt_calcs;
-                    }
-                    t_last = t;
-                }
-            }
-        }
-        if (cnt_calcs > 0) {
-            cur.freq = cnt_calcs / (2 * sum_delta_t_sec);
-        } else {
-            cur.freq = 0;
-        }
-    } else if (m_freq_strategy == FrequencyEstimationStrategy::TimeBoundZeroCrossings) {
-        if (m_tbzc_start_micros == 0) {
-            m_tbzc_start_micros = sample.timestampMicrosec;
-            m_tbzc_second_mark_micros = m_tbzc_start_micros + (USize)1e6;
-        }
-
-        if (m_tbzc_second_mark_micros < sample.timestampMicrosec) {
-            // One second has passed; calculate the frequency
-            const auto max_value =
-                    *std::max_element(m_tbzc_xs.begin(), m_tbzc_xs.begin() + m_tbzc_ptr);
-            const Float median_value = max_value / 2.0;
-
-            Float first_zc_micros = 0;
-            Float last_zc_micros = 0;
-            for (USize i = 1; i < m_tbzc_ptr; ++i) {
-                const auto &x0 = m_tbzc_xs[i - 1] - median_value;
-                const auto &x1 = m_tbzc_xs[i] - median_value;
-                const auto &t0 = m_tbzc_ts[i - 1];
-                const auto &t1 = m_tbzc_ts[i];
-
-                if (is_positive(x0) != is_positive(x1)) {
-                    ++m_tbzc_count_zc;
-                    auto t = zero_crossing_time(t0, x0, t1, x1);
-                    if (first_zc_micros == 0) {
-                        first_zc_micros = t;
-                    }
-                    last_zc_micros = t;
-                }
-            }
-
-            auto time_window_s = (last_zc_micros - first_zc_micros) * 1e-6;
-            auto time_residue_s = 1.0 - time_window_s;
-
-            Float f = (m_tbzc_count_zc - 1) / 2.0; // 2 zero crossings per cycle
-            cur.freq = f + (time_residue_s * f);
-
-            // Reset the time-bound zero crossing variables
-            m_tbzc_ptr = 0;
-            m_tbzc_start_micros = sample.timestampMicrosec;
-            m_tbzc_second_mark_micros = m_tbzc_start_micros + (USize)1e6;
-            m_tbzc_count_zc = 0;
-        } else {
-            cur.freq = prv.freq;
-        }
-
-        m_tbzc_xs[m_tbzc_ptr] = sample.channel[0];
-        m_tbzc_ts[m_tbzc_ptr] = sample.timestampMicrosec;
-        ++m_tbzc_ptr;
-
-    } else {
-        std::cerr << "Unknown frequency estimation strategy\n";
-        std::abort();
-    }
-
-    cur.rocof = (cur.freq - prv.freq) / sample.timeDeltaMicrosec;
-
-    // Update the index
-    m_index = NEXT(m_index);
+    // Update the indexes
+    m_sampleBufIdx += 1;
+    m_syncphBufIdx = (m_syncphBufIdx + 1) % m_syncphBuffer.size();
+}
 
 #undef NEXT
 #undef PREV
-}
+
+#undef SYNCPH_NEXT
+#undef SYNCPH_PREV
+
+#undef SAMPLE_NEXT
+#undef SAMPLE_PREV
