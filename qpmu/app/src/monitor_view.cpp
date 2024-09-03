@@ -532,7 +532,7 @@ void MonitorView::update(bool force)
         return;
     }
 
-    Synchrophasor synchrophasor;
+    Synchrophasor syncph;
 
     if (isSimulating()) {
         /// simulating; nudge the phasors according to the chosen frequency
@@ -552,13 +552,20 @@ void MonitorView::update(bool force)
             return;
         }
 
-        synchrophasor = APP->router()->lastSynchrophasor();
+        syncph = APP->router()->lastSynchrophasor();
 
-        Float phaseRef = synchrophasor.phasor_ang[0];
         for (USize i = 0; i < CountSignals; ++i) {
-            m_plotAmplitudes[i] = synchrophasor.phasor_mag[i];
-            m_plotPhaseDiffs[i] =
-                    std::fmod(synchrophasor.phasor_ang[i] - phaseRef + 2 * M_PI, 2 * M_PI);
+            Float slope =
+                    APP->settings()->get(Settings::list.sampling.calibration[i * 2 + 0]).toFloat();
+            Float intercept =
+                    APP->settings()->get(Settings::list.sampling.calibration[i * 2 + 1]).toFloat();
+            syncph.magnitudes[i] = slope * syncph.magnitudes[i] + intercept;
+        }
+
+        Float phaseRef = syncph.phaseAngles[0];
+        for (USize i = 0; i < CountSignals; ++i) {
+            m_plotAmplitudes[i] = syncph.magnitudes[i];
+            m_plotPhaseDiffs[i] = std::fmod(syncph.phaseAngles[i] - phaseRef + 2 * M_PI, 2 * M_PI);
             if (m_plotPhaseDiffs[i] < M_PI) {
                 m_plotPhaseDiffs[i] += 2 * M_PI;
             }
@@ -725,8 +732,7 @@ void MonitorView::update(bool force)
         m_statusLabel->setPalette(palette);
     } else {
         m_statusLabel->setText(QStringLiteral("<strong>LIVE</strong>"));
-        m_frequencyLabel->setText(QStringLiteral("<strong>")
-                                  + QString::number(synchrophasor.freq, 'f', 1)
+        m_frequencyLabel->setText(QStringLiteral("<strong>") + QString::number(syncph.frequency, 'f', 1)
                                   + QStringLiteral(" Hz</strong>"));
         auto palette = m_statusLabel->palette();
         palette.setColor(QPalette::Highlight, QStringLiteral("#22bb45"));
