@@ -106,13 +106,13 @@ struct Sample
     U64 seqNo;
 
     /// Channel values
-    std::array<U64, CountSignals> channel;
+    std::array<U64, CountSignals> channels;
 
     /// Timestamp (in microseconds)
-    U64 timestampMicrosec;
+    U64 timestampUs;
 
     /// Timestamp difference from previous sample (in microseconds)
-    U64 timeDeltaMicrosec;
+    U64 timeDeltaUs;
 };
 
 struct Signal
@@ -134,16 +134,16 @@ struct Signal
 struct Synchrophasor
 {
     /// Timestamp (in microseconds)
-    U64 timestamp_us;
+    U64 timestampUs;
 
     /// Phasor magnitudes
-    std::array<Float, CountSignals> phasor_mag;
+    std::array<Float, CountSignals> magnitudes;
 
     /// Phasor angles (in radians)
-    Float phasor_ang[CountSignals];
+    std::array<Float, CountSignals> phaseAngles;
 
     /// Frequency (in Hz)
-    Float freq;
+    Float frequency;
 
     /// Rate of change of frequency (in Hz/s)
     Float rocof;

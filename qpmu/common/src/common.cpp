@@ -26,24 +26,24 @@ std::string to_string(const Sample &sample)
     std::stringstream ss;
     ss << "seq_no=" << sample.seqNo << ",\t";
     for (USize i = 0; i < CountSignals; ++i) {
-        ss << "ch" << i << "=" << std::setw(4) << sample.channel[i] << ", ";
+        ss << "ch" << i << "=" << std::setw(4) << sample.channels[i] << ", ";
     }
-    ss << "ts=" << sample.timestampMicrosec << ",\t";
-    ss << "delta=" << sample.timeDeltaMicrosec << ",";
+    ss << "ts=" << sample.timestampUs << ",\t";
+    ss << "delta=" << sample.timeDeltaUs << ",";
     return ss.str();
 }
 
 std::string to_string(const Synchrophasor &synchrophasor)
 {
     std::stringstream ss;
-    ss << "timestamp_micros=" << std::to_string(synchrophasor.timestamp_us) << ",\t";
+    ss << "timestamp_micros=" << std::to_string(synchrophasor.timestampUs) << ",\t";
     for (USize i = 0; i < CountSignals; ++i) {
         ss << "phasor_" << i << "="
            << phasor_polar_to_string(
-                      std::polar(synchrophasor.phasor_mag[i], synchrophasor.phasor_ang[i]))
+                      std::polar(synchrophasor.magnitudes[i], synchrophasor.phaseAngles[i]))
            << ",\t";
     }
-    ss << "freq=" << synchrophasor.freq << ",\t";
+    ss << "freq=" << synchrophasor.frequency << ",\t";
     ss << "rocof=" << synchrophasor.rocof << ",";
     return ss.str();
 }
@@ -101,28 +101,28 @@ bool parse_as_sample(Sample &out_sample, const char *const s,
                 out_sample.seqNo = value;
                 break;
             case SampleField::VA:
-                out_sample.channel[0] = value;
+                out_sample.channels[0] = value;
                 break;
             case SampleField::VB:
-                out_sample.channel[1] = value;
+                out_sample.channels[1] = value;
                 break;
             case SampleField::VC:
-                out_sample.channel[2] = value;
+                out_sample.channels[2] = value;
                 break;
             case SampleField::IA:
-                out_sample.channel[3] = value;
+                out_sample.channels[3] = value;
                 break;
             case SampleField::IB:
-                out_sample.channel[4] = value;
+                out_sample.channels[4] = value;
                 break;
             case SampleField::IC:
-                out_sample.channel[5] = value;
+                out_sample.channels[5] = value;
                 break;
             case SampleField::Timestamp:
-                out_sample.timestampMicrosec = value;
+                out_sample.timestampUs = value;
                 break;
             case SampleField::TimeDelta:
-                out_sample.timeDeltaMicrosec = value;
+                out_sample.timeDeltaUs = value;
                 break;
             default:
                 exit(1);
@@ -159,25 +159,25 @@ std::string to_csv(const Sample &sample)
     std::string str;
     str += std::to_string(sample.seqNo);
     for (size_t i = 0; i < CountSignals; ++i) {
-        str += std::to_string(sample.channel[i]);
+        str += std::to_string(sample.channels[i]);
         str += ',';
     }
-    str += std::to_string(sample.timestampMicrosec);
+    str += std::to_string(sample.timestampUs);
     str += ',';
-    str += std::to_string(sample.timeDeltaMicrosec);
+    str += std::to_string(sample.timeDeltaUs);
     return str;
 }
 
 std::string to_csv(const Synchrophasor &synchrophasor)
 {
     std::string str;
-    str += std::to_string(synchrophasor.timestamp_us);
+    str += std::to_string(synchrophasor.timestampUs);
     for (size_t i = 0; i < CountSignals; ++i) {
         str += phasor_polar_to_string(
-                std::polar(synchrophasor.phasor_mag[i], synchrophasor.phasor_ang[i]));
+                std::polar(synchrophasor.magnitudes[i], synchrophasor.phaseAngles[i]));
         str += ',';
     }
-    str += std::to_string(synchrophasor.freq);
+    str += std::to_string(synchrophasor.frequency);
     str += ',';
     str += std::to_string(synchrophasor.rocof);
     return str;
