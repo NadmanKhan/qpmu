@@ -1,8 +1,6 @@
 set(PROJECT_SOURCES
     src/app.h
     src/app.cpp
-    src/calibration_dialog.h
-    src/calibration_dialog.cpp
     src/main_window.h
     src/main_window.cpp
     src/monitor_view.h
@@ -11,6 +9,8 @@ set(PROJECT_SOURCES
     src/router.cpp
     src/settings.h
     src/settings.cpp
+    src/settings_widget.h
+    src/settings_widget.cpp
     src/main.cpp
     src/timeout_notifier.h
     src/timeout_notifier.cpp
