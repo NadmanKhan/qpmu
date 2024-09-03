@@ -1,5 +1,7 @@
 #include "util.h"
 
+#include <QDebug>
+
 QPixmap circlePixmap(const QColor &color, int size)
 {
     QPixmap pixmap(size, size);
@@ -57,4 +59,30 @@ QPixmap rectPixmap(const QColor &color, int width, int height)
 QPointF unitvector(qreal angle)
 {
     return QPointF(std::cos(angle), std::sin(angle));
+}
+
+QPair<qpmu::Float, qpmu::Float> linearRegression(const QVector<double> &x, const QVector<double> &y)
+{
+    using namespace qpmu;
+    Q_ASSERT(x.size() == y.size());
+    Q_ASSERT(x.size() > 0);
+
+    Float x_mean = std::accumulate(x.begin(), x.end(), (Float)(0.0)) / x.size();
+    Float y_mean = std::accumulate(y.begin(), y.end(), (Float)(0.0)) / y.size();
+
+    Float numerator = 0.0;
+    Float denominator = 0.0;
+
+    for (int i = 0; i < x.size(); ++i) {
+        numerator += (x[i] - x_mean) * (y[i] - y_mean);
+        denominator += (x[i] - x_mean) * (x[i] - x_mean);
+    }
+
+    qDebug() << "numerator: " << numerator;
+    qDebug() << "denominator: " << denominator;
+
+    Float m = denominator ? numerator / denominator : 0.0;
+    Float b = y_mean - (m * x_mean);
+
+    return { m, b }; // Return slope (m) and intercept (b)
 }
