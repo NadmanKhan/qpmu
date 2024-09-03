@@ -63,9 +63,9 @@ class Signal:
         )
 
 
-class ADCSample:
+class Sample:
     """
-    An ADCSample is a sample of the ADC's output. It contains nine values in
+    A Sample is the output of the ADC. It contains nine values in
     the following order:
     index 0:    A 64-bit non-negative integer -- the sample's sequence number
                 (index)
@@ -84,7 +84,7 @@ class ADCSample:
 
     def __init__(self, seq_no: int, ch: Iterable[int], ts: int, delta: int):
         """
-        Construct an ADCSample with the given parameters.
+        Construct a Sample with the given parameters.
 
         Parameters:
         - `seq_no`: A 64-bit non-negative integer -- the sample's sequence number
@@ -109,7 +109,7 @@ class ADCSample:
     @classmethod
     def from_signals(cls, seq_no: int, signals: Iterable[Signal], ts: int, delta: int):
         """
-        Construct an ADCSample from signals.
+        Construct a Sample from signals.
 
         Parameters:
         - `seq_no`: A 64-bit non-negative integer -- the sample's sequence number
@@ -214,7 +214,7 @@ class ADC:
             ts = time.time_ns() // 1000  # ts = timestamp
             delta = ts - prev_ts  # delta = time elapsed since previous sample
 
-            yield ADCSample.from_signals(seq_no, self.signals, ts, delta)
+            yield Sample.from_signals(seq_no, self.signals, ts, delta)
 
             seq_no += 1
             prev_ts = ts
