@@ -4,6 +4,7 @@
 #include <fstream>
 #include <filesystem>
 #include <thread>
+#include <chrono>
 
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
@@ -165,15 +166,19 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    auto lastSample = samples[0];
     if (outputFormat == FormatCsv) {
         cout << util::csv_header_for_sample() << '\n';
     }
 
+    auto lastSample = samples[0];
+    lastSample.seqNo = 0;
+    lastSample.timestampUs = std::chrono::duration_cast<std::chrono::microseconds>(
+                                     std::chrono::system_clock::now().time_since_epoch())
+                                     .count();
     for (size_t i = 1;; ++i) {
         auto sample = samples[i % samples.size()];
         sample.seqNo = i;
-        sample.timestampMicrosec = lastSample.timestampMicrosec + sample.timeDeltaMicrosec;
+        sample.timestampUs = lastSample.timestampUs + sample.timeDeltaUs;
 
         print(sample);
 
@@ -181,7 +186,7 @@ int main(int argc, char *argv[])
 
         if (do_sleep) {
             // sleep for the delta time
-            std::this_thread::sleep_for(std::chrono::microseconds(sample.timeDeltaMicrosec));
+            std::this_thread::sleep_for(std::chrono::microseconds((U64)(sample.timeDeltaUs * 0.9)));
         }
     }
 
