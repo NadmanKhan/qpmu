@@ -100,7 +100,7 @@ public:
                                } };
 
                 // Source host (only for TCP and UDP)
-                Entry host = { "localhost",
+                Entry host = { "127.000.000.001",
                                QStringList() << "Sampling"
                                              << "Input Source"
                                              << "Host",
@@ -117,7 +117,7 @@ public:
                                              << "Input Source"
                                              << "Port",
                                QMetaType::UInt, [](const QVariant &v) {
-                                   return CONVERT(v, Int) && v.toInt() > 0 && v.toInt() < 65536;
+                                   return v.toInt() > 0 && v.toInt() < 65536;
                                } };
 
                 // Source file/program path (only for static file or process)

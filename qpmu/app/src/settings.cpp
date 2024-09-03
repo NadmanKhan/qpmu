@@ -33,7 +33,8 @@ bool Settings::isConvertible(const QVariant &v, QMetaType::Type typeId)
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     return v.convert(QMetaType(typeId));
 #else
-    return QMetaType::convert(v.metaType(), &v, QMetaType(typeId), nullptr);
+    // return QMetaType::convert(v.metaType(), &v, QMetaType(typeId), nullptr);
+    return QMetaType::canConvert(v.metaType(), QMetaType(typeId));
 #endif
 }
 
