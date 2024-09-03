@@ -150,7 +150,6 @@ void Estimator::updateEstimation(Sample sample)
             m_windowEndTimeUs = m_windowStartTimeUs + (USize)1e6;
         }
 
-        std::cerr << "Previous frequency: " << currSyncph.frequency << "\n";
         currSyncph.frequency = prevSyncph.frequency;
 
         if (m_windowEndTimeUs < sample.timestampUs) {
