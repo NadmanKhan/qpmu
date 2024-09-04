@@ -1,5 +1,8 @@
-#ifndef MAIN_WINDOW_H
-#define MAIN_WINDOW_H
+#ifndef QPMU_APP_MAIN_WINDOW_H
+#define QPMU_APP_MAIN_WINDOW_H
+
+#include "app.h"
+#include "monitor_view.h"
 
 #include <QMainWindow>
 #include <QIcon>
@@ -9,9 +12,6 @@
 #include <QStackedWidget>
 #include <QProcess>
 #include <QLabel>
-
-#include "app.h"
-#include "monitor_view.h"
 
 class MainWindow : public QMainWindow
 {
@@ -26,4 +26,4 @@ private:
     QStackedWidget *m_stack = nullptr;
 };
 
-#endif // MAIN_WINDOW_H
+#endif // QPMU_APP_MAIN_WINDOW_H

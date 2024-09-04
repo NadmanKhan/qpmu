@@ -10,10 +10,10 @@
 #include <QStringList>
 #include <QMainWindow>
 
-#include "qpmu/common.h"
+#include "qpmu/defs.h"
 #include "settings.h"
 
-class Router;
+class DataProcessor;
 
 class App : public QApplication
 {
@@ -26,7 +26,7 @@ public:
 
     Settings *settings() const;
     QTimer *timer() const;
-    Router *router() const;
+    DataProcessor *dataProcessor() const;
     QMainWindow *mainWindow() const;
 
     void setMainWindow(QMainWindow *mainWindow);
@@ -35,7 +35,7 @@ private:
     Settings *m_settings = nullptr;
     QTimer *m_timer = nullptr;
     QMainWindow *m_mainWindow = nullptr;
-    Router *m_router = nullptr;
+    DataProcessor *m_dataProcessor = nullptr;
 };
 
 #endif // QPMU_APP_H

@@ -1,5 +1,9 @@
-#ifndef MONITOR_VIEW_H
-#define MONITOR_VIEW_H
+#ifndef QPMU_APP_MONITOR_VIEW_H
+#define QPMU_APP_MONITOR_VIEW_H
+
+#include "qpmu/defs.h"
+#include "timeout_notifier.h"
+#include "equally_scaled_axes_chart.h"
 
 #include <QChartView>
 #include <QObject>
@@ -17,10 +21,6 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QTableWidget>
-
-#include "qpmu/common.h"
-#include "timeout_notifier.h"
-#include "equally_scaled_axes_chart.h"
 
 class MonitorView : public QWidget
 {
@@ -55,25 +55,25 @@ private slots:
 private:
     TimeoutNotifier *m_updateNotifier;
     TimeoutNotifier *m_simulationUpdateNotifier;
-    qpmu::Float m_plotAmplitudes[qpmu::CountSignals];
-    qpmu::Float m_plotPhaseDiffs[qpmu::CountSignals];
+    qpmu::Float m_plotAmplitudes[qpmu::SignalCount];
+    qpmu::Float m_plotPhaseDiffs[qpmu::SignalCount];
 
     QList<QLineSeries *> m_phasorFakeAxesSeriesList[2];
     QList<QLineSeries *> m_waveformFakeAxesSeriesList[2];
 
-    QLineSeries *m_phasorSeriesList[qpmu::CountSignals];
-    QLineSeries *m_waveformSeriesList[qpmu::CountSignals];
-    QLineSeries *m_connectorSeriesList[qpmu::CountSignals];
+    QLineSeries *m_phasorSeriesList[qpmu::SignalCount];
+    QLineSeries *m_waveformSeriesList[qpmu::SignalCount];
+    QLineSeries *m_connectorSeriesList[qpmu::SignalCount];
 
-    QVector<QPointF> m_phasorPointsList[qpmu::CountSignals];
-    QVector<QPointF> m_waveformPointsList[qpmu::CountSignals];
-    QVector<QPointF> m_connectorPointsList[qpmu::CountSignals];
+    QVector<QPointF> m_phasorPointsList[qpmu::SignalCount];
+    QVector<QPointF> m_waveformPointsList[qpmu::SignalCount];
+    QVector<QPointF> m_connectorPointsList[qpmu::SignalCount];
 
     QLabel *m_statusLabel;
     QLabel *m_frequencyLabel;
-    QLabel *m_phasorLabels[qpmu::CountSignals];
-    QLabel *m_phaseDiffLabels[qpmu::CountSignalPhases];
-    QLabel *m_phasePowerLabels[qpmu::CountSignalPhases];
+    QLabel *m_phasorLabels[qpmu::SignalCount];
+    QLabel *m_phaseDiffLabels[qpmu::SignalPhaseCount];
+    QLabel *m_phasePowerLabels[qpmu::SignalPhaseCount];
 
     QPushButton *m_pausePlayButton;
     QList<QCheckBox *> m_signalCheckBoxList[2];
@@ -86,4 +86,4 @@ private:
     int m_simulationFrequencyIndex = 0;
 };
 
-#endif // MONITOR_VIEW_H
+#endif // QPMU_APP_MONITOR_VIEW_H

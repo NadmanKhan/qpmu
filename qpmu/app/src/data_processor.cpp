@@ -1,3 +1,8 @@
+#include "qpmu/defs.h"
+#include "qpmu/util.h"
+#include "app.h"
+#include "data_processor.h"
+
 #include <QTcpSocket>
 #include <QUdpSocket>
 #include <QProcess>
@@ -8,13 +13,9 @@
 #include <cctype>
 #include <iostream>
 
-#include "qpmu/common.h"
-#include "app.h"
-#include "router.h"
-
 using namespace qpmu;
 
-Router::Router() : QThread()
+DataProcessor::DataProcessor() : QThread()
 {
     using namespace qpmu;
     const auto &settings = *APP->settings();
@@ -30,7 +31,7 @@ Router::Router() : QThread()
     updateSampleSource();
 }
 
-void Router::updateSampleSource()
+void DataProcessor::updateSampleSource()
 {
     using namespace qpmu;
 
@@ -155,25 +156,25 @@ void Router::updateSampleSource()
     }
 }
 
-const qpmu::Synchrophasor &Router::lastSynchrophasor()
+const qpmu::Synchrophasor &DataProcessor::lastSynchrophasor()
 {
     QMutexLocker locker(&m_mutex);
     return m_estimator->lastSynchrophasor();
 }
 
-const qpmu::Sample &Router::lastSample()
+const qpmu::Sample &DataProcessor::lastSample()
 {
     QMutexLocker locker(&m_mutex);
     return m_estimator->lastSample();
 }
 
-const std::array<Float, CountSignals> &Router::channelMagnitudes()
+const std::array<Float, SignalCount> &DataProcessor::channelMagnitudes()
 {
     QMutexLocker locker(&m_mutex);
     return m_estimator->channelMagnitudes();
 }
 
-void Router::run()
+void DataProcessor::run()
 {
     using namespace qpmu;
     char *line = nullptr;
@@ -191,7 +192,7 @@ void Router::run()
                 }
             } else {
                 if ((line_length = m_sampleSourceDevice->readLine(line, 1000)) > 0) {
-                    sample_is_obtained = util::parse_as_sample(m_sample, line);
+                    sample_is_obtained = util::parseSample(m_sample, line);
                 }
             }
 

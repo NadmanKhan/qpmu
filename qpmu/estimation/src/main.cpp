@@ -8,7 +8,8 @@
 #include <boost/program_options.hpp>
 #include <string>
 
-#include "qpmu/common.h"
+#include "qpmu/defs.h"
+#include "qpmu/util.h"
 #include "qpmu/estimator.h"
 
 using std::string, std::cout, std::cerr;
@@ -104,21 +105,21 @@ int main(int argc, char *argv[])
             std::fwrite(&synchrophasor, sizeof(Synchrophasor), 1, stdout);
             break;
         case FormatCsv:
-            cout << to_csv(synchrophasor) << '\n';
+            cout << toCsv(synchrophasor) << '\n';
             break;
         default:
-            cout << to_string(synchrophasor) << '\n';
+            cout << toString(synchrophasor) << '\n';
         }
     };
 
     if (outputFormat == FormatCsv) {
-        cout << csv_header_for_synchrophasor() << '\n';
+        cout << synchrophasorCsvHeader() << '\n';
     }
 
     if (inputFormat == FormatReadableStr) {
         std::string line;
         while (std::getline(std::cin, line)) {
-            if (!util::parse_as_sample(sample, line.c_str())) {
+            if (!util::parseSample(sample, line.c_str())) {
                 cerr << "Failed to parse line: " << line << '\n';
                 return 1;
             }

@@ -1,7 +1,7 @@
+#include "qpmu/defs.h"
 #include "monitor_view.h"
-#include "qpmu/common.h"
 #include "util.h"
-#include "router.h"
+#include "data_processor.h"
 #include "app.h"
 
 #include <cmath>
@@ -171,8 +171,8 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
     }
 
     /// Data
-    for (USize i = 0; i < CountSignals; ++i) {
-        auto name = QString(Signals[i].name);
+    for (USize i = 0; i < SignalCount; ++i) {
+        auto name = QString(SignalNames[i]);
         auto color = settings.get(Settings::list.appearance.signalColors[i]).value<QColor>();
         auto phasorPen = QPen(color, 3, Qt::SolidLine);
         auto waveformPen = QPen(color, 2, Qt::SolidLine);
@@ -216,7 +216,7 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
     dataVBox->addWidget(table, 0);
     table->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
     table->setColumnCount(TableHHeaders.size());
-    table->setRowCount(CountSignalPhases);
+    table->setRowCount(SignalPhaseCount);
     table->setContentsMargins(QMargins(10, 0, 10, 0));
     table->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -236,7 +236,7 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
     table->verticalHeader()->setDefaultAlignment(Qt::AlignCenter);
     {
         QStringList vHeaderLabels;
-        for (USize p = 0; p < CountSignals; ++p) {
+        for (USize p = 0; p < SignalCount; ++p) {
             vHeaderLabels << (" " + QString(SignalPhaseNames[p]) + " ");
         }
         table->setVerticalHeaderLabels(vHeaderLabels);
@@ -253,23 +253,23 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
 
     const auto blankText = QStringLiteral("_");
 
-    for (USize p = 0; p < CountSignalPhases; ++p) {
-        const auto &[vIdx, iIdx] = SignalPhasePairs[p];
+    for (USize p = 0; p < SignalPhaseCount; ++p) {
+        const auto &[vId, iId] = SamePhaseSignalIds[p];
 
         auto vPhasorLabel = new QLabel(blankText);
         auto iPhasorLabel = new QLabel(blankText);
         auto phaseDiffLabel = new QLabel(blankText);
         auto powerLabel = new QLabel(blankText);
 
-        m_phasorLabels[vIdx] = vPhasorLabel;
-        m_phasorLabels[iIdx] = iPhasorLabel;
+        m_phasorLabels[vId] = vPhasorLabel;
+        m_phasorLabels[iId] = iPhasorLabel;
         m_phaseDiffLabels[p] = phaseDiffLabel;
         m_phasePowerLabels[p] = powerLabel;
 
         auto vColorLabel = new QLabel();
         auto vWidget = new QWidget();
         auto vHBox = new QHBoxLayout(vWidget);
-        auto vColor = settings.get(Settings::list.appearance.signalColors[vIdx]).value<QColor>();
+        auto vColor = settings.get(Settings::list.appearance.signalColors[vId]).value<QColor>();
         vHBox->addWidget(vColorLabel, 0);
         vHBox->addWidget(vPhasorLabel, 1);
         vHBox->setSpacing(0);
@@ -281,7 +281,7 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
         auto iColorLabel = new QLabel();
         auto iWidget = new QWidget();
         auto iHBox = new QHBoxLayout(iWidget);
-        auto iColor = settings.get(Settings::list.appearance.signalColors[iIdx]).value<QColor>();
+        auto iColor = settings.get(Settings::list.appearance.signalColors[iId]).value<QColor>();
         iHBox->addWidget(iColorLabel, 0);
         iHBox->addWidget(iPhasorLabel, 1);
         iHBox->setSpacing(0);
@@ -357,53 +357,49 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
         m_waveformCheckBox = new QCheckBox();
         m_connectorCheckBox = new QCheckBox();
 
-        for (Signal::Type type : { Signal::Type::Voltage, Signal::Type::Current }) {
-            /// Individual signals of SignalConfig::Type == type
-            for (USize i = 0; i < CountSignals; ++i) {
-                if (Signals[i].type == type) {
+        for (SignalType type : { VoltageSignal, CurrentSignal }) {
+            /// Individual signals of each type
+            for (USize i = 0; i < SignalCount; ++i) {
+                if (SignalTypeIds[i] == type) {
                     auto check = new QCheckBox();
                     auto color =
                             settings.get(Settings::list.appearance.signalColors[i]).value<QColor>();
                     check->setIcon(circlePixmap(color, 10));
-                    check->setText(Signals[i].name);
-                    m_signalCheckBoxList[(int)(type)].append(check);
+                    check->setText(SignalNames[i]);
+                    m_signalCheckBoxList[type].append(check);
                     check->setChecked(true);
                 }
             }
 
-            /// All signals of current type
+            /// All signals of each type
             auto checkAll = new QCheckBox();
-            if (type == Signal::Type::Voltage) {
-                checkAll->setText(QStringLiteral("Voltages"));
-            } else {
-                checkAll->setText(QStringLiteral("Currents"));
-            }
-            for (auto check : m_signalCheckBoxList[(int)(type)]) {
+            checkAll->setText(QStringLiteral("%1s").arg(SignalTypeNames[type]));
+            for (auto check : m_signalCheckBoxList[type]) {
                 connect(check, QOverload<bool>::of(&QCheckBox::toggled), [=] {
                     int cnt = 0;
                     int max = 0;
-                    for (auto cb : m_signalCheckBoxList[(int)(type)]) {
+                    for (auto cb : m_signalCheckBoxList[type]) {
                         max += (cb != checkAll);
                         cnt += (cb != checkAll && cb->isChecked());
                     }
                     if (cnt == 0) {
-                        for (auto c : m_signalCheckBoxList[(int)(type)]) {
+                        for (auto c : m_signalCheckBoxList[type]) {
                             c->setChecked(false);
                         }
                     }
                     if (cnt == max) {
-                        for (auto c : m_signalCheckBoxList[(int)(type)]) {
+                        for (auto c : m_signalCheckBoxList[type]) {
                             c->setChecked(true);
                         }
                     }
                 });
             }
             connect(checkAll, QOverload<bool>::of(&QCheckBox::toggled), [=](bool checked) {
-                for (auto c : m_signalCheckBoxList[(int)(type)]) {
+                for (auto c : m_signalCheckBoxList[type]) {
                     c->setChecked(checked);
                 }
             });
-            m_signalCheckBoxList[(int)(type)].append(checkAll);
+            m_signalCheckBoxList[type].append(checkAll);
             checkAll->setChecked(true);
         }
 
@@ -459,21 +455,19 @@ MonitorView::MonitorView(QWidget *parent) : QWidget(parent)
         sideVBox->addWidget(ampliGroupBox);
         auto ampliGroupGrid = new QGridLayout(ampliGroupBox);
 
-        for (Signal::Type type : { Signal::Type::Voltage, Signal::Type::Current }) {
-            auto combo = m_maxPlotAmplitude[(int)(type)] = new QComboBox();
-            for (int i = 0; i < (int)PlotAmpliOptions[(int)(type)].size(); ++i) {
-                auto text = PlotAmpliOptions[(int)(type)][i] == 0
+        for (SignalType type : { VoltageSignal, CurrentSignal }) {
+            auto combo = m_maxPlotAmplitude[type] = new QComboBox();
+            for (int i = 0; i < (int)PlotAmpliOptions[type].size(); ++i) {
+                auto text = PlotAmpliOptions[type][i] == 0
                         ? QStringLiteral("Auto")
-                        : (QString::number(PlotAmpliOptions[(int)(type)][i])
-                           + (type == Signal::Type::Voltage ? QStringLiteral(" V")
-                                                            : QStringLiteral(" A")));
+                        : (QString::number(PlotAmpliOptions[type][i])
+                           + QStringLiteral(" %1").arg(SignalTypeUnitSymbols[type]));
                 combo->addItem(text);
             }
             combo->setCurrentIndex(0);
-            auto label = new QLabel((type == Signal::Type::Voltage ? QStringLiteral("Voltage")
-                                                                   : QStringLiteral("Current")));
-            ampliGroupGrid->addWidget(label, (int)(type), 0);
-            ampliGroupGrid->addWidget(combo, (int)(type), 1);
+            auto label = new QLabel(QStringLiteral("%1").arg(SignalTypeNames[type]));
+            ampliGroupGrid->addWidget(label, type, 0);
+            ampliGroupGrid->addWidget(combo, type, 1);
         }
     }
 
@@ -538,7 +532,7 @@ void MonitorView::update(bool force)
         /// simulating; nudge the phasors according to the chosen frequency
         Float f = SimulationFrequencyOptions[m_simulationFrequencyIndex];
         Float delta = f * (2 * M_PI * UpdateIntervalMs / 1000.0);
-        for (USize i = 0; i < CountSignals; ++i) {
+        for (USize i = 0; i < SignalCount; ++i) {
             m_plotPhaseDiffs[i] = std::fmod(m_plotPhaseDiffs[i] + delta, 2 * M_PI);
             if (m_plotPhaseDiffs[i] < M_PI) {
                 m_plotPhaseDiffs[i] += 2 * M_PI;
@@ -552,9 +546,9 @@ void MonitorView::update(bool force)
             return;
         }
 
-        syncph = APP->router()->lastSynchrophasor();
+        syncph = APP->dataProcessor()->lastSynchrophasor();
 
-        for (USize i = 0; i < CountSignals; ++i) {
+        for (USize i = 0; i < SignalCount; ++i) {
             Float slope =
                     APP->settings()->get(Settings::list.sampling.calibration[i * 2 + 0]).toFloat();
             Float intercept =
@@ -563,7 +557,7 @@ void MonitorView::update(bool force)
         }
 
         Float phaseRef = syncph.phaseAngles[0];
-        for (USize i = 0; i < CountSignals; ++i) {
+        for (USize i = 0; i < SignalCount; ++i) {
             m_plotAmplitudes[i] = syncph.magnitudes[i];
             m_plotPhaseDiffs[i] = std::fmod(syncph.phaseAngles[i] - phaseRef + 2 * M_PI, 2 * M_PI);
             if (m_plotPhaseDiffs[i] < M_PI) {
@@ -576,20 +570,20 @@ void MonitorView::update(bool force)
     }
 
     Float plotMaxAmpli[2] = { 0, 0 };
-    for (USize i = 0; i < CountSignals; ++i) {
-        auto selected = m_maxPlotAmplitude[(int)(Signals[i].type)]->currentIndex();
+    for (USize i = 0; i < SignalCount; ++i) {
+        auto selected = m_maxPlotAmplitude[(int)(SignalTypeIds[i])]->currentIndex();
         if (selected > 0) {
-            plotMaxAmpli[(int)(Signals[i].type)] =
-                    PlotAmpliOptions[(int)(Signals[i].type)][selected];
+            plotMaxAmpli[(int)(SignalTypeIds[i])] =
+                    PlotAmpliOptions[(int)(SignalTypeIds[i])][selected];
         } else {
-            plotMaxAmpli[(int)(Signals[i].type)] =
-                    std::max(plotMaxAmpli[(int)(Signals[i].type)], m_plotAmplitudes[i]);
+            plotMaxAmpli[(int)(SignalTypeIds[i])] =
+                    std::max(plotMaxAmpli[(int)(SignalTypeIds[i])], m_plotAmplitudes[i]);
         }
     }
 
     /// Update points
-    for (USize i = 0; i < CountSignals; ++i) {
-        auto ampli = m_plotAmplitudes[i] / plotMaxAmpli[(int)(Signals[i].type)];
+    for (USize i = 0; i < SignalCount; ++i) {
+        auto ampli = m_plotAmplitudes[i] / plotMaxAmpli[(int)(SignalTypeIds[i])];
         auto phase = m_plotPhaseDiffs[i];
         bool ampliExceedsPlot = ampli > 1 + 1e-9;
 
@@ -659,8 +653,8 @@ void MonitorView::update(bool force)
     }
 
     /// Set visibility
-    for (USize i = 0; i < CountSignals; ++i) {
-        bool checked = m_signalCheckBoxList[(int)(Signals[i].type)][i % 3]->isChecked();
+    for (USize i = 0; i < SignalCount; ++i) {
+        bool checked = m_signalCheckBoxList[(int)(SignalTypeIds[i])][i % 3]->isChecked();
         m_phasorSeriesList[i]->setVisible(checked && m_phasorCheckBox->isChecked());
         m_waveformSeriesList[i]->setVisible(checked && m_waveformCheckBox->isChecked());
         m_connectorSeriesList[i]->setVisible(checked && m_connectorCheckBox->isChecked()
@@ -704,18 +698,18 @@ void MonitorView::update(bool force)
 
     /// Replace points
     if (m_phasorCheckBox->isChecked()) {
-        for (USize i = 0; i < CountSignals; ++i) {
+        for (USize i = 0; i < SignalCount; ++i) {
             m_phasorSeriesList[i]->replace(m_phasorPointsList[i]);
         }
     }
     if (m_waveformCheckBox->isChecked()) {
-        for (USize i = 0; i < CountSignals; ++i) {
+        for (USize i = 0; i < SignalCount; ++i) {
             m_waveformSeriesList[i]->replace(m_waveformPointsList[i]);
         }
     }
     if (m_phasorCheckBox->isChecked() && m_phasorCheckBox->isChecked()
         && m_waveformCheckBox->isChecked()) {
-        for (USize i = 0; i < CountSignals; ++i) {
+        for (USize i = 0; i < SignalCount; ++i) {
             m_connectorSeriesList[i]->replace(m_connectorPointsList[i]);
         }
     }
@@ -732,7 +726,8 @@ void MonitorView::update(bool force)
         m_statusLabel->setPalette(palette);
     } else {
         m_statusLabel->setText(QStringLiteral("<strong>LIVE</strong>"));
-        m_frequencyLabel->setText(QStringLiteral("<strong>") + QString::number(syncph.frequency, 'f', 1)
+        m_frequencyLabel->setText(QStringLiteral("<strong>")
+                                  + QString::number(syncph.frequency, 'f', 1)
                                   + QStringLiteral(" Hz</strong>"));
         auto palette = m_statusLabel->palette();
         palette.setColor(QPalette::Highlight, QStringLiteral("#22bb45"));
@@ -741,12 +736,12 @@ void MonitorView::update(bool force)
 
     /// Update table
     if (isSimulating()) {
-        for (USize p = 0; p < CountSignalPhases; ++p) {
-            const auto &[vIdx, iIdx] = SignalPhasePairs[p];
-            const auto &vAmpli = m_plotAmplitudes[vIdx];
-            const auto &iAmpli = m_plotAmplitudes[iIdx];
-            const auto &vPhase = m_plotPhaseDiffs[vIdx] * 180 / M_PI;
-            const auto &iPhase = m_plotPhaseDiffs[iIdx] * 180 / M_PI;
+        for (USize p = 0; p < SignalPhaseCount; ++p) {
+            const auto &[vId, iId] = SamePhaseSignalIds[p];
+            const auto &vAmpli = m_plotAmplitudes[vId];
+            const auto &iAmpli = m_plotAmplitudes[iId];
+            const auto &vPhase = m_plotPhaseDiffs[vId] * 180 / M_PI;
+            const auto &iPhase = m_plotPhaseDiffs[iId] * 180 / M_PI;
 
             auto vPhasorText = QStringLiteral("<pre><strong>%1</strong><small>V ∠ "
                                               "</small><strong>%2</strong><small>°</small></pre>")
@@ -757,16 +752,16 @@ void MonitorView::update(bool force)
                                        .arg(iAmpli, 6, 'f', 1, ' ')
                                        .arg(iPhase, 6, 'f', 1, ' ');
 
-            m_phasorLabels[vIdx]->setText(vPhasorText);
-            m_phasorLabels[iIdx]->setText(iPhasorText);
+            m_phasorLabels[vId]->setText(vPhasorText);
+            m_phasorLabels[iId]->setText(iPhasorText);
         }
     } else {
-        for (USize p = 0; p < CountSignalPhases; ++p) {
-            const auto &[vIdx, iIdx] = SignalPhasePairs[p];
-            const auto &vAmpli = m_plotAmplitudes[vIdx];
-            const auto &iAmpli = m_plotAmplitudes[iIdx];
-            const auto &vPhase = m_plotPhaseDiffs[vIdx] * 180 / M_PI;
-            const auto &iPhase = m_plotPhaseDiffs[iIdx] * 180 / M_PI;
+        for (USize p = 0; p < SignalPhaseCount; ++p) {
+            const auto &[vId, iId] = SamePhaseSignalIds[p];
+            const auto &vAmpli = m_plotAmplitudes[vId];
+            const auto &iAmpli = m_plotAmplitudes[iId];
+            const auto &vPhase = m_plotPhaseDiffs[vId] * 180 / M_PI;
+            const auto &iPhase = m_plotPhaseDiffs[iId] * 180 / M_PI;
             auto diff = std::abs(vPhase - iPhase);
             const auto &phaseDiff = std::min(diff, 360 - diff);
 
@@ -781,8 +776,8 @@ void MonitorView::update(bool force)
             auto phaseDiffText = QStringLiteral("<pre><strong>%1</strong><small>°</small></pre>")
                                          .arg(phaseDiff, 6, 'f', 1, ' ');
 
-            m_phasorLabels[vIdx]->setText(vPhasorText);
-            m_phasorLabels[iIdx]->setText(iPhasorText);
+            m_phasorLabels[vId]->setText(vPhasorText);
+            m_phasorLabels[iId]->setText(iPhasorText);
             m_phaseDiffLabels[p]->setText(phaseDiffText);
         }
     }

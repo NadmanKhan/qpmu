@@ -1,5 +1,9 @@
-#ifndef ROUTER_H
-#define ROUTER_H
+#ifndef QPMU_APP_DATA_PROCESSOR_H
+#define QPMU_APP_DATA_PROCESSOR_H
+
+#include "qpmu/defs.h"
+#include "qpmu/estimator.h"
+#include "app.h"
 
 #include <QThread>
 #include <QIODevice>
@@ -8,21 +12,17 @@
 #include <functional>
 #include <array>
 
-#include "qpmu/common.h"
-#include "qpmu/estimator.h"
-#include "app.h"
-
-class Router : public QThread
+class DataProcessor : public QThread
 {
     Q_OBJECT
 
 public:
-    explicit Router();
+    explicit DataProcessor();
 
     void run() override;
     const qpmu::Synchrophasor &lastSynchrophasor();
     const qpmu::Sample &lastSample();
-    const std::array<qpmu::Float, qpmu::CountSignals> &channelMagnitudes();
+    const std::array<qpmu::Float, qpmu::SignalCount> &channelMagnitudes();
 
 public slots:
     void updateSampleSource();
@@ -44,4 +44,4 @@ private:
     qpmu::Estimator *m_estimator = nullptr;
 };
 
-#endif // ROUTER_H
+#endif // QPMU_APP_DATA_PROCESSOR_H

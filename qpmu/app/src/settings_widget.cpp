@@ -1,8 +1,9 @@
 #include "settings_widget.h"
 #include "app.h"
-#include "router.h"
+#include "data_processor.h"
 #include "util.h"
-#include "qpmu/common.h"
+#include "qpmu/util.h"
+#include "qpmu/defs.h"
 
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -124,9 +125,9 @@ QWidget *SettingsWidget::createCalibrationPage()
     auto page = new QTabWidget();
     auto settings = APP->settings();
 
-    for (USize i = 0; i < CountSignals; ++i) {
+    for (USize i = 0; i < SignalCount; ++i) {
         auto widget = createSignalCalibrationWidget(i);
-        page->addTab(widget, Signals[i].name);
+        page->addTab(widget, SignalNames[i]);
         auto color = settings->get(Settings::list.appearance.signalColors[i]).value<QColor>();
         page->setTabIcon(i, QIcon(rectPixmap(color, 4, 10)));
     }
@@ -193,7 +194,7 @@ QWidget *SettingsWidget::createSignalCalibrationWidget(qpmu::USize signalIndex)
             connect(table, &QTableWidget::itemPressed, [=](QTableWidgetItem *item) {
                 if (item->column() == 0) {
                     /// Update sample magnitude
-                    auto sampleMagnitudes = APP->router()->channelMagnitudes();
+                    auto sampleMagnitudes = APP->dataProcessor()->channelMagnitudes();
                     item->setText(QString::number(sampleMagnitudes[signalIndex], 'f', 2));
                 }
             });
@@ -265,8 +266,8 @@ QWidget *SettingsWidget::createSignalCalibrationWidget(qpmu::USize signalIndex)
 
                 connect(calibrateButton, &QPushButton::clicked, [=] {
                     auto rows = table->rowCount();
-                    auto samples = QVector<double>();
-                    auto actuals = QVector<double>();
+                    auto samples = std::vector<Float>();
+                    auto actuals = std::vector<Float>();
 
                     for (int row = 0; row < rows; ++row) {
                         auto sampleItem = table->item(row, 0);
@@ -278,7 +279,7 @@ QWidget *SettingsWidget::createSignalCalibrationWidget(qpmu::USize signalIndex)
                         }
                     }
 
-                    auto [slope, intercept] = linearRegression(samples, actuals);
+                    auto [slope, intercept] = util::linearRegression(samples, actuals);
                     slopeEdit->setText(QString::number(slope, 'f', 2));
                     interceptEdit->setText(QString::number(intercept, 'f', 2));
                 });

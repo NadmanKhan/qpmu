@@ -8,7 +8,7 @@
 #include <fftw3.h>
 #include <sdft/sdft.h>
 
-#include "qpmu/common.h"
+#include "qpmu/defs.h"
 
 namespace qpmu {
 
@@ -49,7 +49,7 @@ public:
     using ISize = qpmu::ISize;
     using Complex = qpmu::Complex;
     using SdftType = sdft::SDFT<Float, Float>;
-    static constexpr USize CountSignals = qpmu::CountSignals;
+    static constexpr USize CountSignals = qpmu::SignalCount;
 
     struct FftwState
     {

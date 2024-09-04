@@ -1,6 +1,8 @@
 #ifndef QPMU_APP_SETTINGS_H
 #define QPMU_APP_SETTINGS_H
 
+#include "qpmu/defs.h"
+
 #include <QObject>
 #include <QColor>
 #include <QSettings>
@@ -13,8 +15,6 @@
 
 #include <functional>
 #include <qvarlengtharray.h>
-
-#include "qpmu/common.h"
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 
@@ -56,7 +56,7 @@ public:
                                                return v.toUInt() == 50 || v.toUInt() == 60;
                                            } };
                 // Max voltage in volts
-                QVarLengthArray<Entry, qpmu::CountSignalTypes> maxMagnitdue = {
+                QVarLengthArray<Entry, qpmu::SignalTypeCount> maxMagnitdue = {
                     { 240.0,
                       QStringList() << "Fundamentals"
                                     << "Power Source"
@@ -145,7 +145,7 @@ public:
             } inputSource; // Used to set up I/O for ADC samples
 
             // Calibration parameters
-            QVarLengthArray<Entry, qpmu::CountSignals * 2> calibration = {
+            QVarLengthArray<Entry, qpmu::SignalCount * 2> calibration = {
                 { 1.0,
                   QStringList() << "Sampling"
                                 << "Calibration"
@@ -212,7 +212,7 @@ public:
         struct Appearance
         {
             // Signal colors
-            QVarLengthArray<Entry, qpmu::CountSignals> signalColors = {
+            QVarLengthArray<Entry, qpmu::SignalCount> signalColors = {
                 { "#404040",
                   QStringList() << "Appearance"
                                 << "Signal Colors"

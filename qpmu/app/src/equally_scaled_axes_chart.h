@@ -1,5 +1,5 @@
-#ifndef EQUALLY_SCALED_AXES_CHART_H
-#define EQUALLY_SCALED_AXES_CHART_H
+#ifndef QPMU_APP_EQUALLY_SCALED_AXES_CHART_H
+#define QPMU_APP_EQUALLY_SCALED_AXES_CHART_H
 
 #include <QtWidgets>
 #include <QtCharts>
@@ -16,4 +16,4 @@ protected:
     void resizeEvent(QGraphicsSceneResizeEvent *event) override;
 };
 
-#endif // EQUALLY_SCALED_AXES_CHART_H
+#endif // QPMU_APP_EQUALLY_SCALED_AXES_CHART_H

@@ -10,7 +10,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/fusion/sequence.hpp>
 
-#include "qpmu/common.h"
+#include "qpmu/defs.h"
+#include "qpmu/util.h"
 
 namespace fs = std::filesystem;
 namespace po = boost::program_options;
@@ -136,7 +137,7 @@ int main(int argc, char *argv[])
     vector<string> lines;
     string line;
     while (std::getline(file, line)) {
-        if (!util::parse_as_sample(sample, line.c_str())) {
+        if (!util::parseSample(sample, line.c_str())) {
             cerr << "Failed to parse line: " << line << '\n';
             return 1;
         }
@@ -149,11 +150,11 @@ int main(int argc, char *argv[])
 
     auto print = [outputFormat](const Sample &sample) {
         if (outputFormat == FormatCsv) {
-            cout << util::to_csv(sample) << '\n';
+            cout << util::toCsv(sample) << '\n';
             return;
         }
         if (outputFormat == FormatReadableStr) {
-            cout << util::to_string(sample) << '\n';
+            cout << util::toString(sample) << '\n';
             return;
         }
         std::fwrite(&sample, sizeof(Sample), 1, stdout);
@@ -167,7 +168,7 @@ int main(int argc, char *argv[])
     }
 
     if (outputFormat == FormatCsv) {
-        cout << util::csv_header_for_sample() << '\n';
+        cout << util::sampleCsvHeader() << '\n';
     }
 
     auto lastSample = samples[0];

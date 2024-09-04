@@ -1,7 +1,7 @@
 #ifndef QPMU_APP_SETTINGS_WIDGET_H
 #define QPMU_APP_SETTINGS_WIDGET_H
 
-#include "qpmu/common.h"
+#include "qpmu/defs.h"
 
 #include <QWidget>
 #include <QTabWidget>

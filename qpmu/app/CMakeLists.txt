@@ -5,8 +5,8 @@ set(PROJECT_SOURCES
     src/main_window.cpp
     src/monitor_view.h
     src/monitor_view.cpp
-    src/router.h
-    src/router.cpp
+    src/data_processor.h
+    src/data_processor.cpp
     src/settings.h
     src/settings.cpp
     src/settings_widget.h

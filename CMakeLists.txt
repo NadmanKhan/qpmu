@@ -64,7 +64,8 @@ target_compile_definitions(
   PUBLIC FLOAT_TYPE=${QPMU_FLOAT_TYPE}
   PUBLIC PROJECT_ORG_NAME="Cyber-Physical Systems Lab - North South University"
   PUBLIC PROJECT_APP_NAME="${PROJECT_NAME}"
-  PUBLIC PROJECT_APP_DISPLAY_NAME="QPMU")
+  PUBLIC PROJECT_APP_DISPLAY_NAME="QPMU"
+  PUBLIC PROJECT_ADC_BITS=12)
 link_libraries(${COMMON_LIB})
 
 # Add the remaining subdirectories

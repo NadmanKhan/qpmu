@@ -1,12 +1,12 @@
+#include "app.h"
+#include "data_processor.h"
+
 #include <QFont>
 #include <QTcpSocket>
 #include <QUdpSocket>
 #include <QProcess>
 #include <QFile>
 #include <QAbstractSocket>
-
-#include "app.h"
-#include "router.h"
 
 App::App(int &argc, char **argv) : QApplication(argc, argv)
 {
@@ -29,8 +29,8 @@ App::App(int &argc, char **argv) : QApplication(argc, argv)
     m_timer->setInterval(20);
     m_timer->start();
 
-    m_router = new Router();
-    m_router->start();
+    m_dataProcessor = new DataProcessor();
+    m_dataProcessor->start();
 }
 
 Settings *App::settings() const
@@ -43,9 +43,9 @@ QTimer *App::timer() const
     return m_timer;
 }
 
-Router *App::router() const
+DataProcessor *App::dataProcessor() const
 {
-    return m_router;
+    return m_dataProcessor;
 }
 
 QMainWindow *App::mainWindow() const

@@ -1,5 +1,5 @@
 #include "qpmu/estimator.h"
-#include "qpmu/common.h"
+#include "qpmu/defs.h"
 
 #include <algorithm>
 #include <cmath>
@@ -88,7 +88,7 @@ const Sample &Estimator::lastSample() const
     return m_sampleBuffer[m_sampleBufIdx];
 }
 
-const std::array<Float, CountSignals> &Estimator::channelMagnitudes() const
+const std::array<Float, SignalCount> &Estimator::channelMagnitudes() const
 {
     return m_channelMagnitudes;
 }
