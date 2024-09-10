@@ -19,8 +19,7 @@
 #include <QToolBar>
 #include <QString>
 #include <QIcon>
-#include <qboxlayout.h>
-#include <qnamespace.h>
+#include <QBoxLayout>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
@@ -177,7 +176,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         homeGrid->setSpacing(10);
 
         using HomeOption = std::tuple<QString, QString, QWidget *>;
-        QList<HomeOption> homeOptions;
+        QVector<HomeOption> homeOptions;
         homeOptions.append(HomeOption{ "Monitor", ":/monitor.png", new PhasorMonitor() });
         homeOptions.append(HomeOption{ "Settings", ":/control-panel.png", new SettingsWidget() });
 

@@ -6,7 +6,7 @@
 
 #include <QWidget>
 #include <QtCharts>
-#include <QList>
+#include <QVector>
 #include <QVector>
 #include <QLabel>
 #include <QBoxLayout>
@@ -25,7 +25,7 @@ class PhasorMonitor : public QWidget, public MainPageInterface
 public:
     explicit PhasorMonitor(QWidget *parent = nullptr);
 
-    QList<SidePanelItem> sidePanelItems() const override;
+    QVector<SidePanelItem> sidePanelItems() const override;
 
 private slots:
     // void setPlotVisibility(bool phasorsVisibility, bool waveformsVisibility,
@@ -36,7 +36,7 @@ private slots:
     void updateData(const qpmu::Estimation &estimation);
 
 private:
-    using PointList = QList<QPointF>;
+    using PointVector = QVector<QPointF>;
 
     void createChartView();
     void createSummaryBar();
@@ -84,8 +84,8 @@ private:
 
     struct
     {
-        QList<QLineSeries *> phasor;
-        QList<QLineSeries *> waveform;
+        QVector<QLineSeries *> phasor;
+        QVector<QLineSeries *> waveform;
     } m_fakeAxesSeriesList[2]; // index 0 when both phasor and waveform are present, index 1 when
                                // only one of them is present
 
@@ -98,9 +98,9 @@ private:
 
     struct
     {
-        PointList phasors[qpmu::CountSignals];
-        PointList waveforms[qpmu::CountSignals];
-        PointList connectors[qpmu::CountSignals];
+        PointVector phasors[qpmu::CountSignals];
+        PointVector waveforms[qpmu::CountSignals];
+        PointVector connectors[qpmu::CountSignals];
     } m_seriesPointList[2];
 
     struct
@@ -114,7 +114,7 @@ private:
         QLabel *summarySamplingRate;
     } m_labels;
 
-    QList<QLabel *> m_colorLabels[qpmu::CountSignals];
+    QVector<QLabel *> m_colorLabels[qpmu::CountSignals];
 };
 
 #endif // QPMU_APP_PHASOR_MONITOR_H

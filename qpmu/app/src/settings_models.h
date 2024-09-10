@@ -7,7 +7,7 @@
 #include <QSettings>
 #include <QtGlobal>
 #include <QString>
-#include <QList>
+#include <QVector>
 #include <QPointF>
 #include <QColor>
 
@@ -93,7 +93,7 @@ struct CalibrationSettings : public AbstractSettingsModel
     {
         qreal slope = 1.0;
         qreal intercept = 0.0;
-        QList<QPointF> points = {};
+        QVector<QPointF> points = {};
     };
 
     std::array<DataPerSignal, qpmu::CountSignals> data = {};

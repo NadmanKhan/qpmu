@@ -661,10 +661,10 @@ void PhasorMonitor::createChartView()
             m_seriesList[state].waveforms[i] = waveformSeries;
             m_seriesList[state].connectors[i] = connectorSeries;
 
-            m_seriesPointList[state].phasors[i] = PointList(5);
+            m_seriesPointList[state].phasors[i] = PointVector(5);
             m_seriesPointList[state].waveforms[i] =
-                    PointList(CountCycles * CountPointsPerCycle + 1);
-            m_seriesPointList[state].connectors[i] = PointList(2);
+                    PointVector(CountCycles * CountPointsPerCycle + 1);
+            m_seriesPointList[state].connectors[i] = PointVector(2);
 
             for (auto series : { phasorSeries, waveformSeries, connectorSeries }) {
                 series->setName(name);

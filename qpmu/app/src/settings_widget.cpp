@@ -559,7 +559,7 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
             connect(saveButton, &QPushButton::clicked, [=] {
                 qreal slope = slopeEdit->text().toDouble();
                 qreal intercept = interceptEdit->text().toDouble();
-                QList<QPointF> points;
+                QVector<QPointF> points;
                 for (int row = 0; row < table->rowCount(); ++row) {
                     auto sampleItem = table->item(row, 0);
                     auto actualItem = table->item(row, 1);

@@ -15,7 +15,7 @@ struct SidePanelItem
 class MainPageInterface
 {
 public:
-    virtual QList<SidePanelItem> sidePanelItems() const { return {}; }
+    virtual QVector<SidePanelItem> sidePanelItems() const { return {}; }
 };
 
 Q_DECLARE_INTERFACE(MainPageInterface, "com.qpmu.MainPageInterface/1.0")
