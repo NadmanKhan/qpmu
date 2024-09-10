@@ -11,9 +11,9 @@
 #include <QIODevice>
 #include <QStringList>
 
-QT_FORWARD_DECLARE_CLASS(DataProcessor);
-QT_FORWARD_DECLARE_CLASS(DataObserver);
-QT_FORWARD_DECLARE_CLASS(MainWindow);
+QT_FORWARD_DECLARE_CLASS(DataProcessor)
+QT_FORWARD_DECLARE_CLASS(DataObserver)
+QT_FORWARD_DECLARE_CLASS(MainWindow)
 
 class App : public QApplication
 {

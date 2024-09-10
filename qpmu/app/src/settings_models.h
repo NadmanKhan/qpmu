@@ -88,7 +88,7 @@ STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(SampleSourceSettings)
 
 struct CalibrationSettings : public AbstractSettingsModel
 {
-    static constexpr int MaxPoints = 10;
+    static constexpr quint32 MaxPoints = 10;
     struct DataPerSignal
     {
         qreal slope = 1.0;
@@ -107,8 +107,8 @@ STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(CalibrationSettings)
 struct VisualisationSettings : public AbstractSettingsModel
 {
 
-    int estimationUpdateIntervalMs = App::UpdateIntervalFactorMs * 1;
-    int sampleUpdateIntervalMs = App::UpdateIntervalFactorMs * 1;
+    quint32 estimationUpdateIntervalMs = App::UpdateIntervalFactorMs * 1;
+    quint32 sampleUpdateIntervalMs = App::UpdateIntervalFactorMs * 1;
     std::array<QColor, qpmu::CountSignals> signalColors = { "#404040", "#ff0000", "#00ffff",
                                                             "#f1dd38", "#0000ff", "#22bb45" };
 

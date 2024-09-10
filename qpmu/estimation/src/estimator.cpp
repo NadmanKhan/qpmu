@@ -185,7 +185,7 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
 
                         if (isPositive(x0) != isPositive(x1)) {
                             ++countZeroCrossings;
-                            auto t = (I64)std::round(zeroCrossingTime(t0, x0, t1, x1));
+                            auto t = (U64)(std::round(zeroCrossingTime(t0, x0, t1, x1)) + 0.2);
                             assert(t0 <= t && t <= t1);
                             if (firstCrossingUs == 0) {
                                 firstCrossingUs = t;
@@ -210,7 +210,7 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
                             / sample.timeDeltaUs * 1e6;
                 }
             }
-            
+
             { /// Sampling rate estimation
                 auto samplesWindowSec = (Float)(sample.timestampUs - m_windowStartTimeUs) * 1e-6;
                 auto residueSec = (Float)1.0 - samplesWindowSec;

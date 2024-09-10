@@ -385,7 +385,7 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
     /// * Update enabled state of buttons
     auto updateEnabledState = [=] {
         auto rowCount = table->rowCount();
-        newRowButton->setEnabled(rowCount < CalibrationSettings::MaxPoints);
+        newRowButton->setEnabled(rowCount < (int)CalibrationSettings::MaxPoints);
         removeRowButton->setEnabled(rowCount > 0 && table->currentRow() >= 0);
         updateSampleButton->setEnabled(rowCount > 0 && table->currentRow() >= 0);
         calibrateButton->setEnabled(rowCount > 1 && isValidTableData());
@@ -394,7 +394,7 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
     /// * Add new row
     auto addRow = [=] {
         const auto row = table->rowCount();
-        if (row >= CalibrationSettings::MaxPoints) {
+        if (row >= (int)CalibrationSettings::MaxPoints) {
             return;
         }
 
@@ -429,7 +429,7 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
         table->setRowCount(0);
         for (const auto &point : data.points) {
             auto row = table->rowCount();
-            if (row >= CalibrationSettings::MaxPoints) {
+            if (row >= (int)CalibrationSettings::MaxPoints) {
                 break;
             }
             addRow();
