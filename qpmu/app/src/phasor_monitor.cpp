@@ -389,7 +389,7 @@ void PhasorMonitor::createControls()
 
         auto layout = new QVBoxLayout(m_ctrl.visibility.box);
 
-        QList<QCheckBox *> checkBoxes;
+        QVector<QCheckBox *> checkBoxes;
 
         for (USize i = 0; i < CountSignalTypes; ++i) {
             auto nameOfType = NameOfSignalType[TypeOfSignal[i]];
@@ -887,9 +887,9 @@ void PhasorMonitor::createSummaryBar()
     }
 }
 
-QList<SidePanelItem> PhasorMonitor::sidePanelItems() const
+QVector<SidePanelItem> PhasorMonitor::sidePanelItems() const
 {
-    QList<SidePanelItem> items;
+    QVector<SidePanelItem> items;
 
     items << SidePanelItem{ m_ctrl.visibility.box, "Visibility" };
     items << SidePanelItem{ m_ctrl.phaseRef.box, "Phase Reference" };
