@@ -91,7 +91,7 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
                 (SampleSourceSettings::SocketType)socketTypeGroup->checkedId();
 
         newSettings.processConfig.prog = progEdit->text();
-        newSettings.processConfig.args = argsEdit->text().split(' ', Qt::SkipEmptyParts);
+        newSettings.processConfig.args = parsePrcoessString(argsEdit->text());
 
         return newSettings;
     };
@@ -250,7 +250,7 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
             if (auto edit = qobject_cast<QLineEdit *>(obj)) {
                 connect(edit, &QLineEdit::textChanged, updateEnabledState);
             } else if (auto group = qobject_cast<QButtonGroup *>(obj)) {
-                connect(group, &QButtonGroup::idToggled, updateEnabledState);
+                connect(group, &QButtonGroup::buttonToggled, updateEnabledState);
             }
         }
         updateEnabledState();
