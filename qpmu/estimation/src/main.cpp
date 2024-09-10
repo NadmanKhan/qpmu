@@ -18,7 +18,6 @@ namespace po = boost::program_options;
 int main(int argc, char *argv[])
 {
     using namespace qpmu;
-    using namespace qpmu::util;
 
     po::options_description desc("Allowed options");
     {
@@ -54,10 +53,10 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    PhasorEstimationStrategy phasor_strategy = PhasorEstimationStrategy::FFT;
+    PhasorEstimationStrategy phasorStrategy = PhasorEstimationStrategy::FFT;
     if (varmap.count("phasor-estimator")) {
         if (varmap["phasor-estimator"].as<string>() == "sdft") {
-            phasor_strategy = PhasorEstimationStrategy::SDFT;
+            phasorStrategy = PhasorEstimationStrategy::SDFT;
         }
     }
 
@@ -95,42 +94,42 @@ int main(int argc, char *argv[])
         outputFormat = FormatBinary;
     }
 
-    Estimator estimator(fn, fs, phasor_strategy);
-    Synchrophasor synchrophasor;
+    PhasorEstimator estimator(fn, fs, phasorStrategy);
+    Estimation phasor;
     Sample sample;
 
     auto print = [&] {
         switch (outputFormat) {
         case FormatBinary:
-            std::fwrite(&synchrophasor, sizeof(Synchrophasor), 1, stdout);
+            std::fwrite(&phasor, sizeof(Estimation), 1, stdout);
             break;
         case FormatCsv:
-            cout << toCsv(synchrophasor) << '\n';
+            cout << toCsv(phasor) << '\n';
             break;
         default:
-            cout << toString(synchrophasor) << '\n';
+            cout << toString(phasor) << '\n';
         }
     };
 
     if (outputFormat == FormatCsv) {
-        cout << synchrophasorCsvHeader() << '\n';
+        cout << estimationCsvHeader() << '\n';
     }
 
     if (inputFormat == FormatReadableStr) {
         std::string line;
         while (std::getline(std::cin, line)) {
-            if (!util::parseSample(sample, line.c_str())) {
+            if (!parseSample(sample, line.c_str())) {
                 cerr << "Failed to parse line: " << line << '\n';
                 return 1;
             }
             estimator.updateEstimation(sample);
-            synchrophasor = estimator.lastSynchrophasor();
+            phasor = estimator.lastEstimation();
             print();
         }
     } else if (inputFormat == FormatBinary) {
         while (fread(&sample, sizeof(Sample), 1, stdin)) {
             estimator.updateEstimation(sample);
-            synchrophasor = estimator.lastSynchrophasor();
+            phasor = estimator.lastEstimation();
             print();
         }
     }

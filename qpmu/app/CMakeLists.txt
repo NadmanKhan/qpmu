@@ -1,19 +1,22 @@
 set(PROJECT_SOURCES
     src/app.h
     src/app.cpp
+    src/flowlayout.h
+    src/flowlayout.cpp
     src/main_window.h
     src/main_window.cpp
-    src/monitor_view.h
-    src/monitor_view.cpp
+    src/phasor_monitor.h
+    src/phasor_monitor.cpp
+    src/main_page_interface.h
+    src/data_observer.h
+    src/data_observer.cpp
     src/data_processor.h
     src/data_processor.cpp
-    src/settings.h
-    src/settings.cpp
+    src/settings_models.h
+    src/settings_models.cpp
     src/settings_widget.h
     src/settings_widget.cpp
     src/main.cpp
-    src/timeout_notifier.h
-    src/timeout_notifier.cpp
     src/equally_scaled_axes_chart.h
     src/equally_scaled_axes_chart.cpp
     src/util.cpp

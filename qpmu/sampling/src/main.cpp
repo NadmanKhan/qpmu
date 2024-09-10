@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
     vector<string> lines;
     string line;
     while (std::getline(file, line)) {
-        if (!util::parseSample(sample, line.c_str())) {
+        if (!parseSample(sample, line.c_str())) {
             cerr << "Failed to parse line: " << line << '\n';
             return 1;
         }
@@ -150,11 +150,11 @@ int main(int argc, char *argv[])
 
     auto print = [outputFormat](const Sample &sample) {
         if (outputFormat == FormatCsv) {
-            cout << util::toCsv(sample) << '\n';
+            cout << toCsv(sample) << '\n';
             return;
         }
         if (outputFormat == FormatReadableStr) {
-            cout << util::toString(sample) << '\n';
+            cout << toString(sample) << '\n';
             return;
         }
         std::fwrite(&sample, sizeof(Sample), 1, stdout);
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
     }
 
     if (outputFormat == FormatCsv) {
-        cout << util::sampleCsvHeader() << '\n';
+        cout << sampleCsvHeader() << '\n';
     }
 
     auto lastSample = samples[0];

@@ -1,5 +1,5 @@
-#ifndef ESTIMATORS_H
-#define ESTIMATORS_H
+#ifndef PHASOR_ESTIMATOR_H
+#define PHASOR_ESTIMATOR_H
 
 #include <array>
 #include <complex>
@@ -41,7 +41,7 @@ enum class PhasorEstimationStrategy {
     SDFT, // Sliding-window Discrete Fourier Transform
 };
 
-class Estimator
+class PhasorEstimator
 {
 public:
     using Float = qpmu::Float;
@@ -49,7 +49,7 @@ public:
     using ISize = qpmu::ISize;
     using Complex = qpmu::Complex;
     using SdftType = sdft::SDFT<Float, Float>;
-    static constexpr USize CountSignals = qpmu::SignalCount;
+    static constexpr USize CountSignals = qpmu::CountSignals;
 
     struct FftwState
     {
@@ -65,38 +65,33 @@ public:
     };
 
     // ****** Constructors and destructors ******
-    Estimator(const Estimator &) = default;
-    Estimator(Estimator &&) = default;
-    Estimator &operator=(const Estimator &) = default;
-    Estimator &operator=(Estimator &&) = default;
-    ~Estimator();
-    Estimator(USize fn, USize fs,
-              PhasorEstimationStrategy phasorStrategy = PhasorEstimationStrategy::FFT);
+    PhasorEstimator(const PhasorEstimator &) = default;
+    PhasorEstimator(PhasorEstimator &&) = default;
+    PhasorEstimator &operator=(const PhasorEstimator &) = default;
+    PhasorEstimator &operator=(PhasorEstimator &&) = default;
+    ~PhasorEstimator();
+    PhasorEstimator(USize fn, USize fs,
+                    PhasorEstimationStrategy phasorStrategy = PhasorEstimationStrategy::FFT);
 
-    void updateEstimation(qpmu::Sample sample);
+    void updateEstimation(const qpmu::Sample &sample);
 
-    const qpmu::Synchrophasor &lastSynchrophasor() const;
+    const qpmu::Estimation &lastEstimation() const;
     const qpmu::Sample &lastSample() const;
-    const std::array<Float, CountSignals> &channelMagnitudes() const;
 
 private:
     PhasorEstimationStrategy m_phasorStrategy = PhasorEstimationStrategy::FFT;
     FftwState m_fftwState = {};
     SdftState m_sdftState = {};
 
-    std::vector<qpmu::Synchrophasor> m_syncphBuffer = {};
-    USize m_syncphBufIdx = 0;
+    std::vector<qpmu::Estimation> m_estimationBuffer = {};
+    std::vector<qpmu::Sample> m_sampleBuffer = {};
+    USize m_estimationBufIdx = 0;
+    USize m_sampleBufIdx = 0;
 
     qpmu::U64 m_windowStartTimeUs = 0;
     qpmu::U64 m_windowEndTimeUs = 0;
-
-    std::vector<qpmu::Sample> m_sampleBuffer = {};
-    USize m_sampleBufIdx = 0;
-    qpmu::U64 m_zeroCrossingCount = 0;
-
-    std::array<Float, CountSignals> m_channelMagnitudes = {};
 };
 
 } // namespace qpmu
 
-#endif // ESTIMATORS_H
+#endif // PHASOR_ESTIMATOR_H

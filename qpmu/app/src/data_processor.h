@@ -3,6 +3,7 @@
 
 #include "qpmu/defs.h"
 #include "qpmu/estimator.h"
+#include "settings_models.h"
 #include "app.h"
 
 #include <QThread>
@@ -20,28 +21,30 @@ public:
     explicit DataProcessor();
 
     void run() override;
-    const qpmu::Synchrophasor &lastSynchrophasor();
+    const qpmu::Estimation &lastEstimation();
     const qpmu::Sample &lastSample();
-    const std::array<qpmu::Float, qpmu::SignalCount> &channelMagnitudes();
+
+signals:
+    void sampleSourceConnectionChanged(bool isConnected);
 
 public slots:
     void updateSampleSource();
 
-signals:
-    void newSampleObtained(qpmu::Sample sample);
-    void newSynchrophasorObtained(qpmu::Synchrophasor synchrophasor);
-
 private:
     QMutex m_mutex;
+    qpmu::PhasorEstimator *m_estimator = nullptr;
 
-    qpmu::Sample m_sample;
-    qpmu::Synchrophasor m_synchrophasor;
+    SampleSourceSettings m_sampleSourcesettings;
 
-    bool m_sampleSourceIsBinary = false;
-    QIODevice *m_sampleSourceDevice = nullptr;
-    std::function<bool()> m_sampleSourceDeviceReady = nullptr;
-
-    qpmu::Estimator *m_estimator = nullptr;
+    struct
+    {
+        bool isConnected = false;
+        bool isDataBinary = true;
+        QIODevice *device = nullptr;
+        QIODevice *newDevice = nullptr;
+        std::function<void()> startNewDevice = nullptr;
+        std::function<bool()> isDeviceReadyToRead = []() { return false; };
+    } sampler;
 };
 
 #endif // QPMU_APP_DATA_PROCESSOR_H

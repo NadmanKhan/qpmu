@@ -49,7 +49,7 @@ class ADCChannel:
         resolution_bits: int,
         signal: AnalogSignal,
         reference_voltage: float = 0,
-        signal_to_noise_ratio: float = 1,
+        noise: float = 0,
     ):
         assert resolution_bits > 0, "Resolution must be positive"
         assert reference_voltage > 0, "Reference voltage must be positive"
@@ -58,23 +58,21 @@ class ADCChannel:
         assert (
             signal.amplitude <= reference_voltage
         ), "Signal's amplitude must be less than or equal to the reference voltage"
-        assert signal_to_noise_ratio >= 1, "Signal-to-noise ratio must be greater than or equal to 1"
+        assert 0 <= noise <= 1, "Noise must be between 0 and 1"
 
         self.signal = signal
         self.resolution_bits = resolution_bits
         self.reference_voltage = reference_voltage
-        self.signal_to_noise_ratio = signal_to_noise_ratio
+        self.noise = noise
 
         self.max_value = (1 << self.resolution_bits) - 1
-        self.offset = self.max_value / 2
         self.scale = self.max_value / self.reference_voltage
-        self.coeficient_of_variance = 1 / self.signal_to_noise_ratio
 
     def sample(self, time_s: float) -> int:
         value = self.signal(time_s)
-        noise = random.uniform(-1, 1) * self.reference_voltage * self.coeficient_of_variance
+        noise = self.noise * random.uniform(-1, 1) * self.reference_voltage
         value += noise
-        result = round(value * self.scale + self.offset)
+        result = round(value * self.scale + self.max_value)
         result = max(0, min(self.max_value, result))  # clip
         return result
 
@@ -88,7 +86,7 @@ class ADC:
         sampling_rate_hz: int,
         signals: Iterable[AnalogSignal],
         reference_voltages: Iterable[float] | None = None,
-        signal_to_noise_ratios: Iterable[float] | None = None,
+        noises: Iterable[float] | None = None,
     ):
         assert isinstance(resolution_bits, int), "Resolution must be an integer"
         assert isinstance(sampling_rate_hz, int), "Sampling rate must be an integer"
@@ -98,18 +96,14 @@ class ADC:
         assert all(
             isinstance(reference_voltage, (int, float)) for reference_voltage in reference_voltages
         ), "Reference voltages must be numbers"
-        if signal_to_noise_ratios is None:
-            signal_to_noise_ratios = [1 for _ in signals]
-        assert all(
-            isinstance(signal_to_noise_ratio, (int, float)) for signal_to_noise_ratio in signal_to_noise_ratios
-        ), "Signal-to-noise ratios must be numbers"
+        if noises is None:
+            noises = [0 for _ in signals]
+        assert all(isinstance(noise, (int, float)) for noise in noises), "Noises must be numbers"
 
         assert resolution_bits > 0, "Resolution must be positive"
         assert sampling_rate_hz > 0, "Sampling rate must be positive"
         assert len(signals) == len(reference_voltages), "Signals and reference voltages must have the same length"
-        assert len(signals) == len(
-            signal_to_noise_ratios
-        ), "Signals and signal-to-noise ratios must have the same length"
+        assert len(signals) == len(noises), "Signals and noises must have the same length"
 
         self.resolution_bits = resolution_bits
         self.sampling_rate_hz = sampling_rate_hz
@@ -120,47 +114,67 @@ class ADC:
                 resolution_bits=resolution_bits,
                 signal=signal,
                 reference_voltage=reference_voltage,
-                signal_to_noise_ratio=signal_to_noise_ratio,
+                noise=noise,
             )
-            for signal, reference_voltage, signal_to_noise_ratio in zip(
-                signals, reference_voltages, signal_to_noise_ratios
-            )
+            for signal, reference_voltage, noise in zip(signals, reference_voltages, noises)
         )
 
     def start(self):
         start_time_s = time.time()
         while True:
             time.sleep(self.sampling_period_s)
-            samples = tuple(ch.sample(time_s - start_time_s) for ch in self.channels)
             time_s = time.time()
+            samples = tuple(ch.sample(time_s - start_time_s) for ch in self.channels)
             yield samples
 
 
 @dataclass
-class TimeSyncedSample:
-    sequence_num: int = 0
-    channel_values: tuple[int] = (0, 0, 0, 0, 0, 0)
-    timestamp_us: int = 0
-    timedelta_us: int = 0
+class Sample:
 
-    def pack(self) -> bytes:
-        assert isinstance(self.sequence_num, int), "Sequence number must be an integer"
-        assert isinstance(self.timestamp_us, int), "Timestamp must be an integer"
-        assert isinstance(self.timedelta_us, int), "Time delta must be an integer"
-        assert all(isinstance(value, int) for value in self.channel_values), "Channel values must be integers"
-        assert len(self.channel_values) == 6, "There must be 6 channel values"
+    STRUCT_FORMAT = "@9Q"
 
-        assert self.sequence_num >= 0, "Sequence number must be non-negative"
-        assert self.timestamp_us >= 0, "Timestamp must be non-negative"
-        assert self.timedelta_us >= 0, "Time delta must be non-negative"
-        assert all(value >= 0 for value in self.channel_values), "Channel values must be non-negative"
+    CSV_FORMAT = "seq_no={sequence_num},\tch0={channel_values[0]:4},ch1={channel_values[1]:4},ch2={channel_values[2]:4},\
+        ch3={channel_values[3]:4},ch4={channel_values[4]:4},ch5={channel_values[5]:4},ts={timestamp_us},\tdelta={timedelta_us},"
 
+    def __init__(
+        self,
+        sequence_num: int,
+        channel_values: tuple[int],
+        timestamp_us: int,
+        timedelta_us: int,
+    ):
+        assert isinstance(sequence_num, int), "Sequence number must be an integer"
+        assert isinstance(timestamp_us, int), "Timestamp must be an integer"
+        assert isinstance(timedelta_us, int), "Time delta must be an integer"
+        assert all(isinstance(value, int) for value in channel_values), "Channel values must be integers"
+        assert all(isinstance(value, int) for value in channel_values), "Channel values must be integers"
+        assert len(channel_values) == 6, "Channel values must be non-empty"
+
+        assert sequence_num >= 0, "Sequence number must be non-negative"
+        assert timestamp_us >= 0, "Timestamp must be non-negative"
+        assert timedelta_us >= 0, "Time delta must be non-negative"
+        # assert all(value >= 0 for value in channel_values), "Channel values must be non-negative"
+
+        self.sequence_num = sequence_num
+        self.channel_values = channel_values
+        self.timestamp_us = timestamp_us
+        self.timedelta_us = timedelta_us
+
+    def __bytes__(self) -> bytes:
         return struct.pack(
-            "9Q",
+            Sample.STRUCT_FORMAT,
             self.sequence_num,
             *self.channel_values,
             self.timestamp_us,
             self.timedelta_us,
+        )
+
+    def __str__(self) -> str:
+        return Sample.CSV_FORMAT.format(
+            sequence_num=self.sequence_num,
+            channel_values=self.channel_values,
+            timestamp_us=self.timestamp_us,
+            timedelta_us=self.timedelta_us,
         )
 
 
@@ -184,7 +198,7 @@ class TimeSyncedSamples:
 
         self.current_time_us = timestamp_us
 
-        return TimeSyncedSample(
+        return Sample(
             sequence_num=self.sequence_num,
             channel_values=channel_values,
             timestamp_us=timestamp_us,

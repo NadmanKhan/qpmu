@@ -22,18 +22,18 @@ using I64 = std::int64_t;
 using I32 = std::int16_t;
 using I16 = std::int16_t;
 
-constexpr USize SignalTypeCount = 2;
-constexpr USize SignalPhaseCount = 3;
-constexpr USize SignalCount = SignalPhaseCount * SignalTypeCount;
+constexpr USize CountSignalTypes = 2;
+constexpr USize CountSignalPhases = 3;
+constexpr USize CountSignals = CountSignalPhases * CountSignalTypes;
 
-constexpr char const *SignalTypeNames[SignalTypeCount] = { "Voltage", "Current" };
-constexpr char SignalTypeSymbols[SignalTypeCount] = { 'V', 'I' };
-constexpr char const *SignalTypeUnitNames[SignalTypeCount] = { "Volts", "Amperes" };
-constexpr char SignalTypeUnitSymbols[SignalTypeCount] = { 'V', 'A' };
+constexpr char const *NameOfSignalType[CountSignalTypes] = { "Voltage", "Current" };
+constexpr char const *SymbolOfSignalType[CountSignalTypes] = { "V", "I" };
+constexpr char const *UnitNameOfSignalType[CountSignalTypes] = { "Volts", "Amperes" };
+constexpr char const *UnitSymbolOfSignalType[CountSignalTypes] = { "V", "A" };
 
-constexpr char SignalPhaseNames[SignalPhaseCount] = { 'A', 'B', 'C' };
+constexpr char const *NameOfSignalPhase[CountSignalPhases] = { "A", "B", "C" };
 
-constexpr char const *SignalNames[SignalCount] = { "VA", "VB", "VC", "IA", "IB", "IC" };
+constexpr char const *NameOfSignal[CountSignals] = { "VA", "VB", "VC", "IA", "IB", "IC" };
 
 enum SignalType {
     VoltageSignal = 0,
@@ -55,67 +55,64 @@ enum Signal {
     SignalIC = 5,
 };
 
-constexpr SignalType SignalTypeIds[SignalCount] = { VoltageSignal, VoltageSignal, VoltageSignal,
+constexpr SignalType TypeOfSignal[CountSignals] = { VoltageSignal, VoltageSignal, VoltageSignal,
                                                     CurrentSignal, CurrentSignal, CurrentSignal };
-constexpr SignalPhase SignalPhaseIds[SignalCount] = {
+constexpr SignalPhase PhaseOfSignal[CountSignals] = {
     PhaseA, PhaseB, PhaseC, PhaseA, PhaseB, PhaseC
 };
-constexpr Signal SamePhaseSignalIds[SignalPhaseCount][SignalTypeCount] = { { SignalVA, SignalIA },
-                                                                           { SignalVB, SignalIB },
-                                                                           { SignalVC, SignalIC } };
-constexpr Signal SameTypeSignalIds[SignalTypeCount][SignalPhaseCount] = {
+constexpr Signal SignalsOfPhase[CountSignalPhases][CountSignalTypes] = { { SignalVA, SignalIA },
+                                                                         { SignalVB, SignalIB },
+                                                                         { SignalVC, SignalIC } };
+constexpr Signal SignalsOfType[CountSignalTypes][CountSignalPhases] = {
     { SignalVA, SignalVB, SignalVC }, { SignalIA, SignalIB, SignalIC }
 };
-constexpr Signal SignalIds[SignalCount] = { SignalVA, SignalVB, SignalVC,
-                                            SignalIA, SignalIB, SignalIC };
+constexpr Signal SignalId[CountSignals] = { SignalVA, SignalVB, SignalVC,
+                                              SignalIA, SignalIB, SignalIC };
 
 /// @brief Time-synchronized sample obtained from the sampling module.
 struct Sample
 {
     /// Sequence number of the sample. This is a monotonically increasing number that is used to
     /// identify the order of the samples.
-    U64 seqNo;
+    U64 seqNo = {};
 
     /// Digitized signal samples be obtained from the ADC of the sampling module. The order is as
     /// per `SignalNames`.
-    U64 channels[SignalCount];
+    U64 channels[CountSignals] = {};
 
     /// Time (in microseconds) stamped by the sampling module's GPS-synchronized clock. This should
     /// be accurate to within a few microseconds of the actual time of the sample.
-    U64 timestampUs;
+    U64 timestampUs = {};
 
     /// Time difference (in microseconds) between the current sample and the previous sample.
-    U64 timeDeltaUs;
+    U64 timeDeltaUs = {};
 };
 
-/// @brief Estimation of phasors, frequency, and rate-of-change-of-frequency, obtained from the
-/// estimation module.
-struct Synchrophasor
+/// @brief Estimations of phasors, frequency and rate-of-change-of-frequency
+/// of each phasor, and sapling rate, to be computed by the estimations module
+/// from sequence of samples.
+struct Estimation
 {
-    /// Timestamp (in microseconds) of the source sample from which the phasor estimation was
-    /// obtained.
-    U64 timestampUs;
+    /// Raw/uncalibrated phasors
+    Complex phasors[CountSignals] = {};
 
-    /// Magnitudes of the phasors. This may be before or after calibration.
-    Float magnitudes[SignalCount];
+    /// Frequency of the phasors (in Hz)
+    Float frequencies[CountSignals] = {};
 
-    /// Phase angles of the phasors (in radians)
-    Float phaseAngles[SignalCount];
+    /// Rate of change of frequency (ROCOF) of the phasors (in Hz/s)
+    Float rocofs[CountSignals] = {};
 
-    /// Frequency (in Hz) of the system
-    Float frequency;
-
-    /// Rate of change of frequency (in Hz/s) of the system
-    Float rocof;
+    /// Sampling rate of the samples (in Hz)
+    Float samplingRate = {};
 };
 
 static_assert(std::is_trivially_copyable<Sample>::value, "Sample must be trivially copyable");
 static_assert(std::is_trivially_assignable<Sample, Sample>::value,
               "Sample must be trivially assignable");
 
-static_assert(std::is_trivially_copyable<Synchrophasor>::value,
+static_assert(std::is_trivially_copyable<Estimation>::value,
               "Synchrophasor must be trivially copyable");
-static_assert(std::is_trivially_assignable<Synchrophasor, Synchrophasor>::value,
+static_assert(std::is_trivially_assignable<Estimation, Estimation>::value,
               "Synchrophasor must be trivially assignable");
 
 } // namespace qpmu

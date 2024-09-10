@@ -1,5 +1,7 @@
 #include "app.h"
 #include "data_processor.h"
+#include "data_observer.h"
+#include "main_window.h"
 
 #include <QFont>
 #include <QTcpSocket>
@@ -16,44 +18,18 @@ App::App(int &argc, char **argv) : QApplication(argc, argv)
 
     {
         auto font = this->font();
-        font.setPointSize(font.pointSize() * 1.25);
+        font.setPointSize(1.25 * font.pointSize());
         setFont(font);
     }
 
-    // Before instantiating any `Settings` object using the default ctor as below, make
-    // sure the org and app names are set using `QCoreApplication::setOrganizationName`
-    // and `QCoreApplication::setOrganizationName`. The file path is created using them.
-    m_settings = new Settings(this);
-
     m_timer = new QTimer(this);
-    m_timer->setInterval(20);
-    m_timer->start();
+    m_timer->setInterval(100);
 
     m_dataProcessor = new DataProcessor();
     m_dataProcessor->start();
-}
 
-Settings *App::settings() const
-{
-    return m_settings;
-}
+    m_dataObserver = new DataObserver(this);
 
-QTimer *App::timer() const
-{
-    return m_timer;
-}
-
-DataProcessor *App::dataProcessor() const
-{
-    return m_dataProcessor;
-}
-
-QMainWindow *App::mainWindow() const
-{
-    return m_mainWindow;
-}
-
-void App::setMainWindow(QMainWindow *mainWindow)
-{
-    m_mainWindow = mainWindow;
+    m_timer->start();
+    m_mainWindow = new MainWindow();
 }

@@ -56,6 +56,25 @@ QPixmap rectPixmap(const QColor &color, int width, int height)
     return pixmap;
 }
 
+QPixmap twoColorRectPixmap(const QColor &color1, const QColor &color2, int width, int height)
+{
+    QPixmap pixmap(width, height);
+    pixmap.fill(Qt::transparent); // Fill the pixmap with transparent color
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // Set the color and draw a solid circle
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(color1);
+    painter.drawRect(0, 0, width / 2, height);
+    painter.setBrush(color2);
+    painter.drawRect(width / 2, 0, width / 2, height);
+    painter.end();
+
+    return pixmap;
+}
+
 QPointF unitvector(qreal angle)
 {
     return QPointF(std::cos(angle), std::sin(angle));

@@ -6,7 +6,7 @@
 #include <sstream>
 #include <iomanip>
 
-namespace qpmu::util {
+namespace qpmu {
 
 std::string phasorToString(const Complex &phasor)
 {
@@ -27,27 +27,28 @@ std::string phasorPolarToString(const Complex &phasor)
 std::string toString(const Sample &sample)
 {
     std::stringstream ss;
-    ss << "seq_no=" << sample.seqNo << ",\t";
-    for (USize i = 0; i < SignalCount; ++i) {
+    ss << "seq_no=" << sample.seqNo << ',' << '\t';
+    for (USize i = 0; i < CountSignals; ++i) {
         ss << "ch" << i << "=" << std::setw(4) << sample.channels[i] << ", ";
     }
-    ss << "ts=" << sample.timestampUs << ",\t";
+    ss << "ts=" << sample.timestampUs << ',' << '\t';
     ss << "delta=" << sample.timeDeltaUs << ",";
     return ss.str();
 }
 
-std::string toString(const Synchrophasor &synchrophasor)
+std::string toString(const Estimation &est)
 {
     std::stringstream ss;
-    ss << "timestamp_micros=" << std::to_string(synchrophasor.timestampUs) << ",\t";
-    for (USize i = 0; i < SignalCount; ++i) {
-        ss << "phasor_" << i << "="
-           << phasorPolarToString(
-                      std::polar(synchrophasor.magnitudes[i], synchrophasor.phaseAngles[i]))
-           << ",\t";
+    for (USize i = 0; i < CountSignals; ++i) {
+        ss << "phasor_" << i << "=" << phasorPolarToString(est.phasors[i]) << ',' << '\t';
     }
-    ss << "freq=" << synchrophasor.frequency << ",\t";
-    ss << "rocof=" << synchrophasor.rocof << ",";
+    for (USize i = 0; i < CountSignals; ++i) {
+        ss << "freq_" << i << "=" << est.frequencies[i] << ',' << '\t';
+    }
+    for (USize i = 0; i < CountSignals; ++i) {
+        ss << "rocof_" << i << "=" << est.rocofs[i] << ',' << '\t';
+    }
+    ss << "sampling_rate=" << est.samplingRate << ',';
     return ss.str();
 }
 
@@ -55,21 +56,27 @@ std::string sampleCsvHeader()
 {
     std::string header;
     header += "seq_no,";
-    for (USize i = 0; i < SignalCount; ++i) {
+    for (USize i = 0; i < CountSignals; ++i) {
         header += "ch" + std::to_string(i) + ',';
     }
     header += "ts,delta";
     return header;
 }
 
-std::string synchrophasorCsvHeader()
+std::string estimationCsvHeader()
 {
     std::string header;
     header += "timestamp_micros,";
-    for (USize i = 0; i < SignalCount; ++i) {
+    for (USize i = 0; i < CountSignals; ++i) {
         header += "phasor_" + std::to_string(i) + ',';
     }
-    header += "freq,rocof";
+    for (USize i = 0; i < CountSignals; ++i) {
+        header += "freq_" + std::to_string(i) + ',';
+    }
+    for (USize i = 0; i < CountSignals; ++i) {
+        header += "rocof_" + std::to_string(i) + ',';
+    }
+    header += "sampling_rate";
     return header;
 }
 
@@ -116,7 +123,7 @@ std::string toCsv(const Sample &sample)
 {
     std::string str;
     str += std::to_string(sample.seqNo);
-    for (size_t i = 0; i < SignalCount; ++i) {
+    for (size_t i = 0; i < CountSignals; ++i) {
         str += std::to_string(sample.channels[i]);
         str += ',';
     }
@@ -126,18 +133,22 @@ std::string toCsv(const Sample &sample)
     return str;
 }
 
-std::string toCsv(const Synchrophasor &synchrophasor)
+std::string toCsv(const Estimation &est)
 {
     std::string str;
-    str += std::to_string(synchrophasor.timestampUs);
-    for (size_t i = 0; i < SignalCount; ++i) {
-        str += phasorPolarToString(
-                std::polar(synchrophasor.magnitudes[i], synchrophasor.phaseAngles[i]));
+    for (size_t i = 0; i < CountSignals; ++i) {
+        str += phasorPolarToString(est.phasors[i]);
         str += ',';
     }
-    str += std::to_string(synchrophasor.frequency);
-    str += ',';
-    str += std::to_string(synchrophasor.rocof);
+    for (size_t i = 0; i < CountSignals; ++i) {
+        str += std::to_string(est.frequencies[i]);
+        str += ',';
+    }
+    for (size_t i = 0; i < CountSignals; ++i) {
+        str += std::to_string(est.rocofs[i]);
+        str += ',';
+    }
+    str += std::to_string(est.samplingRate);
     return str;
 }
 
@@ -165,4 +176,4 @@ std::pair<qpmu::Float, qpmu::Float> linearRegression(const std::vector<double> &
     return { m, b }; // Return slope (m) and intercept (b)
 }
 
-} // namespace qpmu::util
+} // namespace qpmu

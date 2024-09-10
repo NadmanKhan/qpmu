@@ -1,6 +1,8 @@
 #ifndef QPMU_APP_H
 #define QPMU_APP_H
 
+#include "qpmu/defs.h"
+
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
@@ -8,12 +10,10 @@
 #include <QTimer>
 #include <QIODevice>
 #include <QStringList>
-#include <QMainWindow>
 
-#include "qpmu/defs.h"
-#include "settings.h"
-
-class DataProcessor;
+QT_FORWARD_DECLARE_CLASS(DataProcessor);
+QT_FORWARD_DECLARE_CLASS(DataObserver);
+QT_FORWARD_DECLARE_CLASS(MainWindow);
 
 class App : public QApplication
 {
@@ -22,20 +22,32 @@ class App : public QApplication
     Q_OBJECT
 
 public:
+    static constexpr quint32 UpdateIntervalFactorMs = 100;
+
     App(int &argc, char **argv);
 
-    Settings *settings() const;
-    QTimer *timer() const;
-    DataProcessor *dataProcessor() const;
-    QMainWindow *mainWindow() const;
-
-    void setMainWindow(QMainWindow *mainWindow);
+    QTimer *timer() const
+    {
+        return m_timer;
+    }
+    DataProcessor *dataProcessor() const
+    {
+        return m_dataProcessor;
+    }
+    DataObserver *dataObserver() const
+    {
+        return m_dataObserver;
+    }
+    MainWindow *mainWindow() const
+    {
+        return m_mainWindow;
+    }
 
 private:
-    Settings *m_settings = nullptr;
     QTimer *m_timer = nullptr;
-    QMainWindow *m_mainWindow = nullptr;
+    MainWindow *m_mainWindow = nullptr;
     DataProcessor *m_dataProcessor = nullptr;
+    DataObserver *m_dataObserver = nullptr;
 };
 
 #endif // QPMU_APP_H
