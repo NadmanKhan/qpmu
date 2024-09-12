@@ -32,6 +32,7 @@
 #include <QHeaderView>
 
 #include <algorithm>
+#include <qglobal.h>
 
 using namespace qpmu;
 #define QSL QStringLiteral
@@ -39,7 +40,7 @@ using namespace qpmu;
 SettingsWidget::SettingsWidget(QWidget *parent) : QTabWidget(parent)
 {
     hide();
-    setTabPosition(QTabWidget::West);
+    // setTabPosition(QTabWidget::West);
     createSampleSourcePage();
     createCalibrationPage();
 }
@@ -78,8 +79,8 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
 
     /// Common operations
 
-    /// * Make settings object
-    auto makeSettings = [=] {
+    /// * Extract settings data from UI
+    auto extractSettings = [=] {
         SampleSourceSettings newSettings;
         newSettings.isDataBinary = dataFormatGroup->checkedId();
         newSettings.connection =
@@ -96,9 +97,9 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
         return newSettings;
     };
 
-    /// * Load settings data
-    auto loadSettingsData = [=](const SampleSourceSettings &settings) {
-        m_oldSampleSourceSettings = makeSettings();
+    /// * Load settings data into UI
+    auto loadSettings = [=](const SampleSourceSettings &settings) {
+        m_oldSampleSourceSettings = extractSettings();
 
         dataFormatGroup->button(settings.isDataBinary)->setChecked(true);
         connectionTypeGroup->button(settings.connection)->setChecked(true);
@@ -112,7 +113,7 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
     };
 
     /// * Check if settings are changed
-    auto isSettingsChanged = [=] { return makeSettings() != m_oldSampleSourceSettings; };
+    auto isSettingsChanged = [=] { return extractSettings() != m_oldSampleSourceSettings; };
 
     /// * Update enabled state of buttons
     auto updateEnabledState = [=] {
@@ -162,7 +163,7 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
 
                 socketTypeLayout->addWidget(udpRadio);
                 socketTypeLayout->addWidget(tcpRadio);
-                socketTypeLayout->setSpacing(2);
+                socketTypeLayout->setAlignment(Qt::AlignLeft);
 
                 socketTypeGroup->addButton(udpRadio, SampleSourceSettings::UdpSocket);
                 socketTypeGroup->addButton(tcpRadio, SampleSourceSettings::TcpSocket);
@@ -218,7 +219,7 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
             connectionTypeLayout->addWidget(noConnectionRadio);
             connectionTypeLayout->addWidget(socketConnectionRadio);
             connectionTypeLayout->addWidget(processConnectionRadio);
-            connectionTypeLayout->setSpacing(2);
+            connectionTypeLayout->setAlignment(Qt::AlignLeft);
 
             connectionTypeGroup->addButton(noConnectionRadio, SampleSourceSettings::NoConnectioin);
             connectionTypeGroup->addButton(socketConnectionRadio,
@@ -231,7 +232,7 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
         { /// Data format config
             dataFormatLayout->addWidget(isDataBinaryCheckBox);
             dataFormatLayout->addWidget(isDataFormattedCheckBox);
-            dataFormatLayout->setSpacing(2);
+            dataFormatLayout->setAlignment(Qt::AlignLeft);
 
             isDataBinaryCheckBox->setText("Binary-encoded (raw)");
             isDataFormattedCheckBox->setText("ASCII string formatted");
@@ -250,11 +251,16 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
             if (auto edit = qobject_cast<QLineEdit *>(obj)) {
                 connect(edit, &QLineEdit::textChanged, updateEnabledState);
             } else if (auto group = qobject_cast<QButtonGroup *>(obj)) {
-                connect(group, &QButtonGroup::buttonToggled, updateEnabledState);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+                connect(group, &QButtonGroup::idToggled, updateEnabledState);
+#else
+                connect(group, QOverload<int, bool>::of(&QButtonGroup::buttonToggled),
+                        updateEnabledState);
+#endif
             }
         }
         updateEnabledState();
-        loadSettingsData(settings);
+        loadSettings(settings);
     }
 
     { /// Dialog button box
@@ -263,7 +269,7 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
 
         { /// Save button
             connect(saveButton, &QPushButton::clicked, [=] {
-                auto newSettings = makeSettings();
+                auto newSettings = extractSettings();
                 if (newSettings.save()) {
                     m_oldSampleSourceSettings = newSettings;
                     updateEnabledState();
@@ -274,14 +280,14 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
 
         { /// Reset button
             connect(resetButton, &QPushButton::clicked, [=] {
-                loadSettingsData(m_oldSampleSourceSettings);
+                loadSettings(m_oldSampleSourceSettings);
                 updateEnabledState();
             });
         }
 
         { /// Restore defaults button
             connect(restoreDefaultsButton, &QPushButton::clicked, [=] {
-                loadSettingsData(SampleSourceSettings());
+                loadSettings(SampleSourceSettings());
                 updateEnabledState();
             });
         }
@@ -371,6 +377,48 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
         return true;
     };
 
+    /// * Create and return new row items (without adding to table)
+    auto newRow = [=]() -> std::pair<QTableWidgetItem *, QTableWidgetItem *> {
+        /// Sample magnitude cell
+        auto sampleItem = new QTableWidgetItem();
+        sampleItem->setTextAlignment(Qt::AlignRight);
+        sampleItem->setFlags(Qt::NoItemFlags | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        sampleItem->setText(FORMAT_NUMBER(sampleMagnitude(signalIndex)));
+
+        /// Actual magnitude cell
+        auto actualItem = new QTableWidgetItem();
+        actualItem->setTextAlignment(Qt::AlignRight);
+        actualItem->setFlags(Qt::NoItemFlags | Qt::ItemIsEnabled | Qt::ItemIsSelectable
+                             | Qt::ItemIsEditable);
+        actualItem->setToolTip(
+                QSL("Enter the actual %1").arg(NameOfSignalType[TypeOfSignal[signalIndex]]));
+        actualItem->setText(FORMAT_NUMBER(0.0));
+
+        return std::make_pair(sampleItem, actualItem);
+    };
+
+    /// * Extract settings data from UI
+    auto extractSettingsSignalData = [=] {
+        CalibrationSettings::DataPerSignal data;
+        data.slope = slopeEdit->text().toDouble();
+        data.intercept = interceptEdit->text().toDouble();
+        for (int row = 0; row < table->rowCount(); ++row) {
+            auto sampleItem = table->item(row, 0);
+            auto actualItem = table->item(row, 1);
+            if (sampleItem && actualItem) {
+                auto x = sampleItem->text().toDouble();
+                auto y = actualItem->text().toDouble();
+                data.points.append(QPointF(x, y));
+            }
+        }
+        return data;
+    };
+
+    /// * Check if settings are changed
+    auto isSettingsChanged = [=] {
+        return extractSettingsSignalData() != m_oldCalibrationSettings.data[signalIndex];
+    };
+
     /// * Validate table data
     auto isValidTableData = [=] {
         auto rowCount = table->rowCount();
@@ -389,41 +437,11 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
         removeRowButton->setEnabled(rowCount > 0 && table->currentRow() >= 0);
         updateSampleButton->setEnabled(rowCount > 0 && table->currentRow() >= 0);
         calibrateButton->setEnabled(rowCount > 1 && isValidTableData());
+        saveButton->setEnabled(isSettingsChanged());
     };
 
-    /// * Add new row
-    auto addRow = [=] {
-        const auto row = table->rowCount();
-        if (row >= (int)CalibrationSettings::MaxPoints) {
-            return;
-        }
-
-        table->insertRow(row);
-
-        { /// Sample magnitude cell
-            auto sampleItem = new QTableWidgetItem();
-            table->setItem(row, 0, sampleItem);
-            sampleItem->setTextAlignment(Qt::AlignRight);
-            sampleItem->setFlags(Qt::NoItemFlags | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-            sampleItem->setText(FORMAT_NUMBER(sampleMagnitude(signalIndex)));
-        }
-
-        { /// Actual magnitude cell
-            auto actualItem = new QTableWidgetItem();
-            table->setItem(row, 1, actualItem);
-            actualItem->setTextAlignment(Qt::AlignRight);
-            actualItem->setFlags(Qt::NoItemFlags | Qt::ItemIsEnabled | Qt::ItemIsSelectable
-                                 | Qt::ItemIsEditable);
-            actualItem->setToolTip(
-                    QSL("Enter the actual %1").arg(NameOfSignalType[TypeOfSignal[signalIndex]]));
-            actualItem->setText(FORMAT_NUMBER(0.0));
-        }
-
-        updateEnabledState();
-    };
-
-    /// * Load settings data
-    auto loadSettingsData = [=](CalibrationSettings::DataPerSignal data) {
+    /// * Load settings data into UI
+    auto loadSettingsSignalData = [=](CalibrationSettings::DataPerSignal data) {
         slopeEdit->setText(FORMAT_NUMBER(data.slope));
         interceptEdit->setText(FORMAT_NUMBER(data.intercept));
         table->setRowCount(0);
@@ -432,9 +450,10 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
             if (row >= (int)CalibrationSettings::MaxPoints) {
                 break;
             }
-            addRow();
-            auto sampleItem = table->item(row, 0);
-            auto actualItem = table->item(row, 1);
+            auto [sampleItem, actualItem] = newRow();
+            table->insertRow(row);
+            table->setItem(row, 0, sampleItem);
+            table->setItem(row, 1, actualItem);
             if (sampleItem && actualItem) {
                 sampleItem->setText(FORMAT_NUMBER(point.x()));
                 actualItem->setText(FORMAT_NUMBER(point.y()));
@@ -457,7 +476,7 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
 
     { /// Data section
         outerLayout->addLayout(dataSection);
-        loadSettingsData(signalData);
+        loadSettingsSignalData(signalData);
 
         { /// Column 1: Results
             auto resultsForm = new QFormLayout();
@@ -503,7 +522,16 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
             { /// Add new row button
                 newRowButton->setText(QSL("Add new row"));
                 newRowButton->setIcon(QIcon(":/add.png"));
-                connect(newRowButton, &QPushButton::clicked, addRow);
+                connect(newRowButton, &QPushButton::clicked, [=] {
+                    auto row = table->rowCount();
+                    if (row < (int)CalibrationSettings::MaxPoints) {
+                        auto [sampleItem, actualItem] = newRow();
+                        table->insertRow(row);
+                        table->setItem(row, 0, sampleItem);
+                        table->setItem(row, 1, actualItem);
+                        updateEnabledState();
+                    }
+                });
             }
 
             { /// Remove row button
@@ -554,28 +582,13 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
         dialogButtonBox->setOrientation(Qt::Horizontal);
 
         { /// Save button
-            saveButton->setEnabled(false);
-
             connect(saveButton, &QPushButton::clicked, [=] {
-                qreal slope = slopeEdit->text().toDouble();
-                qreal intercept = interceptEdit->text().toDouble();
-                QVector<QPointF> points;
-                for (int row = 0; row < table->rowCount(); ++row) {
-                    auto sampleItem = table->item(row, 0);
-                    auto actualItem = table->item(row, 1);
-                    if (sampleItem && actualItem) {
-                        points.append(QPointF(sampleItem->text().toDouble(),
-                                              actualItem->text().toDouble()));
-                    }
-                }
-
-                auto newSettings = CalibrationSettings();
-                newSettings.data[signalIndex].slope = slope;
-                newSettings.data[signalIndex].intercept = intercept;
-                newSettings.data[signalIndex].points = points;
+                auto newSettingsData = extractSettingsSignalData();
+                auto newSettings = m_oldCalibrationSettings;
+                newSettings.data[signalIndex] = newSettingsData;
 
                 if (newSettings.save()) {
-                    m_oldCalibrationSettings.data[signalIndex] = newSettings.data[signalIndex];
+                    m_oldCalibrationSettings = newSettings;
                     saveButton->setEnabled(false);
                 }
             });
@@ -583,12 +596,12 @@ QWidget *SettingsWidget::calibrationWidget(const USize signalIndex,
 
         { /// Reset button
             connect(resetButton, &QPushButton::clicked,
-                    [=] { loadSettingsData(m_oldCalibrationSettings.data[signalIndex]); });
+                    [=] { loadSettingsSignalData(m_oldCalibrationSettings.data[signalIndex]); });
         }
 
         { /// Restore defaults button
             connect(restoreDefaultsButton, &QPushButton::clicked,
-                    [=] { loadSettingsData(CalibrationSettings::DataPerSignal()); });
+                    [=] { loadSettingsSignalData(CalibrationSettings::DataPerSignal()); });
         }
 
         return widget;

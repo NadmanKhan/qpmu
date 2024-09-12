@@ -101,6 +101,22 @@ struct CalibrationSettings : public AbstractSettingsModel
     void load(QSettings settings = QSettings()) override;
     bool save() const override;
     bool isValid() const override;
+
+    friend bool operator==(const CalibrationSettings::DataPerSignal &lhs,
+                           const CalibrationSettings::DataPerSignal &rhs)
+    {
+        return lhs.slope == rhs.slope && lhs.intercept == rhs.intercept && lhs.points == rhs.points;
+    }
+
+    friend bool operator!=(const CalibrationSettings::DataPerSignal &lhs,
+                           const CalibrationSettings::DataPerSignal &rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    bool operator==(const CalibrationSettings &other) const { return data == other.data; }
+
+    bool operator!=(const CalibrationSettings &other) const { return !(*this == other); }
 };
 STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(CalibrationSettings)
 
@@ -115,6 +131,15 @@ struct VisualisationSettings : public AbstractSettingsModel
     void load(QSettings settings = QSettings()) override;
     bool save() const override;
     bool isValid() const override;
+
+    bool operator==(const VisualisationSettings &other) const
+    {
+        return estimationUpdateIntervalMs == other.estimationUpdateIntervalMs
+                && sampleUpdateIntervalMs == other.sampleUpdateIntervalMs
+                && signalColors == other.signalColors;
+    }
+
+    bool operator!=(const VisualisationSettings &other) const { return !(*this == other); }
 };
 STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(VisualisationSettings)
 
