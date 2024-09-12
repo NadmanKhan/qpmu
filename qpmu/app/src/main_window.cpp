@@ -20,22 +20,17 @@
 #include <QString>
 #include <QIcon>
 #include <QBoxLayout>
+#include <QSplitter>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
 
+    auto centralWidgetSplitter = new QSplitter(this);
     auto toolBar = new QToolBar();
     auto mainPageStack = new QStackedWidget();
     auto sidePanel = new QToolBox();
     auto toggleSidePanelAction = new QAction();
     auto goBackAction = new QAction();
-
-    { /// Central widget
-        auto cwidget = new QWidget(this);
-        setCentralWidget(cwidget);
-        auto layout = new QHBoxLayout(cwidget);
-        layout->setContentsMargins(QMargins(0, 0, 0, 0));
-    }
 
     { /// Status bar
         statusBar(); /// first call to `statusBar()` creates and sets it
@@ -101,9 +96,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         statusBar()->show();
     }
 
+    { /// Central widget
+        setCentralWidget(centralWidgetSplitter);
+        centralWidgetSplitter->setOrientation(Qt::Horizontal);
+    }
+
     { /// Side panel (tool box)
-        static_cast<QHBoxLayout *>(centralWidget()->layout())->addWidget(sidePanel);
-        sidePanel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
+        centralWidgetSplitter->addWidget(sidePanel);
+        sidePanel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Expanding);
         sidePanel->setFrameStyle(QFrame::Panel | QFrame::Raised);
         sidePanel->hide();
     }
@@ -140,7 +140,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     }
 
     { /// Main page stack
-        static_cast<QHBoxLayout *>(centralWidget()->layout())->addWidget(mainPageStack, 1);
+        centralWidgetSplitter->addWidget(mainPageStack);
         mainPageStack->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         mainPageStack->setContentsMargins(QMargins(20, 10, 20, 10));
 
@@ -156,10 +156,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
             if (auto page = qobject_cast<MainPageInterface *>(mainPageStack->widget(index))) {
                 const auto &items = page->sidePanelItems();
                 for (const auto &[widget, title, icon] : items) {
-                    if (icon.isNull()) {
-                        sidePanel->addItem(widget, title);
-                    } else {
-                        sidePanel->addItem(widget, icon, title);
+                    auto index = sidePanel->addItem(widget, title);
+                    sidePanel->setItemToolTip(index, title);
+                    if (!icon.isNull()) {
+                        sidePanel->setItemIcon(index, icon);
                     }
                 }
                 toggleSidePanelAction->setVisible(items.count() > 0);
