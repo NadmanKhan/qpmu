@@ -102,7 +102,11 @@ void PhasorMonitor::updateData(const Estimation &est)
         for (USize i = 0; i < CountSignals; ++i) {
             const auto &color = visualSettings.signalColors[i];
             for (auto colorLabel : m_colorLabels[i]) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
                 auto pixmap = colorLabel->pixmap();
+#else
+                auto pixmap = *colorLabel->pixmap();
+#endif
                 colorLabel->setPixmap(rectPixmap(color, pixmap.width(), pixmap.height()));
             }
             for (PlotState state : { Joint, Alone }) {
