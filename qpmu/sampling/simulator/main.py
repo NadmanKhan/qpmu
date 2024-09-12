@@ -1,5 +1,5 @@
 from sampling import AnalogSignal, ADC, Sample, TimeSyncedSamples
-from typing import Literal, Callable
+from typing import Literal, Callable, Union, Tuple
 import argparse
 import math
 import sys
@@ -10,8 +10,8 @@ WriterFuncMaker = Callable[[None], WriterFunc]
 
 
 def make_writer_maker(
-    adc: ADC, binary: bool = False, sockconfig: tuple[str, int, Literal["tcp", "udp"]] | None = None
-) -> tuple[WriterFuncMaker, socket.socket | None]:
+    adc: ADC, binary: bool = False, sockconfig: Union[Tuple[str, int, Literal["tcp", "udp"]], None] = None
+) -> Union[Tuple[WriterFuncMaker, socket.socket, None]]:
 
     assert isinstance(adc, ADC), "ADC must be an instance of ADC"
     assert isinstance(binary, bool), "Binary must be a boolean"

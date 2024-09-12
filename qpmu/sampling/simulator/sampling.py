@@ -1,4 +1,4 @@
-from typing import Literal, Iterable, NamedTuple
+from typing import Literal, Iterable, Union, Tuple
 from dataclasses import dataclass
 import math
 import random
@@ -85,8 +85,8 @@ class ADC:
         resolution_bits: int,
         sampling_rate_hz: int,
         signals: Iterable[AnalogSignal],
-        reference_voltages: Iterable[float] | None = None,
-        noises: Iterable[float] | None = None,
+        reference_voltages: Union[Iterable[float], None] = None,
+        noises: Union[Iterable[float], None] = None,
     ):
         assert isinstance(resolution_bits, int), "Resolution must be an integer"
         assert isinstance(sampling_rate_hz, int), "Sampling rate must be an integer"
@@ -139,7 +139,7 @@ class Sample:
     def __init__(
         self,
         sequence_num: int,
-        channel_values: tuple[int],
+        channel_values: Tuple[int],
         timestamp_us: int,
         timedelta_us: int,
     ):
