@@ -20,6 +20,7 @@
 #include <QComboBox>
 #include <QFormLayout>
 #include <QSizePolicy>
+#include <qnamespace.h>
 
 using namespace qpmu;
 #define QSL(s) QStringLiteral(s)
@@ -41,18 +42,24 @@ constexpr Float PhasorOffsets[2] = {
     (PhasorPlotWidth + InterPlotSpace + WaveformPlotWidth) / 2
 };
 
-void setLabelPixmap(QLabel *label, const QColor &color)
+Float diffAnglesRad(Float a, Float b)
 {
-    label->setPixmap(rectPixmap(color, 6, label->height()));
+    auto diff = a - b;
+    if (diff < -M_PI) {
+        diff += 2 * M_PI;
+    } else if (diff > M_PI) {
+        diff -= 2 * M_PI;
+    }
+    return diff;
 }
 
-Float diffAnglesDegree(Float a, Float b)
+Float diffAnglesDeg(Float a, Float b)
 {
     auto diff = a - b;
     if (diff < -180) {
-        diff += 360;
+        diff += 2 * 180;
     } else if (diff > 180) {
-        diff -= 360;
+        diff -= 2 * 180;
     }
     return diff;
 }
@@ -95,7 +102,8 @@ void PhasorMonitor::updateData(const Estimation &est)
         for (USize i = 0; i < CountSignals; ++i) {
             const auto &color = visualSettings.signalColors[i];
             for (auto colorLabel : m_colorLabels[i]) {
-                setLabelPixmap(colorLabel, color);
+                auto pixmap = colorLabel->pixmap();
+                colorLabel->setPixmap(rectPixmap(color, pixmap.width(), pixmap.height()));
             }
             for (PlotState state : { Joint, Alone }) {
                 auto phasorSeries = m_seriesList[state].phasors[i];
@@ -104,6 +112,14 @@ void PhasorMonitor::updateData(const Estimation &est)
                 phasorSeries->setColor(color);
                 waveformSeries->setColor(color);
                 connectorSeries->setColor(color);
+            }
+        }
+        for (SignalType type : { VoltageSignal, CurrentSignal }) {
+            auto currentTypedSignals = SignalsOfType[type];
+            for (USize i = 0; i < CountSignalPhases; ++i) {
+                auto color = visualSettings.signalColors[currentTypedSignals[i]];
+                auto newPixmap = circlePixmap(color, 10);
+                m_ctrl.visibility.checkSignalsOfType[type][i]->setIcon(QIcon(newPixmap));
             }
         }
     }
@@ -118,15 +134,18 @@ void PhasorMonitor::updateData(const Estimation &est)
 
     /// Get the amplitudes and phases of the phasors
     Float amplis[CountSignals];
-    Float phases[CountSignals];
+    Float phasesRad[CountSignals];
+    Float phasesDeg[CountSignals];
     for (USize i = 0; i < CountSignals; ++i) {
         const auto &calibData = calibSettings.data[i];
         const auto &phasor = est.phasors[i];
         auto ampli = calibData.slope * std::abs(phasor) + calibData.intercept;
-        auto phase = std::arg(phasor) * (180 / M_PI);
+        auto phaseRad = std::arg(phasor);
+        auto phaseDeg = phaseRad * 180 / M_PI; /// Convert to degrees
 
         amplis[i] = ampli;
-        phases[i] = phase;
+        phasesRad[i] = phaseRad;
+        phasesDeg[i] = phaseDeg;
     }
 
     /// Get the amplitude scale values
@@ -149,7 +168,8 @@ void PhasorMonitor::updateData(const Estimation &est)
 
     /// Calculate the normalized amplitudes and phases
     Float normAmplis[CountSignals];
-    Float normPhases[CountSignals];
+    Float normPhasesRad[CountSignals];
+    Float normPhasesDeg[CountSignals];
     bool ampliExceedsPlot = false;
     for (USize i = 0; i < CountSignals; ++i) {
         /// Normalized amplitude
@@ -162,27 +182,28 @@ void PhasorMonitor::updateData(const Estimation &est)
         ampliExceedsPlot = ampliNorm > 1 + 1e-9;
 
         /// Normalized phase; DO NOT FORGET TO CONVERT TO RADIANS
-        auto phaseNorm = phases[i];
+        auto phaseNormRad = phasesRad[i];
         if (TypeOfSignal[i] == VoltageSignal) {
             if (vPhaseRefId != -1) {
-                phaseNorm = diffAnglesDegree(phaseNorm, phases[vPhaseRefId]);
+                phaseNormRad = diffAnglesRad(phaseNormRad, phasesRad[vPhaseRefId]);
             }
         } else {
             if (iPhaseRefId != -1) {
-                phaseNorm = diffAnglesDegree(phaseNorm, phases[iPhaseRefId]);
+                phaseNormRad = diffAnglesRad(phaseNormRad, phasesRad[iPhaseRefId]);
             }
         }
-        phaseNorm *= M_PI / 180;
+        auto phaseNormDeg = phaseNormRad * 180 / M_PI; /// Convert to  degrees
 
         normAmplis[i] = ampliNorm;
-        normPhases[i] = phaseNorm;
+        normPhasesRad[i] = phaseNormRad;
+        normPhasesDeg[i] = phaseNormDeg;
     }
 
     for (USize i = 0; i < CountSignals; ++i) {
         /// Update series points
 
         auto ampli = normAmplis[i];
-        auto phase = normPhases[i];
+        auto phase = normPhasesRad[i];
 
         for (PlotState state : { Joint, Alone }) {
             auto &phasorPoints = m_seriesPointList[state].phasors[i];
@@ -263,10 +284,10 @@ void PhasorMonitor::updateData(const Estimation &est)
     { /// Update data labels
 
         for (USize i = 0; i < CountSignals; ++i) {
-            const auto &frequ = est.frequencies[i];
-            const auto &ampli = amplis[i];
-            const auto &phase =
-                    m_ctrl.phaseRef.checkApplyToTable->isChecked() ? normPhases[i] : phases[i];
+            const Float &frequ = est.frequencies[i];
+            const Float &ampli = amplis[i];
+            const Float &phase = m_ctrl.phaseRef.checkApplyToTable->isChecked() ? normPhasesDeg[i]
+                                                                                : phasesDeg[i];
             m_labels.ampli[i]->setText(QString("%1").arg(QString::number(ampli, 'f', 2)));
             m_labels.phase[i]->setText(QString("%1").arg(QString::number(phase, 'f', 2)));
             m_labels.frequ[i]->setText(QString("%1").arg(QString::number(frequ, 'f', 2)));
@@ -274,9 +295,9 @@ void PhasorMonitor::updateData(const Estimation &est)
 
         for (USize p = 0; p < CountSignalPhases; ++p) {
             const auto &[vId, iId] = SignalsOfPhase[p];
-            const auto vPhase = phases[vId];
-            const auto iPhase = phases[iId];
-            auto diff = diffAnglesDegree(vPhase, iPhase);
+            const auto vPhaseDeg = phasesDeg[vId];
+            const auto iPhaseDeg = phasesDeg[iId];
+            auto diff = diffAnglesDeg(vPhaseDeg, iPhaseDeg);
             m_labels.phaseDiff[p]->setText(QString("%1").arg(QString::number(diff, 'f', 2)));
         }
 
@@ -344,7 +365,7 @@ void PhasorMonitor::updateVisibility()
         }
 
     } else {
-        /// Show everything of state 0, hide everything of state 1
+        /// Show everything of state Joint, hide everything of state Alone
         for (PlotState state : { Joint, Alone }) {
             bucket[state == Joint].append(m_fakeAxesSeriesList[state].phasor);
             bucket[state == Joint].append(m_fakeAxesSeriesList[state].waveform);
@@ -360,13 +381,14 @@ void PhasorMonitor::updateVisibility()
         }
     }
 
-    for (bool visible : { 0, 1 }) {
-        for (auto series : bucket[visible]) {
-            series->setVisible(visible);
+    for (bool visibility : { 0, 1 }) {
+        for (auto series : bucket[visibility]) {
+            series->setVisible(visibility);
         }
     }
 
 #undef SIGNAL_CHECKED
+#undef SIGNAL_TYPE_CHECKED
 
     bucket[0].clear();
     bucket[1].clear();
@@ -715,11 +737,10 @@ void PhasorMonitor::createTable()
         label->setContentsMargins(QMargins(0, 0, 0, 0));
         label->raise();
         label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        label->setFixedWidth(75);
-        label->setTextFormat(Qt::RichText);
-        // make bold
+        label->setFixedWidth(65);
+        label->setTextFormat(Qt::PlainText);
         auto font = label->font();
-        font.setBold(true);
+        font.setWeight(QFont::DemiBold);
         label->setFont(font);
         return label;
     };
@@ -728,7 +749,11 @@ void PhasorMonitor::createTable()
         auto label = new QLabel(parent);
         label->setContentsMargins(QMargins(0, 0, 0, 0));
         label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        // label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        label->setTextFormat(Qt::RichText);
+        label->setScaledContents(true);
+        auto font = label->font();
+        font.setWeight(QFont::Thin);
+        label->setFont(font);
         return label;
     };
 
@@ -738,26 +763,28 @@ void PhasorMonitor::createTable()
 
         QLabel *colorLabel; // e.g. color square
         QLabel *ampliLabel; // e.g. "120.0"
-        QLabel *textLabel1; // e.g. "V ∠ "
+        QLabel *textLabel1; // e.g. " V"
         QLabel *phaseLabel; // e.g. "30.0"
-        QLabel *textLabel2; // e.g. "° @ "
+        QLabel *textLabel2; // e.g. " °"
         QLabel *frequLabel; // e.g. "50.0"
         QLabel *textLabel3; // e.g. " Hz"
 
-        layout->addWidget(colorLabel = makeDecorativeLabel(widget), 1);
-        layout->addWidget(ampliLabel = makeDataLabel(widget));
-        layout->addWidget(textLabel1 = makeDecorativeLabel(widget), 1);
-        layout->addWidget(phaseLabel = makeDataLabel(widget));
-        layout->addWidget(textLabel2 = makeDecorativeLabel(widget), 1);
-        layout->addWidget(frequLabel = makeDataLabel(widget));
-        layout->addWidget(textLabel3 = makeDecorativeLabel(widget), 1);
+        layout->addWidget(colorLabel = makeDecorativeLabel(widget));
+        layout->addWidget(ampliLabel = makeDataLabel(widget), 1);
+        layout->addWidget(textLabel1 = makeDecorativeLabel(widget));
+        layout->addWidget(phaseLabel = makeDataLabel(widget), 1);
+        layout->addWidget(textLabel2 = makeDecorativeLabel(widget));
+        layout->addWidget(frequLabel = makeDataLabel(widget), 1);
+        layout->addWidget(textLabel3 = makeDecorativeLabel(widget));
 
-        setLabelPixmap(colorLabel, visualSettings.signalColors[signalId]);
+        colorLabel->setPixmap(
+                rectPixmap(visualSettings.signalColors[signalId], 6, 0.7 * colorLabel->height()));
+        colorLabel->setScaledContents(false);
 
-        textLabel1->setText(QSL("<pre> <small>%1 ∠</small> </pre>")
+        textLabel1->setText(QSL("<pre><small> %1</small></pre>")
                                     .arg(UnitSymbolOfSignalType[TypeOfSignal[signalId]]));
-        textLabel2->setText(QSL("<pre><small> ° @</small> </pre>"));
-        textLabel3->setText(QSL("<pre> <small>Hz</small></pre>"));
+        textLabel2->setText(QSL("<pre><small> °</small></pre>"));
+        textLabel3->setText(QSL("<pre><small> Hz</small></pre>"));
 
         m_colorLabels[signalId].append(colorLabel);
         m_labels.ampli[signalId] = ampliLabel;
@@ -776,8 +803,8 @@ void PhasorMonitor::createTable()
             QLabel *phaseDiffLabel; // e.g. "15.0"
             QLabel *degreeLabel; // e.g. " °"
 
-            layout->addWidget(phaseDiffLabel = makeDataLabel(phaseDiffWidget));
-            layout->addWidget(degreeLabel = makeDecorativeLabel(phaseDiffWidget), 1);
+            layout->addWidget(phaseDiffLabel = makeDataLabel(phaseDiffWidget), 1);
+            layout->addWidget(degreeLabel = makeDecorativeLabel(phaseDiffWidget));
 
             degreeLabel->setText(QSL("<pre><small> °</small></pre>"));
             m_labels.phaseDiff[phase] = phaseDiffLabel;
@@ -893,7 +920,7 @@ QVector<SidePanelItem> PhasorMonitor::sidePanelItems() const
 
     items << SidePanelItem{ m_ctrl.visibility.box, "Visibility" };
     items << SidePanelItem{ m_ctrl.phaseRef.box, "Phase Reference" };
-    items << SidePanelItem{ m_ctrl.ampliScale.box, "Amplitude Scale" };
+    items << SidePanelItem{ m_ctrl.ampliScale.box, "Scale" };
 
     return items;
 }
