@@ -221,7 +221,7 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
             }
 
             { /// Reset window variables
-                m_sampleBufIdx = 0;
+                m_sampleBufIdx = m_sampleBuffer.size() - 1;
                 m_windowStartTimeUs = sample.timestampUs;
                 m_windowEndTimeUs = m_windowStartTimeUs + (USize)1e6;
             }
