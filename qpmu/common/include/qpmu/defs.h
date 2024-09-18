@@ -67,14 +67,14 @@ constexpr Signal SignalsOfType[CountSignalTypes][CountSignalPhases] = {
     { SignalVA, SignalVB, SignalVC }, { SignalIA, SignalIB, SignalIC }
 };
 constexpr Signal SignalId[CountSignals] = { SignalVA, SignalVB, SignalVC,
-                                              SignalIA, SignalIB, SignalIC };
+                                            SignalIA, SignalIB, SignalIC };
 
-/// @brief Time-synchronized sample obtained from the sampling module.
+/// @brief Time-stamped ADC sample vector obtained from the sampling module.
 struct Sample
 {
     /// Sequence number of the sample. This is a monotonically increasing number that is used to
     /// identify the order of the samples.
-    U64 seqNo = {};
+    U64 seq = {};
 
     /// Digitized signal samples be obtained from the ADC of the sampling module. The order is as
     /// per `SignalNames`.

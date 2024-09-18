@@ -177,6 +177,24 @@ class Sample:
             timedelta_us=self.timedelta_us,
         )
 
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "Sample":
+        values = struct.unpack(cls.STRUCT_FORMAT, data)
+        sequence_num = values[0]
+        channel_values = values[1:7]
+        timestamp_us = values[7]
+        timedelta_us = values[8]
+        return cls(sequence_num, channel_values, timestamp_us, timedelta_us)
+
+    @classmethod
+    def from_str(cls, data: str) -> "Sample":
+        values = data.split(",")
+        sequence_num = int(values[0].split("=")[1])
+        channel_values = tuple(int(value.split("=")[1]) for value in values[1:7])
+        timestamp_us = int(values[7].split("=")[1])
+        timedelta_us = int(values[8].split("=")[1])
+        return cls(sequence_num, channel_values, timestamp_us, timedelta_us)
+
 
 class TimeSyncedSamples:
 

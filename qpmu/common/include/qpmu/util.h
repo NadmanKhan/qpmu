@@ -15,13 +15,12 @@ std::string phasorPolarToString(const Complex &phasor);
 std::string estimationCsvHeader();
 std::string toCsv(const Estimation &estimation);
 std::string toString(const Estimation &estimation);
-bool parseSample(Sample &out_sample, const char *const s);
+Sample parseSample(const char *const s, std::string *errorOut = nullptr);
 std::string sampleCsvHeader();
 std::string toCsv(const Sample &sample);
 std::string toString(const Sample &sample);
 
-std::pair<qpmu::Float, qpmu::Float> linearRegression(const std::vector<double> &x,
-                                                     const std::vector<double> &y);
+std::pair<Float, Float> linearRegression(const std::vector<Float> &x, const std::vector<Float> &y);
 
 } // namespace qpmu
 

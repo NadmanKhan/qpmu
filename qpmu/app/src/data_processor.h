@@ -8,10 +8,58 @@
 
 #include <QThread>
 #include <QIODevice>
+#include <QAbstractSocket>
+#include <QProcess>
 #include <QMutex>
+#include <QMutexLocker>
 
 #include <functional>
 #include <array>
+
+class Sampler : public QObject
+{
+    Q_OBJECT
+public:
+    enum SamplingStatus {
+        Enabled = 1 << 0,
+        Connected = 1 << 1,
+        DataReading = 1 << 2,
+        DataValid = 1 << 3,
+    };
+
+    Sampler() = default;
+    Sampler(const SamplerSettings &settings);
+    virtual ~Sampler()
+    {
+        if (m_device) {
+            m_device->close();
+        }
+    }
+
+    static QString stateString(int state)
+    {
+        return QStringLiteral("%1, %2, %3, %4")
+                .arg(bool(state & Enabled) ? "Enabled" : "")
+                .arg(bool(state & Connected) ? "Connected" : "")
+                .arg(bool(state & DataReading) ? "DataReading" : "")
+                .arg(bool(state & DataValid) ? "DataValid" : "");
+    }
+
+    SamplerSettings settings() const { return m_settings; }
+    void work(qpmu::Sample &outSample);
+    int state() const { return m_state; }
+
+private:
+    SamplerSettings m_settings;
+    QIODevice *m_device = nullptr;
+    int m_state = 0;
+
+    std::function<bool()> m_waitForConnected = nullptr;
+    std::function<bool(qpmu::Sample &)> m_readSample = nullptr;
+
+    int m_connectionWaitTime = 3000;
+    int m_readWaitTime = 1000;
+};
 
 class DataProcessor : public QThread
 {
@@ -21,30 +69,31 @@ public:
     explicit DataProcessor();
 
     void run() override;
-    const qpmu::Estimation &lastEstimation();
-    const qpmu::Sample &lastSample();
 
-signals:
-    void sampleSourceConnectionChanged(bool isConnected);
+    int samplerState()
+    {
+        QMutexLocker locker(&m_mutex);
+        return m_sampler->state();
+    }
+    const qpmu::Estimation &lastEstimation()
+    {
+        QMutexLocker locker(&m_mutex);
+        return m_estimator->lastEstimation();
+    }
+    const qpmu::Sample &lastSample()
+    {
+        QMutexLocker locker(&m_mutex);
+        return m_estimator->lastSample();
+    }
 
-public slots:
-    void updateSampleSource();
+    void updateSamplerConnection();
 
 private:
     QMutex m_mutex;
     qpmu::PhasorEstimator *m_estimator = nullptr;
 
-    SampleSourceSettings m_sampleSourcesettings;
-
-    struct
-    {
-        bool isConnected = false;
-        bool isDataBinary = true;
-        QIODevice *device = nullptr;
-        QIODevice *newDevice = nullptr;
-        std::function<void()> startNewDevice = nullptr;
-        std::function<bool()> isDeviceReadyToRead = []() { return false; };
-    } sampler;
+    Sampler *m_sampler = nullptr;
+    Sampler *m_newSampler = nullptr;
 };
 
 #endif // QPMU_APP_DATA_PROCESSOR_H

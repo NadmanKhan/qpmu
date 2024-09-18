@@ -1,29 +1,29 @@
 from sampling import AnalogSignal, ADC, Sample, TimeSyncedSamples
-from typing import Literal, Callable, Union, Tuple
+from typing import Literal, Callable, Union, Tuple, Iterable
 import argparse
 import math
 import sys
 import socket
 
 WriterFunc = Callable[[Sample], None]
-WriterFuncMaker = Callable[[None], WriterFunc]
+SocketConfig = Union[Tuple[int, Literal["tcp", "udp"]], None]
 
 
-def make_writer_maker(
-    adc: ADC, binary: bool = False, sockconfig: Union[Tuple[str, int, Literal["tcp", "udp"]], None] = None
-) -> Union[Tuple[WriterFuncMaker, socket.socket, None]]:
+def make_writer(
+    adc: ADC,
+    binary: bool = False,
+    sockconfig: SocketConfig = None,
+) -> Tuple[WriterFunc, Iterable[socket.socket]]:
 
     assert isinstance(adc, ADC), "ADC must be an instance of ADC"
     assert isinstance(binary, bool), "Binary must be a boolean"
     if sockconfig is not None:
         assert isinstance(sockconfig, tuple), "Sockconfig must be a tuple"
-        assert len(sockconfig) == 3, "Sockconfig must have 3 elements"
-        assert isinstance(sockconfig[0], str), "Host must be a string"
-        assert isinstance(sockconfig[1], int), "Port must be an integer"
-        assert isinstance(sockconfig[2], str), "Socktype must be a string"
-        assert sockconfig[0] != "", "Host must not be empty"
-        assert 0 <= sockconfig[1] <= 65535, "Port must be between 1 and 65535"
-        assert sockconfig[2] in ["tcp", "udp"], "Socktype must be tcp or udp"
+        assert len(sockconfig) == 2, "Sockconfig must have 3 elements"
+        assert isinstance(sockconfig[0], int), "Port must be an integer"
+        assert isinstance(sockconfig[1], str), "Socktype must be a string"
+        assert 0 <= sockconfig[0] <= 65535, "Port must be between 1 and 65535"
+        assert sockconfig[1] in ["tcp", "udp"], "Socktype must be tcp or udp"
 
     if sockconfig is None:
         if binary:
@@ -36,73 +36,80 @@ def make_writer_maker(
             def write(sample: Sample) -> None:
                 print(str(sample))
 
-        return (lambda: lambda sample: write(sample)), None
+        return (lambda sample: write(sample)), []
 
     # If sockconfig is not None
 
-    (host, port, socktype) = sockconfig
-    addr = (host, port)
-    tobytes: Callable[[Sample], bytes] = (
-        (lambda sample: bytes(sample)) if binary else (lambda sample: str(sample).encode())
-    )
+    if binary:
 
-    sock: socket.socket = None
+        def tobytes(sample: Sample) -> bytes:
+            return bytes(sample)
+
+    else:
+
+        def tobytes(sample: Sample) -> bytes:
+            return str(sample).encode()
+
+    (port, socktype) = sockconfig
 
     if socktype == "tcp":
+        # make a tcp server
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(("", port))
+        sock.listen(1)
+        print(f"Listening on port={port} using {socktype}", file=sys.stderr)
+        print(f"Socket: {sock}", file=sys.stderr)
 
-        def make_writer() -> WriterFunc:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        conn, addr = sock.accept()
+        print(f"Accepted connection from {addr}", file=sys.stderr)
 
-            sock.connect(addr)
+        def write(sample: Sample) -> None:
+            try:
+                conn.sendall(tobytes(sample))
+                print(f'Sent \n"{sample}"\n to sock={sock}, addr={addr}', file=sys.stderr)
+            except OSError as e:
+                print(f"Error during `sendall` on conn={conn}: {e}; addr={addr}", file=sys.stderr)
 
-            print(f"Connecting to {host}:{port} using {socktype}", file=sys.stderr)
-            print(f"Socket: {sock}", file=sys.stderr)
-
-            def write(sample: Sample) -> None:
-                try:
-                    sock.sendall(tobytes(sample))
-                    print(f'Sent \n"{sample}"\n to sock={sock}, addr={addr}', file=sys.stderr)
-                except OSError as e:
-                    print(f"Error during `sendall` on sock={sock}: {e}; addr={addr}", file=sys.stderr)
-
-            return write
+        return write, [sock, conn]
 
     else:  # socktype == "udp"
+        # make a udp server
 
-        def make_writer() -> WriterFunc:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(("", port))
+        print(f"Listening on port={port} using {socktype}", file=sys.stderr)
+        print(f"Socket: {sock}", file=sys.stderr)
 
-            print(f"Connecting to {host}:{port} using {socktype}", file=sys.stderr)
-            print(f"Socket: {sock}", file=sys.stderr)
+        def write(sample: Sample) -> None:
+            try:
+                sock.sendto(tobytes(sample), ("", port))
+                print(f'Sent \n"{sample}"\n to sock={sock}, port={port}', file=sys.stderr)
+            except OSError as e:
+                print(f"Error during `sendto` on sock={sock}, port={port}: {e}", file=sys.stderr)
 
-            def write(sample: Sample) -> None:
-                try:
-                    sock.sendto(tobytes(sample), addr)
-                    print(f'Sent \n"{sample}"\n to sock={sock}, addr={addr}', file=sys.stderr)
-                except OSError as e:
-                    print(f"Error during `sendto` on sock={sock}: {e}; addr={addr}", file=sys.stderr)
-
-            return write
-
-    return make_writer, sock
+        return write, [sock]
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the ADC simulation")
     parser.add_argument("--no-gui", default=False, action="store_true", help="Run without GUI")
-    parser.add_argument("--sampling-rate", "-s", type=int, default=1200, help="Sampling rate in Hz")
+    parser.add_argument("--sampling-rate", "-r", type=int, default=1200, help="Sampling rate in Hz")
     parser.add_argument("--bits", "-b", type=int, default=8, help="ADC resolution in bits")
     parser.add_argument("--noise", "-z", type=float, default=0.25, help="Noise")
     parser.add_argument("--frequency", "-f", type=float, default=50, help="Signal frequency in Hz")
     parser.add_argument("--voltage", "-v", type=float, default=1, help="Maximum voltage in volts")
     parser.add_argument("--current", "-i", type=float, default=1, help="Maximum current in amperes")
     parser.add_argument("--phasediff", "-p", type=float, default=15, help="V-I phase difference in degrees")
-    parser.add_argument("--host", "-a", type=str, default="127.0.0.1", help="Host address of recipient socket")
-    parser.add_argument("--port", "-n", type=int, default=12345, help="Port number of recipient socket")
-    parser.add_argument(
-        "--socktype", "-t", type=str, default="none", required=False, help="Socket type (tcp or udp or none)"
-    )
     parser.add_argument("--binary", default=False, action="store_true", help="Send binary data")
+    parser.add_argument("--port", "-n", type=int, default=12345, help="Port number of client socket")
+    parser.add_argument(
+        "--socktype",
+        "-s",
+        type=str,
+        default="none",
+        required=False,
+        help="Socket type (tcp or udp or none)",
+    )
     parser.add_help = True
 
     args = parser.parse_args()
@@ -153,24 +160,23 @@ if __name__ == "__main__":
         noises=[args.noise] * len(signals),
     )
 
-    sockconfig = None
+    sockconfig: SocketConfig = None
     if args.socktype in ["tcp", "udp"]:
-        sockconfig = (args.host, args.port, args.socktype)
+        sockconfig = (int(args.port), str(args.socktype))
 
-    writer_maker, sock = make_writer_maker(adc, args.binary, sockconfig=sockconfig)
+    write, socks = make_writer(adc, binary=args.binary, sockconfig=sockconfig)
 
     try:
-        if args.no_gui:
-            write = writer_maker()
-            for sample in TimeSyncedSamples(adc):
-                write(sample)
-
-        else:
+        if not args.no_gui:
+            # TODO: Run the GUI
             pass
+
+        for sample in TimeSyncedSamples(adc):
+            write(sample)
 
     except Exception as e:
         print(f"Error: {e}")
 
     finally:
-        if sock is not None:
+        for sock in socks:
             sock.close()

@@ -33,17 +33,17 @@ QStringList parsePrcoessString(const QString &processString)
     return tokens;
 }
 
-void SampleSourceSettings::load(QSettings settings)
+void SamplerSettings::load(QSettings settings)
 {
     settings.beginGroup(QSL("sample_source"));
 
     auto connString = settings.value(QSL("connection"), "none").toString();
     if (connString == QSL("socket")) {
-        connection = SocketConnection;
+        connection = Socket;
     } else if (connString == QSL("process")) {
-        connection = ProcessConnection;
+        connection = Process;
     } else {
-        connection = NoConnectioin;
+        connection = None;
     }
 
     isDataBinary = settings.value(QSL("is_data_binary"), true).toBool();
@@ -69,9 +69,9 @@ void SampleSourceSettings::load(QSettings settings)
     settings.endGroup();
 }
 
-bool SampleSourceSettings::save() const
+bool SamplerSettings::save() const
 {
-    if (!isValid()) {
+    if (!validate().isEmpty()) {
         return false;
     }
     QSettings settings;
@@ -86,9 +86,9 @@ bool SampleSourceSettings::save() const
     settings.setValue(QSL("process"),
                       QSL("%1 %2").arg(processConfig.prog).arg(processConfig.args.join(QSL(" "))));
 
-    if (connection == SocketConnection) {
+    if (connection == Socket) {
         settings.setValue(QSL("connection"), QSL("socket"));
-    } else if (connection == ProcessConnection) {
+    } else if (connection == Process) {
         settings.setValue(QSL("connection"), QSL("process"));
     } else {
         settings.setValue(QSL("connection"), QSL("none"));
@@ -100,14 +100,18 @@ bool SampleSourceSettings::save() const
     return true;
 }
 
-bool SampleSourceSettings::isValid() const
+QString SamplerSettings::validate() const
 {
-    if (connection == SocketConnection) {
-        return !socketConfig.host.isEmpty() && !QHostAddress(socketConfig.host).isNull();
-    } else if (connection == ProcessConnection) {
-        return QFileInfo(processConfig.prog).isExecutable();
+    if (connection == Socket) {
+        if (QHostAddress(socketConfig.host).isNull()) {
+            return "Invalid host address";
+        }
+    } else if (connection == Process) {
+        if (!QFileInfo(processConfig.prog).isExecutable()) {
+            return "Invalid program path; file not found or not executable";
+        }
     }
-    return false;
+    return "";
 }
 
 // --------------------------------------------------------
@@ -132,19 +136,9 @@ void CalibrationSettings::load(QSettings settings)
     settings.endGroup();
 }
 
-bool CalibrationSettings::isValid() const
-{
-    for (qpmu::USize i = 0; i < qpmu::CountSignals; ++i) {
-        if (data[i].slope == 0.0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool CalibrationSettings::save() const
 {
-    if (!isValid()) {
+    if (!validate().isEmpty()) {
         return false;
     }
     QSettings settings;
@@ -173,19 +167,21 @@ void VisualisationSettings::load(QSettings settings)
     settings.endGroup();
 }
 
-bool VisualisationSettings::isValid() const
+QString VisualisationSettings::validate() const
 {
+    QStringList errors;
     for (qpmu::USize i = 0; i < qpmu::CountSignals; ++i) {
         if (!signalColors[i].isValid()) {
-            return false;
+            errors << QSL("Invalid color for %1: %2")
+                              .arg(qpmu::NameOfSignal[i], signalColors[i].name());
         }
     }
-    return true;
+    return errors.join('\n');
 }
 
 bool VisualisationSettings::save() const
 {
-    if (!isValid()) {
+    if (!validate().isEmpty()) {
         return false;
     }
     QSettings settings;

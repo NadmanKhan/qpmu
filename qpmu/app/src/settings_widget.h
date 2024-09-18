@@ -27,13 +27,11 @@ signals:
     void visualisationSettingsChanged(const VisualisationSettings &settings);
 
 private:
-    void createSampleSourcePage();
-    void createCalibrationPage();
-    QWidget *sampleSourcePage(const SampleSourceSettings &settings);
+    QWidget *samplerSettingsPage(const SamplerSettings &settings);
     QWidget *calibrationWidget(const qpmu::USize signalIndex,
                                const CalibrationSettings::DataPerSignal &signalData);
 
-    SampleSourceSettings m_oldSampleSourceSettings;
+    SamplerSettings m_oldSamplerSettings;
     CalibrationSettings m_oldCalibrationSettings;
 };
 

@@ -229,7 +229,7 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
     }
 
     // Update the indexes
-    m_sampleBufIdx += 1;
+    m_sampleBufIdx = (m_sampleBufIdx + 1) % m_sampleBuffer.size();
     m_estimationBufIdx = (m_estimationBufIdx + 1) % m_estimationBuffer.size();
 }
 

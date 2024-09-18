@@ -118,8 +118,11 @@ int main(int argc, char *argv[])
     if (inputFormat == FormatReadableStr) {
         std::string line;
         while (std::getline(std::cin, line)) {
-            if (!parseSample(sample, line.c_str())) {
+            std::string error;
+            sample = parseSample(line.c_str(), &error);
+            if (!error.empty()) {
                 cerr << "Failed to parse line: " << line << '\n';
+                cerr << "Error: " << error << '\n';
                 return 1;
             }
             estimator.updateEstimation(sample);

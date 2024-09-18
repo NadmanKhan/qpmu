@@ -20,244 +20,105 @@
 
 using namespace qpmu;
 
+Sampler::Sampler(const SamplerSettings &settings) : m_settings(settings)
+{
+    if (m_settings.connection == SamplerSettings::Socket) {
+        QAbstractSocket *socket;
+        if (m_settings.socketConfig.socketType == SamplerSettings::TcpSocket)
+            socket = new QTcpSocket(this);
+        else
+            socket = new QUdpSocket(this);
+        m_device = socket;
+        socket->connectToHost(m_settings.socketConfig.host, m_settings.socketConfig.port);
+        m_waitForConnected = [=] { return socket->waitForConnected(m_connectionWaitTime); };
+    } else if (m_settings.connection == SamplerSettings::Process) {
+        auto process = new QProcess(this);
+        m_device = process;
+        process->setProgram(m_settings.processConfig.prog);
+        process->setArguments(m_settings.processConfig.args);
+        process->start(QProcess::ReadOnly);
+        m_waitForConnected = [=] { return process->waitForStarted(m_connectionWaitTime); };
+    }
+
+    if (settings.connection != SamplerSettings::None) {
+        if (settings.isDataBinary) {
+            m_readSample = [this](qpmu::Sample &sample) {
+                auto bytesRead = m_device->read((char *)&sample, sizeof(Sample));
+                return (bytesRead == sizeof(Sample));
+            };
+        } else {
+            m_readSample = [this](qpmu::Sample &sample) {
+                char line[1000];
+                bool ok = true;
+                if (m_device->readLine(line, sizeof(line)) > 0) {
+                    std::string error;
+                    sample = parseSample(line, &error);
+                    if (!error.empty()) {
+                        ok = false;
+                        qInfo() << "Error parsing sample: " << error.c_str();
+                        qInfo() << "Sample line:   " << line;
+                        qInfo() << "Parsed sample: " << toString(sample).c_str();
+                    }
+                }
+                return ok;
+            };
+        }
+    }
+}
+
+void Sampler::work(qpmu::Sample &outSample)
+{
+    int newState = 0;
+    /// Check if enabled
+    newState |= (Enabled * bool(m_settings.connection != SamplerSettings::None));
+    /// Check if connected
+    newState |= (Connected * bool((newState & Enabled) && m_waitForConnected()));
+    /// Check if reading
+    newState |= (DataReading
+                 * bool((newState & Connected) && m_device->waitForReadyRead(m_readWaitTime)));
+    /// Check if valid
+    newState |= (DataValid * bool((newState & DataReading) && m_readSample(outSample)));
+    m_state = newState;
+}
+
 DataProcessor::DataProcessor() : QThread()
 {
-    /// Initialize the Estimator object
-
     m_estimator = new PhasorEstimator(50, 1200);
-
-    m_sampleSourcesettings.load();
-
-    updateSampleSource();
+    updateSamplerConnection();
 }
 
-const Estimation &DataProcessor::lastEstimation()
+void DataProcessor::updateSamplerConnection()
 {
+    SamplerSettings newSettings;
+    newSettings.load();
+    auto newSampler = new Sampler(newSettings);
+
     QMutexLocker locker(&m_mutex);
-    return m_estimator->lastEstimation();
-}
-
-const Sample &DataProcessor::lastSample()
-{
-    QMutexLocker locker(&m_mutex);
-    return m_estimator->lastSample();
-}
-
-void DataProcessor::updateSampleSource()
-{
-    if (!m_sampleSourcesettings.isValid()) {
-        // qCritical() << "Invalid sample source settings";
-        // return;
-    }
-
-    using namespace qpmu;
-
-    QIODevice *newDevice = nullptr;
-    std::function<void()> startNewDevice = nullptr;
-    std::function<bool()> isNewDeviceReadyToRead = nullptr;
-
-    if (m_sampleSourcesettings.connection == SampleSourceSettings::SocketConnection) {
-
-        QAbstractSocket *sock;
-        if (m_sampleSourcesettings.socketConfig.socketType == SampleSourceSettings::TcpSocket) {
-            sock = new QTcpSocket();
-        } else if (m_sampleSourcesettings.socketConfig.socketType
-                   == SampleSourceSettings::UdpSocket) {
-            sock = new QUdpSocket();
-        } else {
-            qFatal("Invalid socket type");
-        }
-
-        /// Set new device
-        newDevice = sock;
-
-        /// Set the startNewDevice function
-        startNewDevice = [=] {
-            qDebug() << "Connecting to" << m_sampleSourcesettings.socketConfig.host
-                     << m_sampleSourcesettings.socketConfig.port << "using" << sock->socketType();
-
-            sock->connectToHost(m_sampleSourcesettings.socketConfig.host,
-                                m_sampleSourcesettings.socketConfig.port);
-
-            qDebug() << "Connected to" << sock->peerName() << "on port" << sock->peerPort()
-                     << "using" << sock->socketType();
-        };
-
-        /// Set the newDeviceReadyToRead function
-        isNewDeviceReadyToRead = [sock]() -> bool {
-            if (!sock) {
-                return false;
-            }
-
-            /// Connect to the host if not already connected
-            qDebug() << "... waiting for" << sock->socketType() << "socket to be connected ...";
-            if (!sock->waitForConnected(3000)) {
-                // qCritical() << "Failed to connect to the" << sock->socketType() << "socket";
-                // qCritical() << "🔴 Socket error:" << sock->errorString();
-                // qCritical() << "❔ Socket state:" << sock->state();
-                return false;
-            }
-            // qDebug() << "🟢";
-            // qDebug() << "❔ Socket state:" << sock->state();
-
-            /// Read the data from the socket when ready
-            // qDebug() << "... waiting for data from the" << sock->socketType() << "socket ...";
-            if (!sock->waitForReadyRead(3000)) {
-                // qCritical() << "Failed to receive data from the" << sock->socketType() <<
-                // "socket"; qCritical() << "🔴 Socket error:" << sock->errorString(); qCritical() <<
-                // "❔ Socket state:" << sock->state();
-                return false;
-            }
-            // qDebug() << "🟢";
-            // qDebug() << "❔ Socket state:" << sock->state();
-
-            return true;
-        };
-
-    } else if (m_sampleSourcesettings.connection == SampleSourceSettings::ProcessConnection) {
-
-        auto process = new QProcess();
-
-        /// Set new device
-        newDevice = process;
-
-        /// Set the startNewDevice function
-        startNewDevice = [=] {
-            process->setProgram(m_sampleSourcesettings.processConfig.prog);
-            process->setArguments(m_sampleSourcesettings.processConfig.args);
-            qDebug() << "Starting new device: Starting the process"
-                     << m_sampleSourcesettings.processConfig.prog
-                     << m_sampleSourcesettings.processConfig.args;
-            process->start(QProcess::ReadOnly);
-        };
-
-        /// Set the newDeviceReadyToRead function
-        isNewDeviceReadyToRead = [process]() -> bool {
-            if (!process) {
-                return false;
-            }
-
-            /// Start the process if not already started
-            // qDebug() << "... waiting for process to start ...";
-            if (!process->waitForStarted(3000)) {
-                // qCritical() << "Failed to start the process";
-                // qCritical() << "🔴 Process error:" << process->errorString();
-                // qCritical() << "❔ Process state:" << process->state();
-                return false;
-            }
-            // qDebug() << "🟢";
-            // qDebug() << "❔ Process state:" << process->state();
-
-            /// Read the data from the process when ready
-            // qDebug() << "... waiting for data from the process ...";
-            if (!process->waitForReadyRead(3000)) {
-                // qCritical() << "Failed to receive data from the process";
-                // qCritical() << "🔴 Process error:" << process->errorString();
-                // qCritical() << "❔ Process state:" << process->state();
-                return false;
-            }
-            // qDebug() << "🟢";
-            // qDebug() << "❔ Process state:" << process->state();
-
-            return true;
-        };
-    }
-
-    if (newDevice) {
-        QMutexLocker locker(&m_mutex);
-        std::swap(sampler.newDevice, newDevice);
-        std::swap(sampler.startNewDevice, startNewDevice);
-        std::swap(sampler.isDeviceReadyToRead, isNewDeviceReadyToRead);
-        sampler.isDataBinary = m_sampleSourcesettings.isDataBinary;
-        sampler.newDevice->moveToThread(this);
-        qDebug() << "Sample source updated";
-
-    } else {
-        qCritical() << "Failed to create a new sample source device";
-    }
+    m_newSampler = newSampler;
+    /// `moveToThread` must be called from the thread where the object was
+    /// created, so we do it here
+    m_newSampler->moveToThread(this); /// Move the new sampler to `this`, a `QThread` object
 }
 
 void DataProcessor::run()
 {
-    char *line = nullptr;
-    qint64 lineLength;
-    bool isSampleObtained = false;
+    Sample sample;
 
     while (true) {
-        if (m_sampleSourcesettings.connection == SampleSourceSettings::NoConnectioin) {
-            if (sampler.isConnected) {
-                sampler.isConnected = false;
-                emit sampleSourceConnectionChanged(false);
+        if (m_newSampler) {
+            {
+                QMutexLocker locker(&m_mutex);
+                std::swap(m_sampler, m_newSampler);
             }
-            qWarning() << "Connection is turned off, sleeping for a while";
-            msleep(100);
-            continue;
+            delete m_newSampler;
+            m_newSampler = nullptr;
         }
 
-        if (sampler.startNewDevice) { /// Start the device if it is not already started
-            qDebug() << "Starting the device";
-            if (sampler.device && sampler.device->isOpen()) {
-                /// Close the old device first
-                qDebug() << "But first, closing the old device";
-                sampler.device->deleteLater();
-                sampler.device->close();
+        if (m_sampler) {
+            m_sampler->work(sample);
+            if (m_sampler->state() & Sampler::DataValid) {
+                m_estimator->updateEstimation(sample);
             }
-
-            /// Start the new device and unset the startDevice function
-            sampler.device = sampler.newDevice;
-            sampler.startNewDevice();
-            sampler.startNewDevice = nullptr;
-        }
-
-        if (sampler.isDeviceReadyToRead && sampler.isDeviceReadyToRead()) {
-            if (!sampler.isConnected) {
-                sampler.isConnected = true;
-                emit sampleSourceConnectionChanged(true);
-            }
-
-            // qDebug() << "Sample source is ready for read";
-
-            /// If he sample source is ready with for read, then read the sample
-            isSampleObtained = false;
-            Sample sample;
-
-            if (sampler.isDataBinary) {
-                /// If the sample source is binary, read the sample directly
-                if (sampler.device->read((char *)&sample, sizeof(Sample)) == sizeof(Sample)) {
-                    isSampleObtained = true;
-                }
-            } else {
-                /// Otherwise, read the sample as a string and parse it
-                if ((lineLength = sampler.device->readLine(line, 1000)) > 0) {
-                    isSampleObtained = parseSample(sample, line);
-                }
-            }
-
-            if (isSampleObtained) {
-                /// If the sample is obtained, update the estimation and emit the signals
-                Estimation estimation;
-                {
-                    QMutexLocker locker(&m_mutex);
-                    m_estimator->updateEstimation(sample);
-                    estimation = m_estimator->lastEstimation();
-                }
-
-                // qDebug() << "Sample obtained";
-                // qDebug() << QString::fromStdString(toString(sample));
-
-            } else {
-                qCritical() << "Failed to obtain a sample";
-            }
-
-        } else {
-            if (sampler.isConnected) {
-                sampler.isConnected = false;
-                emit sampleSourceConnectionChanged(false);
-            }
-
-            qWarning() << "Sample source is not ready for read, sleeping for a while";
-
-            msleep(100);
         }
     }
 }

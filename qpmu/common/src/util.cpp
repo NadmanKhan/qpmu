@@ -27,7 +27,7 @@ std::string phasorPolarToString(const Complex &phasor)
 std::string toString(const Sample &sample)
 {
     std::stringstream ss;
-    ss << "seq_no=" << sample.seqNo << ',' << '\t';
+    ss << "seq=" << sample.seq << ',' << '\t';
     for (USize i = 0; i < CountSignals; ++i) {
         ss << "ch" << i << "=" << std::setw(4) << sample.channels[i] << ", ";
     }
@@ -55,7 +55,7 @@ std::string toString(const Estimation &est)
 std::string sampleCsvHeader()
 {
     std::string header;
-    header += "seq_no,";
+    header += "seq,";
     for (USize i = 0; i < CountSignals; ++i) {
         header += "ch" + std::to_string(i) + ',';
     }
@@ -80,17 +80,22 @@ std::string estimationCsvHeader()
     return header;
 }
 
-bool parseSample(Sample &out_sample, const char *const s)
+/// Parse a sample from a string.
+/// See `toString(const Sample&)` for the expected format.
+Sample parseSample(const char *const s, std::string *errorOut)
 {
-    U64 *field_ptr = &out_sample.seqNo;
+    U64 sampleVector[CountSignals + 3] = { 0 }; // seq, (channels * 6), timestamp, timeDelta
     U64 value = 0;
-    bool reading_value = false;
+    bool readingValue = false;
+    std::string error;
 
-    for (const char *p = s; *p != '\0'; ++p) {
-        char c = *p;
+    ISize index = 0;
+    const char *charPtr = s;
+    while (index < 9 && (*charPtr && *charPtr != '\n')) { // Read until end or newline
+        const char &c = *charPtr++;
         switch (c) {
-        case '=':
-            reading_value = true;
+        case '=': // End of field's key, start of field's value
+            readingValue = true;
             break;
         case '0':
         case '1':
@@ -102,27 +107,41 @@ bool parseSample(Sample &out_sample, const char *const s)
         case '7':
         case '8':
         case '9':
-            value = (value * 10) + reading_value * (c - '0');
+            value = (value * 10) + readingValue * (c - '0');
             break;
-        case ',':
-        case '\n':
-            *field_ptr++ = value;
+        case ',': // End of field's value, start of NEXT field's key
+            sampleVector[index] = value;
+            ++index;
             value = 0;
 
-            if (!reading_value)
-                return false;
-            reading_value = false;
-            break;
+            if (!readingValue) {
+                error = "Unexpected comma";
+                break;
+            }
+            readingValue = false;
         }
     }
 
-    return true;
+    Sample sample;
+
+    if (error.empty()) {
+        U64 *fieldPtr = &sample.timeDeltaUs; /// Iterate in reverse order
+        for (--index; index >= 0; --index) {
+            *fieldPtr = sampleVector[index];
+            --fieldPtr; // Move to the previous field
+        }
+    }
+
+    if (errorOut) {
+        *errorOut = error;
+    }
+    return sample;
 }
 
 std::string toCsv(const Sample &sample)
 {
     std::string str;
-    str += std::to_string(sample.seqNo);
+    str += std::to_string(sample.seq);
     for (size_t i = 0; i < CountSignals; ++i) {
         str += std::to_string(sample.channels[i]);
         str += ',';
@@ -152,26 +171,24 @@ std::string toCsv(const Estimation &est)
     return str;
 }
 
-std::pair<qpmu::Float, qpmu::Float> linearRegression(const std::vector<double> &x,
-                                                     const std::vector<double> &y)
+std::pair<Float, Float> linearRegression(const std::vector<Float> &x, const std::vector<Float> &y)
 {
-    using namespace qpmu;
     assert(x.size() == y.size());
     assert(x.size() > 0);
 
-    Float x_mean = std::accumulate(x.begin(), x.end(), (Float)(0.0)) / x.size();
-    Float y_mean = std::accumulate(y.begin(), y.end(), (Float)(0.0)) / y.size();
+    Float xMean = std::accumulate(x.begin(), x.end(), (Float)(0.0)) / x.size();
+    Float yMean = std::accumulate(y.begin(), y.end(), (Float)(0.0)) / y.size();
 
     Float numerator = 0.0;
     Float denominator = 0.0;
 
     for (USize i = 0; i < x.size(); ++i) {
-        numerator += (x[i] - x_mean) * (y[i] - y_mean);
-        denominator += (x[i] - x_mean) * (x[i] - x_mean);
+        numerator += (x[i] - xMean) * (y[i] - yMean);
+        denominator += (x[i] - xMean) * (x[i] - xMean);
     }
 
     Float m = denominator ? numerator / denominator : 0.0;
-    Float b = y_mean - (m * x_mean);
+    Float b = yMean - (m * xMean);
 
     return { m, b }; // Return slope (m) and intercept (b)
 }

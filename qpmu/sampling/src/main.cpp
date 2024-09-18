@@ -137,8 +137,11 @@ int main(int argc, char *argv[])
     vector<string> lines;
     string line;
     while (std::getline(file, line)) {
-        if (!parseSample(sample, line.c_str())) {
+        string error;
+        sample = parseSample(line.c_str(), &error);
+        if (!error.empty()) {
             cerr << "Failed to parse line: " << line << '\n';
+            cerr << "Error: " << error << '\n';
             return 1;
         }
         samples.push_back(sample);
@@ -172,13 +175,13 @@ int main(int argc, char *argv[])
     }
 
     auto lastSample = samples[0];
-    lastSample.seqNo = 0;
+    lastSample.seq = 0;
     lastSample.timestampUs = std::chrono::duration_cast<std::chrono::microseconds>(
                                      std::chrono::system_clock::now().time_since_epoch())
                                      .count();
     for (size_t i = 1;; ++i) {
         auto sample = samples[i % samples.size()];
-        sample.seqNo = i;
+        sample.seq = i;
         sample.timestampUs = lastSample.timestampUs + sample.timeDeltaUs;
 
         print(sample);

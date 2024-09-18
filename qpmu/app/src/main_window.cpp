@@ -21,6 +21,7 @@
 #include <QIcon>
 #include <QBoxLayout>
 #include <QSplitter>
+#include <qpixmap.h>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
@@ -37,26 +38,25 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         statusBar()->setSizeGripEnabled(true);
         statusBar()->setContentsMargins(QMargins(5, 0, 0, 0));
 
-        /// 1. Label for sampling indicattor=
-        statusBar()->addPermanentWidget(new QLabel("Sampling", statusBar()));
-
-        /// 2. Sampling indicator
-        auto samplingIndicator = new QLabel(statusBar());
-        statusBar()->addPermanentWidget(samplingIndicator);
-
-        auto updateSamplingIndicator = [=](bool isConnected) {
-            static const auto redCircle = circlePixmap(QColor("#dc143c"), 12);
-            static const auto greenCircle = circlePixmap(QColor("#22bb45"), 12);
-            if (isConnected) {
-                samplingIndicator->setPixmap(greenCircle);
-            } else {
-                samplingIndicator->setPixmap(redCircle);
-            }
+        /// 1. Sampling indicators
+        statusBar()->addPermanentWidget(new QLabel("Sampling:", statusBar()));
+        auto createSamplingIndicator = [=](const QString &name, Sampler::SamplingStatus flag) {
+            const auto redCircle = circlePixmap(QColor("red"), 12);
+            const auto greenCircle = circlePixmap(QColor("green"), 12);
+            const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
+            auto indicator = new QLabel(statusBar());
+            statusBar()->addPermanentWidget(indicator);
+            indicator->setToolTip(name + "?");
+            auto updateIndicator = [=]() {
+                auto state = APP->dataProcessor()->samplerState();
+                indicator->setPixmap(pixmapChoices[bool(state & flag)]);
+            };
+            connect(APP->timer(), &QTimer::timeout, updateIndicator);
         };
-
-        connect(APP->dataProcessor(), &DataProcessor::sampleSourceConnectionChanged,
-                updateSamplingIndicator);
-        updateSamplingIndicator(false);
+        createSamplingIndicator("Enabled", Sampler::Enabled);
+        createSamplingIndicator("Connected", Sampler::Connected);
+        createSamplingIndicator("Data Reading", Sampler::DataReading);
+        createSamplingIndicator("Data Valid", Sampler::DataValid);
 
         /// 3. Spacer
         auto spacer = new QWidget(statusBar());
@@ -66,13 +66,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         /// 4. Time and date
         auto timeLabel = new QLabel(statusBar());
         statusBar()->addPermanentWidget(timeLabel);
-
-        /// 5. Separator
-        auto separator3 = new QFrame(statusBar());
-        separator3->setFrameStyle(QFrame::VLine | QFrame::Raised);
-        statusBar()->addPermanentWidget(separator3);
-
-        /// 6. Date
         auto dateLabel = new QLabel(statusBar());
         statusBar()->addPermanentWidget(dateLabel);
 

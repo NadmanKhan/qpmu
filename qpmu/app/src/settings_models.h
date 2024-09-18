@@ -10,9 +10,9 @@
 #include <QVector>
 #include <QPointF>
 #include <QColor>
+#include <QtGlobal>
 
 #include <array>
-#include <qglobal.h>
 #include <type_traits>
 
 struct AbstractSettingsModel
@@ -26,7 +26,7 @@ struct AbstractSettingsModel
     virtual bool save() const = 0;
 
     /// Returns true if the settings are valid.
-    virtual bool isValid() const { return true; }
+    virtual QString validate() const { return QString(); }
 };
 
 #define STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(T)                                                   \
@@ -36,12 +36,12 @@ struct AbstractSettingsModel
   static_assert(std::is_copy_assignable<T>::value, #T " must be trivially copyable");              \
   static_assert(std::is_move_assignable<T>::value, #T " must be trivially move assignable");
 
-struct SampleSourceSettings : public AbstractSettingsModel
+struct SamplerSettings : public AbstractSettingsModel
 {
     enum ConnectionType {
-        NoConnectioin = 0,
-        SocketConnection = 1,
-        ProcessConnection = 2,
+        None = 0,
+        Socket = 1,
+        Process = 2,
     };
     enum SocketType {
         UdpSocket = 0,
@@ -61,16 +61,16 @@ struct SampleSourceSettings : public AbstractSettingsModel
         QStringList args = {};
     };
 
-    ConnectionType connection = NoConnectioin;
+    ConnectionType connection = None;
     SocketConfig socketConfig = {};
     ProcessConfig processConfig = {};
     bool isDataBinary = true;
 
     void load(QSettings settings = QSettings()) override;
     bool save() const override;
-    bool isValid() const override;
+    QString validate() const override;
 
-    bool operator==(const SampleSourceSettings &other) const
+    bool operator==(const SamplerSettings &other) const
     {
         return connection == other.connection
                 && socketConfig.socketType == other.socketConfig.socketType
@@ -81,10 +81,10 @@ struct SampleSourceSettings : public AbstractSettingsModel
                 && isDataBinary == other.isDataBinary;
     }
 
-    bool operator!=(const SampleSourceSettings &other) const { return !(*this == other); }
+    bool operator!=(const SamplerSettings &other) const { return !(*this == other); }
 };
 
-STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(SampleSourceSettings)
+STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(SamplerSettings)
 
 struct CalibrationSettings : public AbstractSettingsModel
 {
@@ -100,7 +100,6 @@ struct CalibrationSettings : public AbstractSettingsModel
 
     void load(QSettings settings = QSettings()) override;
     bool save() const override;
-    bool isValid() const override;
 
     friend bool operator==(const CalibrationSettings::DataPerSignal &lhs,
                            const CalibrationSettings::DataPerSignal &rhs)
@@ -130,7 +129,7 @@ struct VisualisationSettings : public AbstractSettingsModel
 
     void load(QSettings settings = QSettings()) override;
     bool save() const override;
-    bool isValid() const override;
+    QString validate() const override;
 
     bool operator==(const VisualisationSettings &other) const
     {

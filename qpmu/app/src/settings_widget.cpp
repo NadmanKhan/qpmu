@@ -1,3 +1,4 @@
+#include "main_window.h"
 #include "settings_widget.h"
 #include "settings_models.h"
 #include "app.h"
@@ -25,6 +26,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMargins>
+#include <QStatusBar>
 #include <QPushButton>
 #include <QCheckBox>
 #include <QRegularExpressionValidator>
@@ -40,16 +42,30 @@ using namespace qpmu;
 SettingsWidget::SettingsWidget(QWidget *parent) : QTabWidget(parent)
 {
     hide();
-    // setTabPosition(QTabWidget::West);
-    createSampleSourcePage();
-    createCalibrationPage();
+
+    { /// Sampler settings page
+        auto settings = SamplerSettings();
+        settings.load();
+        auto page = samplerSettingsPage(settings);
+        addTab(page, "Signal Sampler");
+    }
+
+    { /// Calibration settings page
+        auto page = new QTabWidget();
+        auto settings = CalibrationSettings();
+        m_oldCalibrationSettings = settings;
+        for (USize i = 0; i < CountSignals; ++i) {
+            page->addTab(calibrationWidget(i, settings.data[i]), NameOfSignal[i]);
+        }
+        addTab(page, "Calibration");
+    }
 }
 
-QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
+QWidget *SettingsWidget::samplerSettingsPage(const SamplerSettings &settings)
 {
 
     auto page = new QWidget();
-    m_oldSampleSourceSettings = settings;
+    m_oldSamplerSettings = settings;
 
     auto outerLayout = new QVBoxLayout(page);
 
@@ -73,23 +89,22 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
     auto argsEdit = new QLineEdit();
 
     auto dialogButtonBox = new QDialogButtonBox();
-    auto saveButton = dialogButtonBox->addButton(QDialogButtonBox::Save);
+    auto updateConnectionButton = dialogButtonBox->addButton(QDialogButtonBox::Apply);
     auto resetButton = dialogButtonBox->addButton(QDialogButtonBox::Reset);
     auto restoreDefaultsButton = dialogButtonBox->addButton(QDialogButtonBox::RestoreDefaults);
 
     /// Common operations
 
     /// * Extract settings data from UI
-    auto extractSettings = [=] {
-        SampleSourceSettings newSettings;
+    auto extractSettings = [=]() -> SamplerSettings {
+        SamplerSettings newSettings;
         newSettings.isDataBinary = dataFormatGroup->checkedId();
-        newSettings.connection =
-                (SampleSourceSettings::ConnectionType)connectionTypeGroup->checkedId();
+        newSettings.connection = (SamplerSettings::ConnectionType)connectionTypeGroup->checkedId();
 
         newSettings.socketConfig.host = hostEdit->text();
         newSettings.socketConfig.port = portEdit->text().toInt();
         newSettings.socketConfig.socketType =
-                (SampleSourceSettings::SocketType)socketTypeGroup->checkedId();
+                (SamplerSettings::SocketType)socketTypeGroup->checkedId();
 
         newSettings.processConfig.prog = progEdit->text();
         newSettings.processConfig.args = parsePrcoessString(argsEdit->text());
@@ -98,8 +113,8 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
     };
 
     /// * Load settings data into UI
-    auto loadSettings = [=](const SampleSourceSettings &settings) {
-        m_oldSampleSourceSettings = extractSettings();
+    auto loadSettings = [=](const SamplerSettings &settings) {
+        m_oldSamplerSettings = extractSettings();
 
         dataFormatGroup->button(settings.isDataBinary)->setChecked(true);
         connectionTypeGroup->button(settings.connection)->setChecked(true);
@@ -113,13 +128,27 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
     };
 
     /// * Check if settings are changed
-    auto isSettingsChanged = [=] { return extractSettings() != m_oldSampleSourceSettings; };
+    auto isSettingsChanged = [=] { return extractSettings() != m_oldSamplerSettings; };
 
     /// * Update enabled state of buttons
     auto updateEnabledState = [=] {
         auto changed = isSettingsChanged();
-        saveButton->setEnabled(changed);
         resetButton->setEnabled(changed);
+    };
+
+    /// * Save settings to the file
+    auto saveSettings = [=]() -> bool {
+        auto newSettings = extractSettings();
+        if (newSettings.save()) {
+            m_oldSamplerSettings = newSettings;
+            updateEnabledState();
+            qInfo() << "Settings saved";
+            return true;
+        }
+        qInfo() << "Failed to save settings";
+        APP->mainWindow()->statusBar()->showMessage("Failed to save settings: invalid settings",
+                                                    5000);
+        return false;
     };
 
     { /// Process/socket configuration tab-widget
@@ -140,7 +169,7 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
             socketConfigForm->addRow("Socket type", socketTypeLayout);
 
             { /// Host edit
-                auto ipPattern = QString("^%1\\.%1\\.%1\\.%1$")
+                auto ipPattern = QString("^(%1\\.%1\\.%1\\.%1)|localhost$")
                                          .arg("(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})");
                 auto ipValidator = new QRegularExpressionValidator(QRegularExpression(ipPattern));
                 hostEdit->setValidator(ipValidator);
@@ -165,8 +194,8 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
                 socketTypeLayout->addWidget(tcpRadio);
                 socketTypeLayout->setAlignment(Qt::AlignLeft);
 
-                socketTypeGroup->addButton(udpRadio, SampleSourceSettings::UdpSocket);
-                socketTypeGroup->addButton(tcpRadio, SampleSourceSettings::TcpSocket);
+                socketTypeGroup->addButton(udpRadio, SamplerSettings::UdpSocket);
+                socketTypeGroup->addButton(tcpRadio, SamplerSettings::TcpSocket);
                 socketTypeGroup->button(settings.socketConfig.socketType)->setChecked(true);
             }
         }
@@ -212,7 +241,7 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
 
         { /// Connection type config
 
-            noConnectionRadio->setText("None (disconnect)");
+            noConnectionRadio->setText("None (disable connection)");
             socketConnectionRadio->setText("Socket connection");
             processConnectionRadio->setText("Process connection");
 
@@ -221,11 +250,9 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
             connectionTypeLayout->addWidget(processConnectionRadio);
             connectionTypeLayout->setAlignment(Qt::AlignLeft);
 
-            connectionTypeGroup->addButton(noConnectionRadio, SampleSourceSettings::NoConnectioin);
-            connectionTypeGroup->addButton(socketConnectionRadio,
-                                           SampleSourceSettings::SocketConnection);
-            connectionTypeGroup->addButton(processConnectionRadio,
-                                           SampleSourceSettings::ProcessConnection);
+            connectionTypeGroup->addButton(noConnectionRadio, SamplerSettings::None);
+            connectionTypeGroup->addButton(socketConnectionRadio, SamplerSettings::Socket);
+            connectionTypeGroup->addButton(processConnectionRadio, SamplerSettings::Process);
             connectionTypeGroup->button(settings.connection)->setChecked(true);
         }
 
@@ -267,51 +294,30 @@ QWidget *SettingsWidget::sampleSourcePage(const SampleSourceSettings &settings)
         outerLayout->addWidget(dialogButtonBox);
         dialogButtonBox->setOrientation(Qt::Horizontal);
 
-        { /// Save button
-            connect(saveButton, &QPushButton::clicked, [=] {
-                auto newSettings = extractSettings();
-                if (newSettings.save()) {
-                    m_oldSampleSourceSettings = newSettings;
-                    updateEnabledState();
-                    APP->dataProcessor()->updateSampleSource();
+        { /// Reconnect button
+            updateConnectionButton->setText("Save and Update Connection");
+            connect(updateConnectionButton, &QPushButton::clicked, [=] {
+                if (saveSettings()) {
+                    APP->dataProcessor()->updateSamplerConnection();
                 }
             });
         }
 
         { /// Reset button
             connect(resetButton, &QPushButton::clicked, [=] {
-                loadSettings(m_oldSampleSourceSettings);
+                loadSettings(m_oldSamplerSettings);
                 updateEnabledState();
             });
         }
 
         { /// Restore defaults button
             connect(restoreDefaultsButton, &QPushButton::clicked, [=] {
-                loadSettings(SampleSourceSettings());
+                loadSettings(SamplerSettings());
                 updateEnabledState();
             });
         }
     }
     return page;
-}
-
-void SettingsWidget::createSampleSourcePage()
-{
-    auto settings = SampleSourceSettings();
-    settings.load();
-    auto page = sampleSourcePage(settings);
-    addTab(page, "Sample Source");
-}
-
-void SettingsWidget::createCalibrationPage()
-{
-    auto page = new QTabWidget();
-    auto settings = CalibrationSettings();
-    m_oldCalibrationSettings = settings;
-    for (USize i = 0; i < CountSignals; ++i) {
-        page->addTab(calibrationWidget(i, settings.data[i]), NameOfSignal[i]);
-    }
-    addTab(page, "Calibration");
 }
 
 Float sampleMagnitude(USize signalIndex)
