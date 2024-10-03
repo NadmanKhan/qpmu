@@ -122,8 +122,7 @@ STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(CalibrationSettings)
 struct VisualisationSettings : public AbstractSettingsModel
 {
 
-    quint32 estimationUpdateIntervalMs = App::UpdateIntervalFactorMs * 1;
-    quint32 sampleUpdateIntervalMs = App::UpdateIntervalFactorMs * 1;
+    quint32 dataViewUpdateIntervalMs = 400;
     std::array<QColor, qpmu::CountSignals> signalColors = { "#404040", "#ff0000", "#00ffff",
                                                             "#f1dd38", "#0000ff", "#22bb45" };
 
@@ -133,8 +132,7 @@ struct VisualisationSettings : public AbstractSettingsModel
 
     bool operator==(const VisualisationSettings &other) const
     {
-        return estimationUpdateIntervalMs == other.estimationUpdateIntervalMs
-                && sampleUpdateIntervalMs == other.sampleUpdateIntervalMs
+        return dataViewUpdateIntervalMs == other.dataViewUpdateIntervalMs
                 && signalColors == other.signalColors;
     }
 

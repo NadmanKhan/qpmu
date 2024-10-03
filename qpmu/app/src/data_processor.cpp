@@ -17,10 +17,11 @@
 #include <array>
 #include <cctype>
 #include <iostream>
+#include <qabstractsocket.h>
 
 using namespace qpmu;
 
-Sampler::Sampler(const SamplerSettings &settings) : m_settings(settings)
+SampleReader::SampleReader(const SamplerSettings &settings) : m_settings(settings)
 {
     if (m_settings.connection == SamplerSettings::Socket) {
         QAbstractSocket *socket;
@@ -30,14 +31,20 @@ Sampler::Sampler(const SamplerSettings &settings) : m_settings(settings)
             socket = new QUdpSocket(this);
         m_device = socket;
         socket->connectToHost(m_settings.socketConfig.host, m_settings.socketConfig.port);
-        m_waitForConnected = [=] { return socket->waitForConnected(m_connectionWaitTime); };
+        m_waitForConnected = [=] {
+            return socket->state() >= QAbstractSocket::ConnectedState
+                    || socket->waitForConnected(m_connectionWaitTime);
+        };
     } else if (m_settings.connection == SamplerSettings::Process) {
         auto process = new QProcess(this);
         m_device = process;
         process->setProgram(m_settings.processConfig.prog);
         process->setArguments(m_settings.processConfig.args);
         process->start(QProcess::ReadOnly);
-        m_waitForConnected = [=] { return process->waitForStarted(m_connectionWaitTime); };
+        m_waitForConnected = [=] {
+            return process->state() >= QProcess::Running
+                    || process->waitForStarted(m_connectionWaitTime);
+        };
     }
 
     if (settings.connection != SamplerSettings::None) {
@@ -66,7 +73,7 @@ Sampler::Sampler(const SamplerSettings &settings) : m_settings(settings)
     }
 }
 
-void Sampler::work(qpmu::Sample &outSample)
+int SampleReader::read(qpmu::Sample &outSample)
 {
     int newState = 0;
     /// Check if enabled
@@ -78,26 +85,27 @@ void Sampler::work(qpmu::Sample &outSample)
                  * bool((newState & Connected) && m_device->waitForReadyRead(m_readWaitTime)));
     /// Check if valid
     newState |= (DataValid * bool((newState & DataReading) && m_readSample(outSample)));
-    m_state = newState;
+
+    return m_state = newState;
 }
 
 DataProcessor::DataProcessor() : QThread()
 {
     m_estimator = new PhasorEstimator(50, 1200);
-    updateSamplerConnection();
+    updateSampleReader();
 }
 
-void DataProcessor::updateSamplerConnection()
+void DataProcessor::updateSampleReader()
 {
     SamplerSettings newSettings;
     newSettings.load();
-    auto newSampler = new Sampler(newSettings);
+    auto newSampler = new SampleReader(newSettings);
 
     QMutexLocker locker(&m_mutex);
-    m_newSampler = newSampler;
+    m_newReader = newSampler;
     /// `moveToThread` must be called from the thread where the object was
     /// created, so we do it here
-    m_newSampler->moveToThread(this); /// Move the new sampler to `this`, a `QThread` object
+    m_newReader->moveToThread(this); /// Move the new sampler to `this`, a `QThread` object
 }
 
 void DataProcessor::run()
@@ -105,19 +113,23 @@ void DataProcessor::run()
     Sample sample;
 
     while (true) {
-        if (m_newSampler) {
+        if (m_newReader) {
             {
                 QMutexLocker locker(&m_mutex);
-                std::swap(m_sampler, m_newSampler);
+                std::swap(m_reader, m_newReader);
             }
-            delete m_newSampler;
-            m_newSampler = nullptr;
+            delete m_newReader;
+            m_newReader = nullptr;
         }
 
-        if (m_sampler) {
-            m_sampler->work(sample);
-            if (m_sampler->state() & Sampler::DataValid) {
+        if (m_reader) {
+            auto oldState = m_reader->state();
+            auto newState = m_reader->read(sample);
+            if (m_reader->state() & SampleReader::DataValid) {
                 m_estimator->updateEstimation(sample);
+            }
+            if (oldState != newState) {
+                emit sampleReaderStateChanged(newState);
             }
         }
     }

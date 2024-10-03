@@ -36,9 +36,8 @@ private slots:
     void update();
 
 private:
-    USize m_sampleUpdateCounter = 0;
-    USize m_estimationUpdateCounter = 0;
-
+    USize m_updateCounter = 0;
+    
     qpmu::Sample m_sample = {};
     qpmu::Estimation m_estimation = {};
 };

@@ -40,23 +40,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
         /// 1. Sampling indicators
         statusBar()->addPermanentWidget(new QLabel("Sampling:", statusBar()));
-        auto createSamplingIndicator = [=](const QString &name, Sampler::SamplingStatus flag) {
+        auto createSamplingIndicator = [=](const QString &name, SampleReader::StateFlag flag) {
             const auto redCircle = circlePixmap(QColor("red"), 12);
             const auto greenCircle = circlePixmap(QColor("green"), 12);
             const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
             auto indicator = new QLabel(statusBar());
             statusBar()->addPermanentWidget(indicator);
             indicator->setToolTip(name + "?");
-            auto updateIndicator = [=]() {
-                auto state = APP->dataProcessor()->samplerState();
+            auto updateIndicator = [=](int state) {
                 indicator->setPixmap(pixmapChoices[bool(state & flag)]);
             };
-            connect(APP->timer(), &QTimer::timeout, updateIndicator);
+            connect(APP->dataProcessor(), &DataProcessor::sampleReaderStateChanged,
+                    updateIndicator);
         };
-        createSamplingIndicator("Enabled", Sampler::Enabled);
-        createSamplingIndicator("Connected", Sampler::Connected);
-        createSamplingIndicator("Data Reading", Sampler::DataReading);
-        createSamplingIndicator("Data Valid", Sampler::DataValid);
+        createSamplingIndicator("Enabled", SampleReader::Enabled);
+        createSamplingIndicator("Connected", SampleReader::Connected);
+        createSamplingIndicator("Data Reading", SampleReader::DataReading);
+        createSamplingIndicator("Data Valid", SampleReader::DataValid);
 
         /// 3. Spacer
         auto spacer = new QWidget(statusBar());

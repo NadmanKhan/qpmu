@@ -23,13 +23,13 @@ App::App(int &argc, char **argv) : QApplication(argc, argv)
     }
 
     m_timer = new QTimer(this);
-    m_timer->setInterval(100);
+    m_timer->setInterval(TimerIntervalMs);
+    m_timer->start();
 
     m_dataProcessor = new DataProcessor();
     m_dataProcessor->start();
 
     m_dataObserver = new DataObserver(this);
 
-    m_timer->start();
     m_mainWindow = new MainWindow();
 }

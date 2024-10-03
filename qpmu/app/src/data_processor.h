@@ -16,20 +16,20 @@
 #include <functional>
 #include <array>
 
-class Sampler : public QObject
+class SampleReader : public QObject
 {
     Q_OBJECT
 public:
-    enum SamplingStatus {
+    enum StateFlag {
         Enabled = 1 << 0,
         Connected = 1 << 1,
         DataReading = 1 << 2,
         DataValid = 1 << 3,
     };
 
-    Sampler() = default;
-    Sampler(const SamplerSettings &settings);
-    virtual ~Sampler()
+    SampleReader() = default;
+    SampleReader(const SamplerSettings &settings);
+    virtual ~SampleReader()
     {
         if (m_device) {
             m_device->close();
@@ -46,7 +46,7 @@ public:
     }
 
     SamplerSettings settings() const { return m_settings; }
-    void work(qpmu::Sample &outSample);
+    int read(qpmu::Sample &outSample);
     int state() const { return m_state; }
 
 private:
@@ -70,10 +70,10 @@ public:
 
     void run() override;
 
-    int samplerState()
+    int sampleReaderState()
     {
         QMutexLocker locker(&m_mutex);
-        return m_sampler->state();
+        return m_reader->state();
     }
     const qpmu::Estimation &lastEstimation()
     {
@@ -86,14 +86,17 @@ public:
         return m_estimator->lastSample();
     }
 
-    void updateSamplerConnection();
+    void updateSampleReader();
+
+signals:
+    void sampleReaderStateChanged(int);
 
 private:
     QMutex m_mutex;
     qpmu::PhasorEstimator *m_estimator = nullptr;
 
-    Sampler *m_sampler = nullptr;
-    Sampler *m_newSampler = nullptr;
+    SampleReader *m_reader = nullptr;
+    SampleReader *m_newReader = nullptr;
 };
 
 #endif // QPMU_APP_DATA_PROCESSOR_H

@@ -12,18 +12,12 @@ void DataObserver::update()
     VisualisationSettings settings;
     settings.load();
 
-    ++m_sampleUpdateCounter;
-    if (m_sampleUpdateCounter * App::UpdateIntervalFactorMs >= settings.sampleUpdateIntervalMs) {
-        m_sampleUpdateCounter = 0;
+    ++m_updateCounter;
+    if (m_updateCounter * App::TimerIntervalMs >= settings.dataViewUpdateIntervalMs) {
+        m_updateCounter = 0;
         m_sample = APP->dataProcessor()->lastSample();
-        emit sampleUpdated(m_sample);
-    }
-
-    ++m_estimationUpdateCounter;
-    if (m_estimationUpdateCounter * App::UpdateIntervalFactorMs
-        >= settings.estimationUpdateIntervalMs) {
-        m_estimationUpdateCounter = 0;
         m_estimation = APP->dataProcessor()->lastEstimation();
+        emit sampleUpdated(m_sample);
         emit estimationUpdated(m_estimation);
     }
 }

@@ -22,7 +22,7 @@ class App : public QApplication
     Q_OBJECT
 
 public:
-    static constexpr quint32 UpdateIntervalFactorMs = 100;
+    static constexpr quint32 TimerIntervalMs = 200;
 
     App(int &argc, char **argv);
 
