@@ -1,0 +1,3 @@
+[submodule "external/github.com/tahmid-khan/STRONgrid"]
+	path = external/github.com/tahmid-khan/STRONgrid
+	url = https://github.com/tahmid-khan/STRONgrid.git
