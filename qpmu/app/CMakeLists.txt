@@ -50,7 +50,9 @@ target_link_libraries(
           Qt${QT_VERSION_MAJOR}::Network
           fftw3
           ${PROJECT_NAME}-common
-          ${PROJECT_NAME}-estimation)
+          ${PROJECT_NAME}-estimation
+          StrongridDLL
+          )
 
 set_target_properties(
   ${PROJECT_NAME}-app
