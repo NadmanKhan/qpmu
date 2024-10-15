@@ -1,21 +1,21 @@
-from sampling import AnalogSignal, ADC, Sample, TimeSyncedSamples
+from sampling import AnalogSignal, TimestampedADC
 from typing import Literal, Callable, Union, Tuple, Iterable
 import argparse
 import math
 import sys
 import socket
 
-WriterFunc = Callable[[Sample], None]
+WriterFunc = Callable[[TimestampedADC.Sample], None]
 SocketConfig = Union[Tuple[int, Literal["tcp", "udp"]], None]
 
 
 def make_writer(
-    adc: ADC,
+    adc: TimestampedADC,
     binary: bool = False,
     sockconfig: SocketConfig = None,
 ) -> Tuple[WriterFunc, Iterable[socket.socket]]:
 
-    assert isinstance(adc, ADC), "ADC must be an instance of ADC"
+    assert isinstance(adc, TimestampedADC), "ADC must be an instance of ADC"
     assert isinstance(binary, bool), "Binary must be a boolean"
     if sockconfig is not None:
         assert isinstance(sockconfig, tuple), "Sockconfig must be a tuple"
@@ -28,12 +28,12 @@ def make_writer(
     if sockconfig is None:
         if binary:
 
-            def write(sample: Sample) -> None:
+            def write(sample: TimestampedADC.Sample) -> None:
                 sys.stdout.buffer.write(bytes(sample))
 
         else:
 
-            def write(sample: Sample) -> None:
+            def write(sample: TimestampedADC.Sample) -> None:
                 print(str(sample))
 
         return (lambda sample: write(sample)), []
@@ -42,12 +42,12 @@ def make_writer(
 
     if binary:
 
-        def tobytes(sample: Sample) -> bytes:
+        def tobytes(sample: TimestampedADC.Sample) -> bytes:
             return bytes(sample)
 
     else:
 
-        def tobytes(sample: Sample) -> bytes:
+        def tobytes(sample: TimestampedADC.Sample) -> bytes:
             return str(sample).encode()
 
     (port, socktype) = sockconfig
@@ -63,7 +63,7 @@ def make_writer(
         conn, addr = sock.accept()
         print(f"Accepted connection from {addr}", file=sys.stderr)
 
-        def write(sample: Sample) -> None:
+        def write(sample: TimestampedADC.Sample) -> None:
             try:
                 conn.sendall(tobytes(sample))
                 print(f'Sent \n"{sample}"\n to sock={sock}, addr={addr}', file=sys.stderr)
@@ -80,7 +80,7 @@ def make_writer(
         print(f"Listening on port={port} using {socktype}", file=sys.stderr)
         print(f"Socket: {sock}", file=sys.stderr)
 
-        def write(sample: Sample) -> None:
+        def write(sample: TimestampedADC.Sample) -> None:
             try:
                 sock.sendto(tobytes(sample), ("", port))
                 print(f'Sent \n"{sample}"\n to sock={sock}, port={port}', file=sys.stderr)
@@ -97,8 +97,8 @@ if __name__ == "__main__":
     parser.add_argument("--bits", "-b", type=int, default=8, help="ADC resolution in bits")
     parser.add_argument("--noise", "-z", type=float, default=0.25, help="Noise")
     parser.add_argument("--frequency", "-f", type=float, default=50, help="Signal frequency in Hz")
-    parser.add_argument("--voltage", "-v", type=float, default=1, help="Maximum voltage in volts")
-    parser.add_argument("--current", "-i", type=float, default=1, help="Maximum current in amperes")
+    parser.add_argument("--voltage", "-v", type=float, default=240, help="Maximum voltage in volts")
+    parser.add_argument("--current", "-i", type=float, default=10, help="Maximum current in amperes")
     parser.add_argument("--phasediff", "-p", type=float, default=15, help="V-I phase difference in degrees")
     parser.add_argument("--binary", default=False, action="store_true", help="Send binary data")
     parser.add_argument("--port", "-n", type=int, default=12345, help="Port number of client socket")
@@ -136,28 +136,27 @@ if __name__ == "__main__":
         # IA
         AnalogSignal(
             frequency_hz=args.frequency,
-            amplitude=args.current,
+            amplitude=args.voltage,  # Because the signal is fed to the ADC
             phase_rad=math.radians(0 + args.phasediff),
         ),
         # IB
         AnalogSignal(
             frequency_hz=args.frequency,
-            amplitude=args.current,
+            amplitude=args.voltage,  # Because the signal is fed to the ADC
             phase_rad=math.radians(120 + args.phasediff),
         ),
         # IC
         AnalogSignal(
             frequency_hz=args.frequency,
-            amplitude=args.current,
+            amplitude=args.voltage,  # Because the signal is fed to the ADC
             phase_rad=math.radians(240 + args.phasediff),
         ),
     ]
-
-    adc = ADC(
+    adc = TimestampedADC(
         resolution_bits=args.bits,
         sampling_rate_hz=args.sampling_rate,
-        signals=signals,
-        noises=[args.noise] * len(signals),
+        reference_voltage_v=args.voltage,
+        channels=list(zip(signals, [args.noise] * len(signals))),
     )
 
     sockconfig: SocketConfig = None
@@ -171,7 +170,7 @@ if __name__ == "__main__":
             # TODO: Run the GUI
             pass
 
-        for sample in TimeSyncedSamples(adc):
+        for sample in adc.stream():
             write(sample)
 
     except Exception as e:
