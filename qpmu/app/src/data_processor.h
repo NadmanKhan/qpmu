@@ -46,7 +46,7 @@ public:
     }
 
     SamplerSettings settings() const { return m_settings; }
-    int read(qpmu::Sample &outSample);
+    void read(qpmu::Sample &outSample);
     int state() const { return m_state; }
 
 private:

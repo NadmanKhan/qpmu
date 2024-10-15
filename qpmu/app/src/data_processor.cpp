@@ -30,21 +30,21 @@ SampleReader::SampleReader(const SamplerSettings &settings) : m_settings(setting
         else
             socket = new QUdpSocket(this);
         m_device = socket;
-        socket->connectToHost(m_settings.socketConfig.host, m_settings.socketConfig.port);
         m_waitForConnected = [=] {
             return socket->state() >= QAbstractSocket::ConnectedState
                     || socket->waitForConnected(m_connectionWaitTime);
         };
+        socket->connectToHost(m_settings.socketConfig.host, m_settings.socketConfig.port);
     } else if (m_settings.connection == SamplerSettings::Process) {
         auto process = new QProcess(this);
         m_device = process;
         process->setProgram(m_settings.processConfig.prog);
         process->setArguments(m_settings.processConfig.args);
-        process->start(QProcess::ReadOnly);
         m_waitForConnected = [=] {
             return process->state() >= QProcess::Running
                     || process->waitForStarted(m_connectionWaitTime);
         };
+        process->start(QProcess::ReadOnly);
     }
 
     if (settings.connection != SamplerSettings::None) {
@@ -73,7 +73,7 @@ SampleReader::SampleReader(const SamplerSettings &settings) : m_settings(setting
     }
 }
 
-int SampleReader::read(qpmu::Sample &outSample)
+void SampleReader::read(qpmu::Sample &outSample)
 {
     int newState = 0;
     /// Check if enabled
@@ -86,7 +86,7 @@ int SampleReader::read(qpmu::Sample &outSample)
     /// Check if valid
     newState |= (DataValid * bool((newState & DataReading) && m_readSample(outSample)));
 
-    return m_state = newState;
+    m_state = newState;
 }
 
 DataProcessor::DataProcessor() : QThread()
@@ -124,8 +124,9 @@ void DataProcessor::run()
 
         if (m_reader) {
             auto oldState = m_reader->state();
-            auto newState = m_reader->read(sample);
-            if (m_reader->state() & SampleReader::DataValid) {
+            m_reader->read(sample);
+            auto newState = m_reader->state();
+            if (newState & SampleReader::DataValid) {
                 m_estimator->updateEstimation(sample);
             }
             if (oldState != newState) {
