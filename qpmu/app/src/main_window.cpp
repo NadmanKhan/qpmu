@@ -3,6 +3,7 @@
 #include "phasor_monitor.h"
 #include "settings_widget.h"
 #include "data_processor.h"
+#include "src/app.h"
 #include "util.h"
 
 #include <QIcon>
@@ -52,11 +53,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
             };
             connect(APP->dataProcessor(), &DataProcessor::sampleReaderStateChanged,
                     updateIndicator);
+            return updateIndicator;
         };
-        createSamplingIndicator("Enabled", SampleReader::Enabled);
-        createSamplingIndicator("Connected", SampleReader::Connected);
-        createSamplingIndicator("Data Reading", SampleReader::DataReading);
-        createSamplingIndicator("Data Valid", SampleReader::DataValid);
+        for (auto f : { createSamplingIndicator("Enabled", SampleReader::Enabled),
+                        createSamplingIndicator("Connected", SampleReader::Connected),
+                        createSamplingIndicator("Data Reading", SampleReader::DataReading),
+                        createSamplingIndicator("Data Valid", SampleReader::DataValid) }) {
+            f(APP->dataProcessor()->sampleReaderState());
+        }
 
         /// 3. Spacer
         auto spacer = new QWidget(statusBar());
