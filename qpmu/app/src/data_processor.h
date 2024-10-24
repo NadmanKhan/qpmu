@@ -12,9 +12,20 @@
 #include <QProcess>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QTcpServer>
+
+#include <openc37118-1.0/c37118.h>
+#include <openc37118-1.0/c37118configuration.h>
+#include <openc37118-1.0/c37118pmustation.h>
+#include <openc37118-1.0/c37118data.h>
+#include <openc37118-1.0/c37118header.h>
+#include <openc37118-1.0/c37118command.h>
 
 #include <functional>
-#include <array>
+
+constexpr int ConnectionWaitTime = 300;
+constexpr int ReadWaitTime = 100;
+constexpr qpmu::USize SampleBufferSize = 1200;
 
 class SampleReader : public QObject
 {
@@ -46,19 +57,56 @@ public:
     }
 
     SamplerSettings settings() const { return m_settings; }
-    void read(qpmu::Sample &outSample);
+    qpmu::USize attemptRead(qpmu::Sample outSample[SampleBufferSize]);
     int state() const { return m_state; }
 
 private:
     SamplerSettings m_settings;
     QIODevice *m_device = nullptr;
     int m_state = 0;
+    char m_line[1000];
+    qpmu::RawSampleBatch m_batch = {};
 
     std::function<bool()> m_waitForConnected = nullptr;
-    std::function<bool(qpmu::Sample &)> m_readSample = nullptr;
+    std::function<qpmu::USize(qpmu::Sample[SampleBufferSize])> m_readSamples = nullptr;
+};
 
-    int m_connectionWaitTime = 3000;
-    int m_readWaitTime = 1000;
+class PhasorSender : public QObject
+{
+    Q_OBJECT
+public:
+    PhasorSender();
+    ~PhasorSender()
+    {
+        if (m_server) {
+            m_server->close();
+        }
+        delete m_station;
+        delete m_config2;
+        delete m_config1;
+        delete m_dataframe;
+        delete m_header;
+        std::free(m_cmd); // Because it is allocated with `malloc` in `CMD_Frame::unpack`
+    }
+
+    QTcpServer *server() const { return m_server; }
+
+    void attemptSend(const qpmu::Sample &sample, const qpmu::Estimation &estimation);
+    void updateData(const qpmu::Sample &sample, const qpmu::Estimation &estimation);
+    void handleCommand(QTcpSocket *client);
+
+private:
+    QTcpServer *m_server = nullptr;
+    QVector<QTcpSocket *> m_clients = {};
+    unsigned char m_buffer[10000] = {};
+
+    PMU_Station *m_station = nullptr;
+    CONFIG_Frame *m_config2 = nullptr;
+    CONFIG_1_Frame *m_config1 = nullptr;
+    DATA_Frame *m_dataframe = nullptr;
+    HEADER_Frame *m_header = nullptr;
+    CMD_Frame *m_cmd = nullptr;
+    bool m_sendDataFlag = false;
 };
 
 class DataProcessor : public QThread
@@ -97,6 +145,7 @@ private:
 
     SampleReader *m_reader = nullptr;
     SampleReader *m_newReader = nullptr;
+    PhasorSender *m_sender = nullptr;
 };
 
 #endif // QPMU_APP_DATA_PROCESSOR_H
