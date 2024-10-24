@@ -29,7 +29,7 @@ App::App(int &argc, char **argv) : QApplication(argc, argv)
     m_dataProcessor = new DataProcessor();
     m_dataProcessor->start();
 
-    m_dataObserver = new DataObserver(this);
+    m_dataObserver = new DataObserver();
 
     m_mainWindow = new MainWindow();
 }

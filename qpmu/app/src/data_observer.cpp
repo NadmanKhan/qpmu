@@ -1,7 +1,7 @@
 #include "data_observer.h"
 #include "src/settings_models.h"
 
-DataObserver::DataObserver(QObject *parent) : QObject(parent)
+DataObserver::DataObserver()
 {
     connect(APP->timer(), &QTimer::timeout, this, &DataObserver::update);
 }
