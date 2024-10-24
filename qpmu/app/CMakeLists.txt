@@ -24,7 +24,7 @@ set(PROJECT_SOURCES
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
   qt_add_executable(${PROJECT_NAME}-app MANUAL_FINALIZATION ${PROJECT_SOURCES})
-  # Define target properties for Android with Qt 6 as: set_property(TARGET
+    # Define target properties for Android with Qt 6 as: set_property(TARGET
   # ${PROJECT_NAME}-app APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
   # ${CMAKE_CURRENT_SOURCE_DIR}/android) For more information, see
   # https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
@@ -42,6 +42,10 @@ target_compile_definitions(
   ${PROJECT_NAME}-app
   PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
 
+# Add the library path
+link_directories(/usr/local/lib)
+
+# Link the executable with the libraries
 target_link_libraries(
   ${PROJECT_NAME}-app
   PRIVATE Qt${QT_VERSION_MAJOR}::Core
@@ -52,6 +56,7 @@ target_link_libraries(
           ${PROJECT_NAME}-common
           ${PROJECT_NAME}-estimation
           StrongridDLL
+          openc37118-1.0
           )
 
 set_target_properties(
@@ -61,7 +66,10 @@ set_target_properties(
              MACOSX_BUNDLE_SHORT_VERSION_STRING
              ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
              MACOSX_BUNDLE TRUE
-             WIN32_EXECUTABLE TRUE)
+             WIN32_EXECUTABLE TRUE
+             INSTALL_RPATH_USE_LINK_PATH TRUE
+             BUILD_WITH_INSTALL_RPATH TRUE
+             INSTALL_RPATH "/usr/local/lib")
 
 if(QT_VERSION_MAJOR EQUAL 6)
   qt_finalize_executable(${PROJECT_NAME}-app)
