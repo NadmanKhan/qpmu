@@ -1,8 +1,6 @@
 #ifndef PHASOR_ESTIMATOR_H
 #define PHASOR_ESTIMATOR_H
 
-#include <array>
-#include <complex>
 #include <vector>
 
 #include <fftw3.h>

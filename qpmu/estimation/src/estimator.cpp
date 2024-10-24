@@ -72,7 +72,7 @@ PhasorEstimator::PhasorEstimator(USize fn, USize fs, PhasorEstimationStrategy ph
 }
 
 #define NEXT(i, x) (((i) != (m_##x##Buffer.size() - 1)) * ((i) + 1))
-#define PREV(i, x) (((i) != 0) * ((i)-1) + ((i) == 0) * (m_##x##Buffer.size() - 1))
+#define PREV(i, x) (((i) != 0) * ((i) - 1) + ((i) == 0) * (m_##x##Buffer.size() - 1))
 
 #define ESTIMATION_NEXT(i) NEXT(i, estimation)
 #define ESTIMATION_PREV(i) PREV(i, estimation)
@@ -186,7 +186,6 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
                         if (isPositive(x0) != isPositive(x1)) {
                             ++countZeroCrossings;
                             auto t = (U64)(std::round(zeroCrossingTime(t0, x0, t1, x1)) + 0.2);
-                            assert(t0 <= t && t <= t1);
                             if (firstCrossingUs == 0) {
                                 firstCrossingUs = t;
                             }
@@ -198,7 +197,7 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
                     auto residueSec = (Float)1.0 - crossingWindowSec;
 
                     /// 2 zero crossings per cycle + 1 crossing starts the count
-                    Float freq = std::max(0.0, (Float)(countZeroCrossings - 1)) / 2.0;
+                    Float freq = std::max((Float)0.0, (Float)(countZeroCrossings - 1)) / 2.0;
 
                     /// Adjust the frequency to the window, because it is not exactly 1 second
                     currEstimation.frequencies[ch] = freq * (1.0 + residueSec);

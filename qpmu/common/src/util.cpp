@@ -27,12 +27,12 @@ std::string phasorPolarToString(const Complex &phasor)
 std::string toString(const Sample &sample)
 {
     std::stringstream ss;
-    ss << "seq=" << sample.seq << ',' << '\t';
+    ss << "seq=" << sample.seqNo << ',' << '\t';
+    ss << "ts=" << sample.timestampUs << ',' << '\t';
+    ss << "delta=" << sample.timeDeltaUs << ',' << '\t';
     for (USize i = 0; i < CountSignals; ++i) {
         ss << "ch" << i << "=" << std::setw(4) << sample.channels[i] << ", ";
     }
-    ss << "ts=" << sample.timestampUs << ',' << '\t';
-    ss << "delta=" << sample.timeDeltaUs << ",";
     return ss.str();
 }
 
@@ -84,14 +84,15 @@ std::string estimationCsvHeader()
 /// See `toString(const Sample&)` for the expected format.
 Sample parseSample(const char *const s, std::string *errorOut)
 {
-    U64 sampleVector[CountSignals + 3] = { 0 }; // seq, (channels * 6), timestamp, timeDelta
+    std::string error;
+    SampleFieldVector fieldVector = {};
+    ISize fieldIndex = 0;
     U64 value = 0;
     bool readingValue = false;
-    std::string error;
-
-    ISize index = 0;
     const char *charPtr = s;
-    while (index < 9 && (*charPtr && *charPtr != '\n')) { // Read until end or newline
+
+    while (fieldIndex < (ISize)fieldVector.size()
+           && (*charPtr && *charPtr != '\n')) { // Read until end or newline
         const char &c = *charPtr++;
         switch (c) {
         case '=': // End of field's key, start of field's value
@@ -110,8 +111,7 @@ Sample parseSample(const char *const s, std::string *errorOut)
             value = (value * 10) + readingValue * (c - '0');
             break;
         case ',': // End of field's value, start of NEXT field's key
-            sampleVector[index] = value;
-            ++index;
+            fieldVector[fieldIndex++] = value;
             value = 0;
 
             if (!readingValue) {
@@ -125,10 +125,9 @@ Sample parseSample(const char *const s, std::string *errorOut)
     Sample sample;
 
     if (error.empty()) {
-        U64 *fieldPtr = &sample.timeDeltaUs; /// Iterate in reverse order
-        for (--index; index >= 0; --index) {
-            *fieldPtr = sampleVector[index];
-            --fieldPtr; // Move to the previous field
+        U64 *fieldPtr = (U64 *)&sample + fieldVector.size();
+        while (fieldIndex > 0) {
+            *(--fieldPtr) = fieldVector[--fieldIndex];
         }
     }
 
@@ -141,14 +140,16 @@ Sample parseSample(const char *const s, std::string *errorOut)
 std::string toCsv(const Sample &sample)
 {
     std::string str;
-    str += std::to_string(sample.seq);
-    for (size_t i = 0; i < CountSignals; ++i) {
-        str += std::to_string(sample.channels[i]);
-        str += ',';
-    }
+    str += std::to_string(sample.seqNo);
+    str += ',';
     str += std::to_string(sample.timestampUs);
     str += ',';
     str += std::to_string(sample.timeDeltaUs);
+    for (size_t i = 0; i < CountSignals; ++i) {
+        if (i > 0)
+            str += ',';
+        str += std::to_string(sample.channels[i]);
+    }
     return str;
 }
 
