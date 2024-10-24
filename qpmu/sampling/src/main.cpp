@@ -3,7 +3,6 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
-#include <thread>
 #include <chrono>
 
 #include <boost/program_options.hpp>
@@ -175,23 +174,23 @@ int main(int argc, char *argv[])
     }
 
     auto lastSample = samples[0];
-    lastSample.seq = 0;
+    lastSample.seqNo = 0;
     lastSample.timestampUs = std::chrono::duration_cast<std::chrono::microseconds>(
                                      std::chrono::system_clock::now().time_since_epoch())
                                      .count();
     for (size_t i = 1;; ++i) {
         auto sample = samples[i % samples.size()];
-        sample.seq = i;
-        sample.timestampUs = lastSample.timestampUs + sample.timeDeltaUs;
+        sample.seqNo = i;
+        // sample.timestampUs = lastSample.timestampUs + sample.timeDeltaUs;
 
-        print(sample);
+        // print(sample);
 
-        std::swap(lastSample, sample);
+        // std::swap(lastSample, sample);
 
-        if (do_sleep) {
-            // sleep for the delta time
-            std::this_thread::sleep_for(std::chrono::microseconds((U64)(sample.timeDeltaUs * 0.9)));
-        }
+        // if (do_sleep) {
+        //     // sleep for the delta time
+        //     std::this_thread::sleep_for(std::chrono::microseconds((U64)(sample.timeDeltaUs * 0.9)));
+        // }
     }
 
     return 0;

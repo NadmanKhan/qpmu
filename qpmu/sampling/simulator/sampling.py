@@ -100,8 +100,8 @@ class TimestampedADC:
 
         STRUCT_FORMAT = "@9q"
 
-        CSV_FORMAT = "seq_no={sequence_num},\tch0={channel_values[0]:4},ch1={channel_values[1]:4},ch2={channel_values[2]:4},\
-            ch3={channel_values[3]:4},ch4={channel_values[4]:4},ch5={channel_values[5]:4},ts={timestamp_us},\tdelta={timedelta_us},"
+        CSV_FORMAT = "seq_no={sequence_num},ts={timestamp_us},\tdelta={timedelta_us},\tch0={channel_values[0]:4},ch1={channel_values[1]:4},ch2={channel_values[2]:4},\
+            ch3={channel_values[3]:4},ch4={channel_values[4]:4},ch5={channel_values[5]:4},"
 
         def __init__(
             self,
@@ -125,33 +125,36 @@ class TimestampedADC:
             return struct.pack(
                 TimestampedADC.Sample.STRUCT_FORMAT,
                 self.sequence_num,
-                *self.channel_values,
                 self.timestamp_us,
                 self.timedelta_us,
+                *self.channel_values,
             )
 
         def __str__(self) -> str:
             return TimestampedADC.Sample.CSV_FORMAT.format(
                 sequence_num=self.sequence_num,
-                channel_values=self.channel_values,
                 timestamp_us=self.timestamp_us,
                 timedelta_us=self.timedelta_us,
+                channel_values=self.channel_values,
             )
 
         @classmethod
         def from_bytes(cls, data: bytes) -> "TimestampedADC.Sample":
             values = struct.unpack(cls.STRUCT_FORMAT, data)
             sequence_num = values[0]
-            channel_values = values[1:7]
-            timestamp_us = values[7]
-            timedelta_us = values[8]
-            return cls(sequence_num, channel_values, timestamp_us, timedelta_us)
+            timestamp_us = values[1]
+            timedelta_us = values[2]
+            channel_values = values[3:9]
+            return cls(sequence_num, timestamp_us, timedelta_us, channel_values)
 
         @classmethod
         def from_str(cls, data: str) -> "TimestampedADC.Sample":
-            values = data.split(",")
-            sequence_num = int(values[0].split("=")[1])
-            channel_values = tuple(int(value.split("=")[1]) for value in values[1:7])
-            timestamp_us = int(values[7].split("=")[1])
-            timedelta_us = int(values[8].split("=")[1])
-            return cls(sequence_num, channel_values, timestamp_us, timedelta_us)
+            def value_from_kvstring(kvs: str) -> int:
+                return int(kvs.split("=")[1])
+
+            kvstrings = data.split(",")
+            sequence_num = value_from_kvstring(kvstrings[0])
+            timestamp_us = value_from_kvstring(kvstrings[1])
+            timedelta_us = value_from_kvstring(kvstrings[2])
+            channel_values = tuple(value_from_kvstring(kvs) for kvs in kvstrings[3:9])
+            return cls(sequence_num, timestamp_us, timedelta_us, channel_values)
