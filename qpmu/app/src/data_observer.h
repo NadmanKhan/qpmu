@@ -22,7 +22,7 @@ public:
     using USize = qpmu::USize;
     using SignalColors = std::array<QColor, qpmu::CountSignals>;
 
-    explicit DataObserver(QObject *parent = nullptr);
+    explicit DataObserver();
 
     qpmu::Sample sample() const { return m_sample; }
 
