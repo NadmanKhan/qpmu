@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-set(QPMU_FLOAT_TYPE double)
+set(QPMU_FLOAT_TYPE float)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -11,15 +11,14 @@ set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
-if(${QPMU_FLOAT_TYPE} STREQUAL "float")
-  message(STATUS "Using float as the floating point type")
-  set(QPMU_PROJECT_NAME qpmuf)
+set(QPMU_PROJECT_NAME qpmu)
+
+if(${QPMU_FLOAT_TYPE} STREQUAL "double")
+  message(STATUS "Using double as the floating point type")
 elseif(${QPMU_FLOAT_TYPE} STREQUAL "long double")
   message(STATUS "Using long double as the floating point type")
-  set(QPMU_PROJECT_NAME qpmul)
 else()
-  message(STATUS "Using double as the floating point type")
-  set(QPMU_PROJECT_NAME qpmu)
+  message(STATUS "Using float as the floating point type")
 endif()
 
 project(
