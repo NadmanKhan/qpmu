@@ -83,6 +83,7 @@ struct RawSampleBatch
     uint64_t batchNo = {}; // Batch number
     uint64_t firstSampleTimeUs = {}; // Timestamp at the start of the batch
     uint64_t lastSampleTimeUs = {}; // Timestamp at the end of the batch
+    uint64_t timeSinceLastBatchUs = {}; // Time since the last batch
     RawSample samples[CountRawSamplesPerBatch] = {}; // Buffer for 128 samples
 };
 
