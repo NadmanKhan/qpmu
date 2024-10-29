@@ -1,5 +1,5 @@
 #include "data_observer.h"
-#include "src/settings_models.h"
+#include "src/data_processor.h"
 
 DataObserver::DataObserver()
 {
@@ -8,10 +8,12 @@ DataObserver::DataObserver()
 
 void DataObserver::update()
 {
+
     ++m_updateCounter;
+
     if (m_updateCounter * App::TimerIntervalMs >= App::DataViewUpdateIntervalMs) {
         m_updateCounter = 0;
-        emit sampleUpdated(APP->dataProcessor()->lastSample());
-        emit estimationUpdated(APP->dataProcessor()->lastEstimation());
+        emit sampleBufferUpdated(APP->dataProcessor()->currentSampleBuffer());
+        emit estimationUpdated(APP->dataProcessor()->currentEstimation());
     }
 }

@@ -11,6 +11,7 @@
 #include <QString>
 #include <QColor>
 #include <QTimer>
+#include <QVector>
 
 #include <array>
 
@@ -24,12 +25,8 @@ public:
 
     explicit DataObserver();
 
-    qpmu::Sample sample() const { return m_sample; }
-
-    qpmu::Estimation estimation() const { return m_estimation; }
-
 signals:
-    void sampleUpdated(const qpmu::Sample &sample);
+    void sampleBufferUpdated(const SampleStoreBuffer &sampleBuffer);
     void estimationUpdated(const qpmu::Estimation &estimation);
 
 private slots:
@@ -37,9 +34,6 @@ private slots:
 
 private:
     USize m_updateCounter = 0;
-    
-    qpmu::Sample m_sample = {};
-    qpmu::Estimation m_estimation = {};
 };
 
 #endif // QPMU_APP_DATA_OBSERVER_H

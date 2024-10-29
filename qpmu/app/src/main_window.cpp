@@ -4,6 +4,7 @@
 #include "settings_widget.h"
 #include "data_processor.h"
 #include "src/app.h"
+#include "src/oscilloscope.h"
 #include "util.h"
 
 #include <QIcon>
@@ -175,6 +176,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         using HomeOption = std::tuple<QString, QString, QWidget *>;
         QVector<HomeOption> homeOptions;
         homeOptions.append(HomeOption{ "Monitor", ":/monitor.png", new PhasorMonitor() });
+        homeOptions.append(HomeOption{ "Oscilloscope", ":/waves.png", new Oscilloscope() });
         homeOptions.append(HomeOption{ "Settings", ":/control-panel.png", new SettingsWidget() });
 
         const int rowCount = 2;

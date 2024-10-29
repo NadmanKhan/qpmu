@@ -5,6 +5,8 @@ set(PROJECT_SOURCES
     src/flowlayout.cpp
     src/main_window.h
     src/main_window.cpp
+    src/oscilloscope.h
+    src/oscilloscope.cpp
     src/phasor_monitor.h
     src/phasor_monitor.cpp
     src/main_page_interface.h
@@ -55,7 +57,6 @@ target_link_libraries(
           fftw3
           ${PROJECT_NAME}-common
           ${PROJECT_NAME}-estimation
-          StrongridDLL
           openc37118-1.0
           )
 

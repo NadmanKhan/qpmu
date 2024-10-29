@@ -73,8 +73,8 @@ public:
 
     void updateEstimation(const qpmu::Sample &sample);
 
-    const qpmu::Estimation &lastEstimation() const;
-    const qpmu::Sample &lastSample() const;
+    const qpmu::Estimation &currentEstimation() const;
+    const qpmu::Sample &currentSample() const;
 
 private:
     PhasorEstimationStrategy m_phasorStrategy = PhasorEstimationStrategy::FFT;

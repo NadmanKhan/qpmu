@@ -14,6 +14,7 @@
 #include <QMutexLocker>
 #include <QTcpServer>
 
+#include <array>
 #include <openc37118-1.0/c37118.h>
 #include <openc37118-1.0/c37118configuration.h>
 #include <openc37118-1.0/c37118pmustation.h>
@@ -25,7 +26,12 @@
 
 constexpr int ConnectionWaitTime = 300;
 constexpr int ReadWaitTime = 100;
-constexpr qpmu::USize SampleBufferSize = 1200;
+
+constexpr qpmu::USize SampleReadBufferSize = 1200;
+using SampleReadBuffer = std::array<qpmu::Sample, SampleReadBufferSize>;
+
+constexpr qpmu::USize SampleStoreBufferSize = 64;
+using SampleStoreBuffer = std::array<qpmu::Sample, SampleStoreBufferSize>;
 
 class SampleReader : public QObject
 {
@@ -57,7 +63,7 @@ public:
     }
 
     SamplerSettings settings() const { return m_settings; }
-    qpmu::USize attemptRead(qpmu::Sample outSample[SampleBufferSize]);
+    qpmu::USize attemptRead(SampleReadBuffer &outSample);
     int state() const { return m_state; }
 
 private:
@@ -68,7 +74,7 @@ private:
     qpmu::RawSampleBatch m_batch = {};
 
     std::function<bool()> m_waitForConnected = nullptr;
-    std::function<qpmu::USize(qpmu::Sample[SampleBufferSize])> m_readSamples = nullptr;
+    std::function<qpmu::USize(SampleReadBuffer &)> m_readSamples = nullptr;
 };
 
 class PhasorSender : public QObject
@@ -123,15 +129,16 @@ public:
         QMutexLocker locker(&m_mutex);
         return m_reader->state();
     }
-    const qpmu::Estimation &lastEstimation()
+    const qpmu::Estimation &currentEstimation()
     {
         QMutexLocker locker(&m_mutex);
-        return m_estimator->lastEstimation();
+        return m_estimator->currentEstimation();
     }
-    const qpmu::Sample &lastSample()
+
+    const SampleStoreBuffer &currentSampleBuffer()
     {
         QMutexLocker locker(&m_mutex);
-        return m_estimator->lastSample();
+        return m_sampleStoreBuffer;
     }
 
     void updateSampleReader();
@@ -142,6 +149,8 @@ signals:
 private:
     QMutex m_mutex;
     qpmu::PhasorEstimator *m_estimator = nullptr;
+    SampleStoreBuffer m_sampleStoreBuffer = {};
+    SampleReadBuffer m_sampleReadBuffer = {};
 
     SampleReader *m_reader = nullptr;
     SampleReader *m_newReader = nullptr;

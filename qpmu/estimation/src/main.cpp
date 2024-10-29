@@ -126,13 +126,13 @@ int main(int argc, char *argv[])
                 return 1;
             }
             estimator.updateEstimation(sample);
-            phasor = estimator.lastEstimation();
+            phasor = estimator.currentEstimation();
             print();
         }
     } else if (inputFormat == FormatBinary) {
         while (fread(&sample, sizeof(Sample), 1, stdin)) {
             estimator.updateEstimation(sample);
-            phasor = estimator.lastEstimation();
+            phasor = estimator.currentEstimation();
             print();
         }
     }

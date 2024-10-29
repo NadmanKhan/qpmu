@@ -46,28 +46,35 @@ SampleReader::SampleReader(const SamplerSettings &settings) : m_settings(setting
         process->start(QProcess::ReadOnly);
     }
 
-    m_readSamples = [](qpmu::Sample[SampleBufferSize]) -> qpmu::USize { return 0; };
+    m_readSamples = [](SampleReadBuffer &) -> qpmu::USize { return 0; };
+
     if (settings.connection != SamplerSettings::None) {
         if (qgetenv("BATCHED_SAMPLES").toLower() == "true") {
             /// Read a batch of samples.
             /// Only works with binary data.
             if (settings.isDataBinary) {
-                m_readSamples = [this](qpmu::Sample outSamples[SampleBufferSize]) -> qpmu::USize {
-                    auto prevBatchNo = m_batch.batchNo;
+                m_readSamples = [this](SampleReadBuffer &outSamples) -> qpmu::USize {
                     auto bytesRead = m_device->read((char *)&m_batch, sizeof(RawSampleBatch));
+                    // qDebug() << "bytesRead: " << bytesRead;
+                    // qDebug() << "sizeof(RawSampleBatch): " << sizeof(RawSampleBatch);
+                    // qDebug() << "batchNo: " << m_batch.batchNo;
+                    // qDebug() << "firstSampleTimeUs: " << m_batch.firstSampleTimeUs;
+                    // qDebug() << "lastSampleTimeUs: " << m_batch.lastSampleTimeUs;
+                    // qDebug() << "timeSinceLastBatchUs: " << m_batch.timeSinceLastBatchUs;
                     if (bytesRead == sizeof(RawSampleBatch)) {
                         auto timeWindow = m_batch.lastSampleTimeUs - m_batch.firstSampleTimeUs;
                         auto timeDelta = timeWindow / (CountRawSamplesPerBatch - 1);
                         for (USize i = 0; i < CountRawSamplesPerBatch; ++i) {
                             auto &rawSample = m_batch.samples[i];
                             Sample &sample = outSamples[i];
-                            sample.seqNo =
-                                    prevBatchNo * CountRawSamplesPerBatch + rawSample.sampleNo;
+                            sample.seqNo = (m_batch.batchNo - 1) * CountRawSamplesPerBatch
+                                    + rawSample.sampleNo;
                             sample.timestampUs = m_batch.firstSampleTimeUs + i * timeDelta;
                             sample.timeDeltaUs = timeDelta;
                             for (USize j = 0; j < CountSignals; ++j) {
                                 sample.channels[j] = rawSample.data[j];
                             }
+                            // qDebug() << "Sample " << i << ": " << toString(sample).c_str();
                         }
                         return CountRawSamplesPerBatch;
                     }
@@ -79,9 +86,8 @@ SampleReader::SampleReader(const SamplerSettings &settings) : m_settings(setting
         } else {
             /// Read just one sample at a time.
             if (settings.isDataBinary) {
-                m_readSamples = [this](qpmu::Sample outSamples[SampleBufferSize]) -> qpmu::USize {
-                    auto bytesRead =
-                            m_device->read((char *)outSamples, sizeof(Sample));
+                m_readSamples = [this](SampleReadBuffer &outSamples) -> qpmu::USize {
+                    auto bytesRead = m_device->read((char *)outSamples.data(), sizeof(Sample));
                     if (bytesRead != sizeof(Sample)) {
                         qWarning("Failed to read a sample");
                         qDebug() << "bytesRead: " << bytesRead;
@@ -90,7 +96,7 @@ SampleReader::SampleReader(const SamplerSettings &settings) : m_settings(setting
                     return (qpmu::USize)(bytesRead == sizeof(Sample));
                 };
             } else {
-                m_readSamples = [this](qpmu::Sample outSamples[SampleBufferSize]) -> qpmu::USize {
+                m_readSamples = [this](SampleReadBuffer &outSamples) -> qpmu::USize {
                     USize ok = 1;
                     if (m_device->readLine(m_line, sizeof(m_line)) > 0) {
                         std::string error;
@@ -109,7 +115,7 @@ SampleReader::SampleReader(const SamplerSettings &settings) : m_settings(setting
     }
 }
 
-qpmu::USize SampleReader::attemptRead(qpmu::Sample outSamples[SampleBufferSize])
+qpmu::USize SampleReader::attemptRead(SampleReadBuffer &outSamples)
 {
     int newState = 0;
     /// Check if enabled
@@ -336,8 +342,6 @@ void DataProcessor::updateSampleReader()
 
 void DataProcessor::run()
 {
-    Sample samples[SampleBufferSize];
-
     while (true) {
         if (m_newReader) {
             {
@@ -350,13 +354,18 @@ void DataProcessor::run()
 
         if (m_reader) {
             auto oldState = m_reader->state();
-            auto nread = m_reader->attemptRead(samples);
+            auto nread = m_reader->attemptRead(m_sampleReadBuffer);
             auto newState = m_reader->state();
 
             if (newState & SampleReader::DataValid) {
                 for (USize i = 0; i < nread; ++i) {
-                    m_estimator->updateEstimation(samples[i]);
-                    m_sender->attemptSend(samples[i], m_estimator->lastEstimation());
+                    const auto &sample = m_sampleReadBuffer[i];
+                    for (USize j = 1; j < SampleStoreBufferSize; ++j) {
+                        m_sampleStoreBuffer[j - 1] = m_sampleStoreBuffer[j];
+                    }
+                    m_sampleStoreBuffer[SampleStoreBufferSize - 1] = sample;
+                    m_estimator->updateEstimation(sample);
+                    m_sender->attemptSend(sample, m_estimator->currentEstimation());
                 }
             }
             if (oldState != newState) {

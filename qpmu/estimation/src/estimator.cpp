@@ -80,12 +80,12 @@ PhasorEstimator::PhasorEstimator(USize fn, USize fs, PhasorEstimationStrategy ph
 #define SAMPLE_NEXT(i) NEXT(i, sample)
 #define SAMPLE_PREV(i) PREV(i, sample)
 
-const Estimation &PhasorEstimator::lastEstimation() const
+const Estimation &PhasorEstimator::currentEstimation() const
 {
     return m_estimationBuffer[m_estimationBufIdx];
 }
 
-const Sample &PhasorEstimator::lastSample() const
+const Sample &PhasorEstimator::currentSample() const
 {
     return m_sampleBuffer[m_sampleBufIdx];
 }

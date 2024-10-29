@@ -322,7 +322,7 @@ QWidget *SettingsWidget::samplerSettingsPage(const SamplerSettings &settings)
 
 Float sampleMagnitude(USize signalIndex)
 {
-    const auto &phasors = APP->dataProcessor()->lastEstimation().phasors;
+    const auto &phasors = APP->dataProcessor()->currentEstimation().phasors;
     return std::abs(phasors[signalIndex]);
 }
 
