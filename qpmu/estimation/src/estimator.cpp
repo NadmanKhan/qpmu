@@ -22,7 +22,7 @@ constexpr bool isPositive(Numeric x)
     }
 }
 
-constexpr Float zeroCrossingTime(Float t0, Float x0, Float t1, Float x1)
+constexpr I64 zeroCrossingTime(I64 t0, I64 x0, I64 t1, I64 x1)
 {
     return t0 + (0 - x0) * (t1 - t0) / (x1 - x0);
 }
@@ -72,7 +72,7 @@ PhasorEstimator::PhasorEstimator(USize fn, USize fs, PhasorEstimationStrategy ph
 }
 
 #define NEXT(i, x) (((i) != (m_##x##Buffer.size() - 1)) * ((i) + 1))
-#define PREV(i, x) (((i) != 0) * ((i) - 1) + ((i) == 0) * (m_##x##Buffer.size() - 1))
+#define PREV(i, x) (((i) != 0) * ((i)-1) + ((i) == 0) * (m_##x##Buffer.size() - 1))
 
 #define ESTIMATION_NEXT(i) NEXT(i, estimation)
 #define ESTIMATION_PREV(i) PREV(i, estimation)
@@ -174,22 +174,20 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
                     assert(zeroValue >= 0);
 
                     /// Get the zero crrossing count and the first and last zero crossing times
-                    U64 countZeroCrossings = 0;
-                    U64 firstCrossingUs = 0;
-                    U64 lastCrossingUs = 0;
+                    I64 countZeroCrossings = 0;
+                    I64 firstCrossingUs = std::numeric_limits<I64>::max();
+                    I64 lastCrossingUs = 0;
                     for (USize i = 1; i <= m_sampleBufIdx; ++i) {
                         const I64 &x0 = (I64)m_sampleBuffer[i - 1].channels[ch] - zeroValue;
                         const I64 &x1 = (I64)m_sampleBuffer[i].channels[ch] - zeroValue;
-                        const U64 &t0 = m_sampleBuffer[i - 1].timestampUs;
-                        const U64 &t1 = m_sampleBuffer[i].timestampUs;
+                        const I64 &t0 = m_sampleBuffer[i - 1].timestampUs;
+                        const I64 &t1 = m_sampleBuffer[i].timestampUs;
 
                         if (isPositive(x0) != isPositive(x1)) {
                             ++countZeroCrossings;
-                            auto t = (U64)(std::round(zeroCrossingTime(t0, x0, t1, x1)) + 0.2);
-                            if (firstCrossingUs == 0) {
-                                firstCrossingUs = t;
-                            }
-                            lastCrossingUs = t;
+                            auto t = zeroCrossingTime(t0, x0, t1, x1);
+                            firstCrossingUs = std::min(firstCrossingUs, t);
+                            lastCrossingUs = std::max(lastCrossingUs, t);
                         }
                     }
 
@@ -197,10 +195,12 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
                     auto residueSec = (Float)1.0 - crossingWindowSec;
 
                     /// 2 zero crossings per cycle + 1 crossing starts the count
-                    Float freq = std::max((Float)0.0, (Float)(countZeroCrossings - 1)) / 2.0;
+                    Float freq = (std::max((I64)1, countZeroCrossings) - 1) / 2.0;
 
-                    /// Adjust the frequency to the window, because it is not exactly 1 second
-                    currEstimation.frequencies[ch] = freq * (1.0 + residueSec);
+                    /// Adjust the frequency to account for the window being less than 1 second
+                    freq *= (1.0 + residueSec);
+
+                    currEstimation.frequencies[ch] = freq;
                 }
 
                 { /// ROCOF estimation
