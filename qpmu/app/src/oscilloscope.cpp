@@ -63,6 +63,10 @@ Oscilloscope::Oscilloscope(QWidget *parent) : QWidget(parent)
 
 void Oscilloscope::updateView(const SampleStoreBuffer &samples)
 {
+    if (!isVisible()) {
+        return;
+    }
+    
     auto settings = new VisualisationSettings();
 
     I64 timeMin = std::numeric_limits<I64>::max();
