@@ -24,6 +24,8 @@
 
 using namespace qpmu;
 #define QSL(s) QStringLiteral(s)
+#define FMT_FIELD(value, unit) (QSL("<pre><b>%1</b><small>%2</small></pre>").arg(value, unit))
+#define FMT_VALUE(value) (QString::number(value, 'f', 2).rightJustified(7))
 
 constexpr Float Margin = 0.025;
 constexpr Float PhasorPlotWidth = 2;
@@ -86,10 +88,10 @@ PhasorMonitor::PhasorMonitor(QWidget *parent) : QWidget(parent)
     updateVisibility();
 
     connect(APP->dataObserver(), &DataObserver::estimationUpdated, this,
-            &PhasorMonitor::updateData);
+            &PhasorMonitor::updateView);
 }
 
-void PhasorMonitor::updateData(const Estimation &est)
+void PhasorMonitor::updateView(const Estimation &est)
 {
     if (!isVisible()) {
         return;
@@ -292,23 +294,24 @@ void PhasorMonitor::updateData(const Estimation &est)
             const Float &ampli = amplis[i];
             const Float &phase = m_ctrl.phaseRef.checkApplyToTable->isChecked() ? normPhasesDeg[i]
                                                                                 : phasesDeg[i];
-            m_labels.ampli[i]->setText(QString("%1").arg(QString::number(ampli, 'f', 2)));
-            m_labels.phase[i]->setText(QString("%1").arg(QString::number(phase, 'f', 2)));
-            m_labels.frequ[i]->setText(QString("%1").arg(QString::number(frequ, 'f', 2)));
+
+            auto ampliUnit = UnitSymbolOfSignalType[TypeOfSignal[i]];
+            m_labels.ampli[i]->setText(FMT_FIELD(FMT_VALUE(ampli), QSL(" %1").arg(ampliUnit)));
+            m_labels.phase[i]->setText(FMT_FIELD(FMT_VALUE(phase), "°"));
+            m_labels.frequ[i]->setText(FMT_FIELD(FMT_VALUE(frequ), " Hz"));
         }
 
         for (USize p = 0; p < CountSignalPhases; ++p) {
             const auto &[vId, iId] = SignalsOfPhase[p];
             const auto vPhaseDeg = phasesDeg[vId];
             const auto iPhaseDeg = phasesDeg[iId];
-            auto diff = diffAnglesDeg(vPhaseDeg, iPhaseDeg);
-            m_labels.phaseDiff[p]->setText(QString("%1").arg(QString::number(diff, 'f', 2)));
+            auto phaseDiff = diffAnglesDeg(vPhaseDeg, iPhaseDeg);
+
+            m_labels.phaseDiff[p]->setText(FMT_FIELD(FMT_VALUE(phaseDiff), "°"));
         }
 
-        m_labels.summaryFrequency->setText(
-                QString("%1 Hz").arg(QString::number(est.frequencies[0], 'f', 1)));
-        m_labels.summarySamplingRate->setText(
-                QString("%1 samples/s").arg(QString::number(est.samplingRate, 'f', 1)));
+        m_labels.summaryFrequency->setText(FMT_FIELD(FMT_VALUE(est.frequencies[0]), " Hz"));
+        m_labels.summarySamplingRate->setText(FMT_FIELD(FMT_VALUE(est.samplingRate), " samples/s"));
     }
 }
 
@@ -722,7 +725,7 @@ void PhasorMonitor::createTable()
     table->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
     table->setColumnCount(3);
-    table->setHorizontalHeaderLabels({ "Voltage", "Current", "Δθ" });
+    table->setHorizontalHeaderLabels({ "Voltage", "Current", "ΔΦ" });
     table->setRowCount(3);
     table->setVerticalHeaderLabels({ "A", "B", "C" });
 
@@ -740,11 +743,11 @@ void PhasorMonitor::createTable()
         auto label = new QLabel(QSL("_"), parent);
         label->setContentsMargins(QMargins(0, 0, 0, 0));
         label->raise();
-        label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        label->setFixedWidth(65);
-        label->setTextFormat(Qt::PlainText);
+        label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+        label->setTextFormat(Qt::RichText);
         auto font = label->font();
-        font.setWeight(QFont::DemiBold);
+        font.setFamily("monospace");
+        // font.setPointSize(font.pointSize() * 0.95);
         label->setFont(font);
         return label;
     };
@@ -769,26 +772,26 @@ void PhasorMonitor::createTable()
         QLabel *ampliLabel; // e.g. "120.0"
         QLabel *textLabel1; // e.g. " V"
         QLabel *phaseLabel; // e.g. "30.0"
-        QLabel *textLabel2; // e.g. " °"
+        QLabel *textLabel2; // e.g. "°"
         QLabel *frequLabel; // e.g. "50.0"
         QLabel *textLabel3; // e.g. " Hz"
 
         layout->addWidget(colorLabel = makeDecorativeLabel(widget));
         layout->addWidget(ampliLabel = makeDataLabel(widget), 1);
-        layout->addWidget(textLabel1 = makeDecorativeLabel(widget));
+        // layout->addWidget(textLabel1 = makeDecorativeLabel(widget));
         layout->addWidget(phaseLabel = makeDataLabel(widget), 1);
-        layout->addWidget(textLabel2 = makeDecorativeLabel(widget));
+        // layout->addWidget(textLabel2 = makeDecorativeLabel(widget));
         layout->addWidget(frequLabel = makeDataLabel(widget), 1);
-        layout->addWidget(textLabel3 = makeDecorativeLabel(widget));
+        // layout->addWidget(textLabel3 = makeDecorativeLabel(widget));
 
         colorLabel->setPixmap(
                 rectPixmap(visualSettings.signalColors[signalId], 6, 0.7 * colorLabel->height()));
         colorLabel->setScaledContents(false);
 
-        textLabel1->setText(QSL("<pre><small> %1</small></pre>")
-                                    .arg(UnitSymbolOfSignalType[TypeOfSignal[signalId]]));
-        textLabel2->setText(QSL("<pre><small> °</small></pre>"));
-        textLabel3->setText(QSL("<pre><small> Hz</small></pre>"));
+        // textLabel1->setText(QSL("<pre><small> %1</small></pre>")
+        //                             .arg(UnitSymbolOfSignalType[TypeOfSignal[signalId]]));
+        // textLabel2->setText(QSL("<pre><small> °</small></pre>"));
+        // textLabel3->setText(QSL("<pre><small> Hz</small></pre>"));
 
         m_colorLabels[signalId].append(colorLabel);
         m_labels.ampli[signalId] = ampliLabel;
@@ -805,12 +808,12 @@ void PhasorMonitor::createTable()
             auto layout = static_cast<QHBoxLayout *>(phaseDiffWidget->layout());
 
             QLabel *phaseDiffLabel; // e.g. "15.0"
-            QLabel *degreeLabel; // e.g. " °"
+            QLabel *degreeLabel; // e.g. "°"
 
             layout->addWidget(phaseDiffLabel = makeDataLabel(phaseDiffWidget), 1);
-            layout->addWidget(degreeLabel = makeDecorativeLabel(phaseDiffWidget));
+            // layout->addWidget(degreeLabel = makeDecorativeLabel(phaseDiffWidget));
 
-            degreeLabel->setText(QSL("<pre><small> °</small></pre>"));
+            // degreeLabel->setText(QSL("<pre><small> °</small></pre>"));
             m_labels.phaseDiff[phase] = phaseDiffLabel;
         }
 
@@ -837,7 +840,8 @@ void PhasorMonitor::createTable()
         table->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
         table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-        table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+        table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
+        table->horizontalHeader()->resizeSection(2, table->font().pointSize() * 7);
     }
 }
 
@@ -855,8 +859,8 @@ void PhasorMonitor::createSummaryBar()
     m_labels.summarySamplingRate = new QLabel(this);
     summaryLayout->addWidget(pausePlayButton);
     summaryLayout->addWidget(summaryLiveStatus);
-    summaryLayout->addWidget(m_labels.summaryFrequency, 1);
-    summaryLayout->addWidget(m_labels.summarySamplingRate);
+    summaryLayout->addWidget(m_labels.summarySamplingRate, 1);
+    summaryLayout->addWidget(m_labels.summaryFrequency);
 
     /// Set styles
     for (auto widget :
@@ -871,7 +875,7 @@ void PhasorMonitor::createSummaryBar()
             label->setTextFormat(Qt::RichText);
             label->setContentsMargins(QMargins(10, 5, 10, 5));
             auto font = label->font();
-            font.setPointSize(font.pointSize() * 1.5);
+            font.setPointSize(font.pointSize() * 1.25);
             font.setBold(true);
             label->setFont(font);
         }
@@ -910,10 +914,10 @@ void PhasorMonitor::createSummaryBar()
 
     { /// Frequency and sampling rate labels
 
-        m_labels.summaryFrequency->setText(QSL("0.0 Hz"));
+        m_labels.summaryFrequency->setText(FMT_FIELD("0.0", " Hz"));
         m_labels.summaryFrequency->setAlignment(Qt::AlignRight);
 
-        m_labels.summarySamplingRate->setText(QSL("0.0 samples/s"));
+        m_labels.summarySamplingRate->setText(FMT_FIELD("0.0", " samples/s"));
         m_labels.summarySamplingRate->setAlignment(Qt::AlignRight);
     }
 }

@@ -33,7 +33,7 @@ private slots:
     // void setSignalVisibility(const std::array<bool, qpmu::CountSignals> &signalVisibility);
 
     void updateVisibility();
-    void updateData(const qpmu::Estimation &estimation);
+    void updateView(const qpmu::Estimation &estimation);
 
 private:
     using PointVector = QVector<QPointF>;

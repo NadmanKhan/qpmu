@@ -40,54 +40,91 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         statusBar()->setSizeGripEnabled(true);
         statusBar()->setContentsMargins(QMargins(5, 0, 0, 0));
 
-        /// 1. Sampling indicators
-        statusBar()->addPermanentWidget(new QLabel("Sampling:", statusBar()));
-        auto createSamplingIndicator = [=](const QString &name, SampleReader::StateFlag flag) {
-            const auto redCircle = circlePixmap(QColor("red"), 12);
-            const auto greenCircle = circlePixmap(QColor("green"), 12);
-            const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
-            auto indicator = new QLabel(statusBar());
-            statusBar()->addPermanentWidget(indicator);
-            indicator->setToolTip(name + "?");
-            auto updateIndicator = [=](int state) {
-                indicator->setPixmap(pixmapChoices[bool(state & flag)]);
+        { /// 1. Sampling status indicators
+            auto frame = new QFrame(statusBar());
+            statusBar()->addPermanentWidget(new QLabel("Sampling:"));
+            statusBar()->addPermanentWidget(frame);
+            frame->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+            auto layout = new QHBoxLayout(frame);
+            layout->setContentsMargins(QMargins(5, 0, 5, 0));
+            auto createSamplingIndicator = [=](const QString &name, SampleReader::StateFlag flag) {
+                auto pixmapSize = frame->font().pointSizeF() * 0.85;
+                const auto redCircle = circlePixmap(QColor("red"), pixmapSize);
+                const auto greenCircle = circlePixmap(QColor("green"), pixmapSize);
+                const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
+                auto indicator = new QLabel(statusBar());
+                layout->addWidget(indicator);
+                indicator->setToolTip(name + "?");
+                auto updateIndicator = [=](int state) {
+                    indicator->setPixmap(pixmapChoices[bool(state & flag)]);
+                };
+                connect(APP->dataProcessor(), &DataProcessor::sampleReaderStateChanged,
+                        updateIndicator);
+                return updateIndicator;
             };
-            connect(APP->dataProcessor(), &DataProcessor::sampleReaderStateChanged,
-                    updateIndicator);
-            return updateIndicator;
-        };
-        for (auto f : { createSamplingIndicator("Enabled", SampleReader::Enabled),
-                        createSamplingIndicator("Connected", SampleReader::Connected),
-                        createSamplingIndicator("Data Reading", SampleReader::DataReading),
-                        createSamplingIndicator("Data Valid", SampleReader::DataValid) }) {
-            f(APP->dataProcessor()->sampleReaderState());
+            for (auto f : { createSamplingIndicator("Enabled", SampleReader::Enabled),
+                            createSamplingIndicator("Connected", SampleReader::Connected),
+                            createSamplingIndicator("Data Reading", SampleReader::DataReading),
+                            createSamplingIndicator("Data Valid", SampleReader::DataValid) }) {
+                f(APP->dataProcessor()->sampleReaderState());
+            }
         }
 
-        /// 3. Spacer
-        auto spacer = new QWidget(statusBar());
-        // spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
-        statusBar()->addPermanentWidget(spacer, 1);
+        { /// 2. Data reporting status indicators
+            auto frame = new QFrame(statusBar());
+            statusBar()->addPermanentWidget(new QLabel("Reporting:"));
+            statusBar()->addPermanentWidget(frame);
+            frame->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+            auto layout = new QHBoxLayout(frame);
+            layout->setContentsMargins(QMargins(5, 0, 5, 0));
+            auto createDataReportingIndicator = [=](const QString &name,
+                                                    PhasorSender::StateFlag flag) {
+                auto pixmapSize = frame->font().pointSizeF() * 0.85;
+                const auto redCircle = circlePixmap(QColor("red"), pixmapSize);
+                const auto greenCircle = circlePixmap(QColor("green"), pixmapSize);
+                const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
+                auto indicator = new QLabel(statusBar());
+                layout->addWidget(indicator);
+                indicator->setToolTip(name + "?");
+                auto updateIndicator = [=](int state) {
+                    indicator->setPixmap(pixmapChoices[bool(state & flag)]);
+                };
+                return updateIndicator;
+            };
+            for (auto f : { createDataReportingIndicator("Enabled", PhasorSender::Enabled),
+                            createDataReportingIndicator("Connected", PhasorSender::Connected),
+                            createDataReportingIndicator("Data Sending", PhasorSender::DataSending),
+                            createDataReportingIndicator("Data Valid", PhasorSender::DataValid) }) {
+                f(APP->dataProcessor()->phasorSenderState());
+            }
+        }
 
-        /// 4. Time and date
-        auto timeLabel = new QLabel(statusBar());
-        statusBar()->addPermanentWidget(timeLabel);
-        auto dateLabel = new QLabel(statusBar());
-        statusBar()->addPermanentWidget(dateLabel);
+        { /// 3. Spacer
+            statusBar()->addPermanentWidget(new QWidget(statusBar()), 1);
+        }
 
-        { /// Set up date and time labels
+        { /// 4. Time and date
+            auto timeLabel = new QLabel(statusBar());
+            statusBar()->addPermanentWidget(timeLabel);
+            auto dateLabel = new QLabel(statusBar());
+            statusBar()->addPermanentWidget(dateLabel);
 
-            /// Make font monospace
-            auto font = dateLabel->font();
-            font.setFamily("'Source Sans Pro', 'Roboto Mono', 'Fira Code', Consolas, Monospace");
-            dateLabel->setFont(font);
-            timeLabel->setFont(font);
+            { /// Set up date and time labels
 
-            /// Update date and time at every timer tick (check `APP->timer()` for the interval)
-            connect(APP->timer(), &QTimer::timeout, [=] {
-                auto now = QDateTime::currentDateTime();
-                dateLabel->setText(now.date().toString());
-                timeLabel->setText(now.time().toString());
-            });
+                /// Make font monospace
+                auto font = dateLabel->font();
+                font.setFamily(
+                        "'Source Sans Pro', 'Roboto Mono', 'Fira Code', Consolas, Monospace");
+                dateLabel->setFont(font);
+                timeLabel->setFont(font);
+
+                /// Update date and time at every timer tick (check `APP->timer()` for the interval)
+                connect(APP->timer(), &QTimer::timeout, [=] {
+                    auto now = QDateTime::currentDateTime();
+                    dateLabel->setText(now.date().toString());
+                    timeLabel->setText(now.time().toString());
+                });
+            }
         }
 
         /// Must call show to make the status bar visible

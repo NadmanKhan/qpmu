@@ -62,14 +62,15 @@ public:
                 .arg(bool(state & DataValid) ? "DataValid" : "");
     }
 
-    SamplerSettings settings() const { return m_settings; }
-    qpmu::USize attemptRead(SampleReadBuffer &outSample);
     int state() const { return m_state; }
+    SamplerSettings settings() const { return m_settings; }
+
+    qpmu::USize attemptRead(SampleReadBuffer &outSample);
 
 private:
+    int m_state = 0;
     SamplerSettings m_settings;
     QIODevice *m_device = nullptr;
-    int m_state = 0;
     char m_line[1000];
     qpmu::RawSampleBatch m_batch = {};
 
@@ -81,6 +82,13 @@ class PhasorSender : public QObject
 {
     Q_OBJECT
 public:
+    enum StateFlag {
+        Enabled = 1 << 0,
+        Connected = 1 << 1,
+        DataSending = 1 << 2,
+        DataValid = 1 << 3,
+    };
+
     PhasorSender();
     ~PhasorSender()
     {
@@ -95,6 +103,7 @@ public:
         std::free(m_cmd); // Because it is allocated with `malloc` in `CMD_Frame::unpack`
     }
 
+    int state() const { return m_state; }
     QTcpServer *server() const { return m_server; }
 
     void attemptSend(const qpmu::Sample &sample, const qpmu::Estimation &estimation);
@@ -102,6 +111,7 @@ public:
     void handleCommand(QTcpSocket *client);
 
 private:
+    int m_state = 0;
     QTcpServer *m_server = nullptr;
     QVector<QTcpSocket *> m_clients = {};
     unsigned char m_buffer[10000] = {};
@@ -128,6 +138,11 @@ public:
     {
         QMutexLocker locker(&m_mutex);
         return m_reader->state();
+    }
+    int phasorSenderState()
+    {
+        QMutexLocker locker(&m_mutex);
+        return m_sender->state();
     }
     const qpmu::Estimation &currentEstimation()
     {
