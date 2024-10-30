@@ -40,11 +40,10 @@ Oscilloscope::Oscilloscope(QWidget *parent) : QWidget(parent)
     chart->addAxis(m_timeAxis, Qt::AlignBottom);
     chart->addAxis(m_valueAxis, Qt::AlignLeft);
     m_timeAxis->setFormat("hh:mm:ss.zzz");
-    m_timeAxis->setTickCount(2 + 1);
+    m_timeAxis->setTickCount(2 /* left and right edges */ + 1 /* center */);
     m_valueAxis->setLabelFormat("%i");
-    m_valueAxis->setTickType(QValueAxis::TicksDynamic);
-    m_valueAxis->setTickAnchor(0);
-    m_valueAxis->setTickInterval(50);
+    m_valueAxis->setRange(0, 1 << 16);
+    m_valueAxis->setTickCount(2 /* top and bottom edges */ + 3 /* middle */);
     auto settings = new VisualisationSettings();
 
     for (USize i = 0; i < qpmu::CountSignals; ++i) {
@@ -68,8 +67,6 @@ void Oscilloscope::updateView(const SampleStoreBuffer &samples)
 
     I64 timeMin = std::numeric_limits<I64>::max();
     I64 timeMax = std::numeric_limits<I64>::min();
-    I64 valueMin = std::numeric_limits<I64>::max();
-    I64 valueMax = std::numeric_limits<I64>::min();
 
     for (USize i = 0; i < (USize)samples.size(); ++i) {
         const auto &timestamp = samples[i].timestampUs;
@@ -77,8 +74,6 @@ void Oscilloscope::updateView(const SampleStoreBuffer &samples)
         timeMax = std::max(timeMax, (I64)timestamp);
         for (USize j = 0; j < qpmu::CountSignals; ++j) {
             const auto &value = samples[i].channels[j];
-            valueMin = std::min(valueMin, (I64)value);
-            valueMax = std::max(valueMax, (I64)value);
             m_points[j][i] = QPointF(timestamp / 1000.0, value);
             m_series[j]->setColor(settings->signalColors[j]);
         }
@@ -86,7 +81,6 @@ void Oscilloscope::updateView(const SampleStoreBuffer &samples)
 
     m_timeAxis->setRange(QDateTime::fromMSecsSinceEpoch(timeMin / 1000.0),
                          QDateTime::fromMSecsSinceEpoch(timeMax / 1000.0));
-    m_valueAxis->setRange(0, valueMax);
     for (USize i = 0; i < qpmu::CountSignals; ++i) {
         m_series[i]->replace(m_points[i]);
     }
