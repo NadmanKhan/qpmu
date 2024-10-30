@@ -84,7 +84,7 @@ class TimestampedADC:
         sequence_num = 1
         tracker_time_ns = time.time_ns()
         while True:
-            time.sleep(self.sampling_period_s)
+            time.sleep(self.sampling_period_s * 0.9)
             time_ns = time.time_ns()
             yield TimestampedADC.Sample(
                 sequence_num=sequence_num,
