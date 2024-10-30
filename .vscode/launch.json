@@ -37,8 +37,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "CMake: build",
-            "visualizerFile": "/home/nadman/.vscode-server/data/User/workspaceStorage/4655f10b65eb295d5f7f422121922bfc/tonka3000.qtvsctools/qt.natvis.xml"
+            "preLaunchTask": "CMake: build"
         }
     ]
 }
