@@ -125,9 +125,9 @@ qpmu::USize SampleReader::attemptRead(SampleReadBuffer &outSamples)
     /// Check if reading
     newState |= (DataReading
                  * bool((newState & Connected) && m_device->waitForReadyRead(ReadWaitTime)));
-    /// Check if valid
     USize nread = 0;
-    newState |= (DataValid * bool((newState & DataReading) && (nread = m_readSamples(outSamples))));
+    newState |=
+            (DataReading * bool((newState & DataReading) && (nread = m_readSamples(outSamples))));
 
     m_state = newState;
 
@@ -184,17 +184,85 @@ PhasorSender::PhasorSender()
 
 void PhasorSender::attemptSend(const qpmu::Sample &sample, const qpmu::Estimation &estimation)
 {
-    if (!m_server->isListening()) {
-        qDebug() << "tcp server: not listening";
-        return;
-    }
-    if (m_server->waitForNewConnection(10)) {
-        qDebug() << "tcp server: new connection";
+    // if (!m_server->isListening()) {
+    //     qDebug() << "tcp server: not listening";
+    //     return;
+    // }
+    // if (m_server->waitForNewConnection(ConnectionWaitTime)) {
+    //     qDebug() << "tcp server: new connection";
+    //     auto client = m_server->nextPendingConnection();
+    //     if (client)
+    //         m_clients.append(client);
+    // }
+    // // qDebug() << "tcp server: count clients:" << m_clients.size();
+
+    // int deadClients = 0;
+    // for (int i = 0; i < m_clients.size(); ++i) {
+    //     auto client = m_clients[i];
+    //     bool isAlive = true;
+    //     if (client->waitForReadyRead(10)) {
+    //         auto n = client->read((char *)m_buffer, sizeof(m_buffer));
+
+    //         if (n < 0) {
+    //             qWarning("ERROR reading from socket, but continuing to run.\n");
+
+    //         } else if (n == 0) {
+    //             isAlive = false;
+
+    //         } else /* if (n > 0) */ {
+    //             if (m_buffer[0] == A_SYNC_AA) {
+    //                 switch (m_buffer[1]) {
+    //                 case A_SYNC_CMD:
+    //                     qDebug() << "Command received\n";
+    //                     m_cmd->unpack(m_buffer);
+    //                     handleCommand(client);
+    //                     break;
+    //                 default:
+    //                     qWarning("Unknown command received.\n");
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     if (!isAlive) {
+    //         qDebug() << "tcp server: client" << i << "is dead";
+    //         std::swap(m_clients[i], m_clients[m_clients.size() - 1 - deadClients]);
+    //         ++deadClients;
+    //     }
+    // }
+
+    // if (m_sendDataFlag) {
+    //     m_state |= DataSending;
+    //     updateData(sample, estimation);
+    //     qDebug() << "tcp server: sending data:" << toString(sample).c_str()
+    //              << toString(estimation).c_str();
+    //     char *dataBuffer = nullptr;
+    //     unsigned short size = m_dataframe->pack((unsigned char **)&dataBuffer);
+    //     for (int i = 0; i < m_clients.size() - deadClients; ++i) {
+    //         auto client = m_clients[i];
+    //         if (client && client->isOpen()) {
+    //             auto n = client->write(dataBuffer, size);
+    //             if (n < 0) {
+    //                 qWarning("ERROR writing to socket, but continuing to run.\n");
+    //             }
+    //         }
+    //     }
+    // } else {
+    //     m_state &= ~DataSending;
+    // }
+
+    // m_clients.resize(m_clients.size() - deadClients);
+
+    int newState = 0;
+    newState |= (Enabled * bool(m_server->isListening()));
+
+    if (m_server->waitForNewConnection(ConnectionWaitTime)) {
         auto client = m_server->nextPendingConnection();
         if (client)
             m_clients.append(client);
     }
-    // qDebug() << "tcp server: count clients:" << m_clients.size();
+    newState |= (Connected * bool(m_clients.size() > 0));
 
     int deadClients = 0;
     for (int i = 0; i < m_clients.size(); ++i) {
@@ -233,6 +301,7 @@ void PhasorSender::attemptSend(const qpmu::Sample &sample, const qpmu::Estimatio
     }
 
     if (m_sendDataFlag) {
+        newState |= DataSending;
         updateData(sample, estimation);
         qDebug() << "tcp server: sending data:" << toString(sample).c_str()
                  << toString(estimation).c_str();
@@ -247,9 +316,13 @@ void PhasorSender::attemptSend(const qpmu::Sample &sample, const qpmu::Estimatio
                 }
             }
         }
+    } else {
+        newState &= ~DataSending;
     }
 
     m_clients.resize(m_clients.size() - deadClients);
+
+    m_state = newState;
 }
 
 void PhasorSender::handleCommand(QTcpSocket *client)
@@ -353,23 +426,31 @@ void DataProcessor::run()
         }
 
         if (m_reader) {
-            auto oldState = m_reader->state();
+            auto readerOldState = m_reader->state();
             auto nread = m_reader->attemptRead(m_sampleReadBuffer);
-            auto newState = m_reader->state();
+            auto readerNewState = m_reader->state();
 
-            if (newState & SampleReader::DataValid) {
+            if (readerNewState & SampleReader::DataReading) {
                 for (USize i = 0; i < nread; ++i) {
+
                     const auto &sample = m_sampleReadBuffer[i];
                     for (USize j = 1; j < SampleStoreBufferSize; ++j) {
                         m_sampleStoreBuffer[j - 1] = m_sampleStoreBuffer[j];
                     }
                     m_sampleStoreBuffer[SampleStoreBufferSize - 1] = sample;
                     m_estimator->updateEstimation(sample);
+
+                    auto senderOldState = m_sender->state();
                     m_sender->attemptSend(sample, m_estimator->currentEstimation());
+                    auto senderNewState = m_sender->state();
+
+                    if (senderOldState != senderNewState) {
+                        emit phasorSenderStateChanged(senderNewState);
+                    }
                 }
             }
-            if (oldState != newState) {
-                emit sampleReaderStateChanged(newState);
+            if (readerOldState != readerNewState) {
+                emit sampleReaderStateChanged(readerNewState);
             }
         }
     }

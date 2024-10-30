@@ -24,7 +24,7 @@
 
 #include <functional>
 
-constexpr int ConnectionWaitTime = 300;
+constexpr int ConnectionWaitTime = 10;
 constexpr int ReadWaitTime = 100;
 
 constexpr qpmu::USize SampleReadBufferSize = 1200;
@@ -41,7 +41,6 @@ public:
         Enabled = 1 << 0,
         Connected = 1 << 1,
         DataReading = 1 << 2,
-        DataValid = 1 << 3,
     };
 
     SampleReader() = default;
@@ -58,8 +57,7 @@ public:
         return QStringLiteral("%1, %2, %3, %4")
                 .arg(bool(state & Enabled) ? "Enabled" : "")
                 .arg(bool(state & Connected) ? "Connected" : "")
-                .arg(bool(state & DataReading) ? "DataReading" : "")
-                .arg(bool(state & DataValid) ? "DataValid" : "");
+                .arg(bool(state & DataReading) ? "DataReading" : "");
     }
 
     int state() const { return m_state; }
@@ -86,7 +84,6 @@ public:
         Enabled = 1 << 0,
         Connected = 1 << 1,
         DataSending = 1 << 2,
-        DataValid = 1 << 3,
     };
 
     PhasorSender();
@@ -101,6 +98,14 @@ public:
         delete m_dataframe;
         delete m_header;
         std::free(m_cmd); // Because it is allocated with `malloc` in `CMD_Frame::unpack`
+    }
+
+    static QString stateString(int state)
+    {
+        return QStringLiteral("%1, %2, %3")
+                .arg(bool(state & Enabled) ? "Enabled" : "")
+                .arg(bool(state & Connected) ? "Connected" : "")
+                .arg(bool(state & DataSending) ? "DataSending" : "");
     }
 
     int state() const { return m_state; }
@@ -160,6 +165,7 @@ public:
 
 signals:
     void sampleReaderStateChanged(int);
+    void phasorSenderStateChanged(int);
 
 private:
     QMutex m_mutex;

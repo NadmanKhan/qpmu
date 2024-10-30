@@ -23,7 +23,7 @@ class App : public QApplication
 
 public:
     static constexpr quint32 TimerIntervalMs = 100;
-    static constexpr quint32 DataViewUpdateIntervalMs = 200;
+    static constexpr quint32 DataViewUpdateIntervalMs = 100;
 
     App(int &argc, char **argv);
 

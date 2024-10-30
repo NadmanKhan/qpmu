@@ -67,8 +67,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
             };
             for (auto f : { createSamplingIndicator("Enabled", SampleReader::Enabled),
                             createSamplingIndicator("Connected", SampleReader::Connected),
-                            createSamplingIndicator("Data Reading", SampleReader::DataReading),
-                            createSamplingIndicator("Data Valid", SampleReader::DataValid) }) {
+                            createSamplingIndicator("Data Reading", SampleReader::DataReading) }) {
                 f(APP->dataProcessor()->sampleReaderState());
             }
         }
@@ -89,12 +88,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
                 auto updateIndicator = [=](int state) {
                     indicator->setPixmap(pixmapChoices[bool(state & flag)]);
                 };
+
+                connect(APP->dataProcessor(), &DataProcessor::phasorSenderStateChanged,
+                        updateIndicator);
                 return updateIndicator;
             };
-            for (auto f : { createDataReportingIndicator("Enabled", PhasorSender::Enabled),
-                            createDataReportingIndicator("Connected", PhasorSender::Connected),
-                            createDataReportingIndicator("Data Sending", PhasorSender::DataSending),
-                            createDataReportingIndicator("Data Valid", PhasorSender::DataValid) }) {
+            for (auto f :
+                 { createDataReportingIndicator("Enabled", PhasorSender::Enabled),
+                   createDataReportingIndicator("Connected", PhasorSender::Connected),
+                   createDataReportingIndicator("Data Sending", PhasorSender::DataSending) }) {
                 f(APP->dataProcessor()->phasorSenderState());
             }
         }
@@ -107,7 +109,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
             spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
             statusBar()->addPermanentWidget(spacer, 1);
         }
-        
+
         statusBar()->addPermanentWidget(makeSeparator());
 
         QLabel *timeLabel = nullptr;
