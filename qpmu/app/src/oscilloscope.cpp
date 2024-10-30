@@ -26,8 +26,6 @@ Oscilloscope::Oscilloscope(QWidget *parent) : QWidget(parent)
     chartView->setRenderHint(QPainter::Antialiasing);
     chartView->setContentsMargins(QMargins(0, 0, 0, 0));
     chartView->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-    chartView->setBackgroundRole(QPalette::Base);
-    chartView->setAutoFillBackground(true);
 
     auto chart = new QChart();
     chartView->setChart(chart);
@@ -44,7 +42,6 @@ Oscilloscope::Oscilloscope(QWidget *parent) : QWidget(parent)
     m_timeAxis->setFormat("hh:mm:ss.zzz");
     m_timeAxis->setTickCount(2 + 1);
     m_valueAxis->setLabelFormat("%i");
-    m_valueAxis->setTruncateLabels(false);
     m_valueAxis->setTickType(QValueAxis::TicksDynamic);
     m_valueAxis->setTickAnchor(0);
     m_valueAxis->setTickInterval(50);
