@@ -98,44 +98,44 @@ int main(int argc, char *argv[])
     Estimation phasor;
     Sample sample;
 
-    auto print = [&] {
-        switch (outputFormat) {
-        case FormatBinary:
-            std::fwrite(&phasor, sizeof(Estimation), 1, stdout);
-            break;
-        case FormatCsv:
-            cout << toCsv(phasor) << '\n';
-            break;
-        default:
-            cout << toString(phasor) << '\n';
-        }
-    };
+    // auto print = [&] {
+    //     switch (outputFormat) {
+    //     case FormatBinary:
+    //         std::fwrite(&phasor, sizeof(Estimation), 1, stdout);
+    //         break;
+    //     case FormatCsv:
+    //         cout << toCsv(phasor) << '\n';
+    //         break;
+    //     default:
+    //         cout << toString(phasor) << '\n';
+    //     }
+    // };
 
-    if (outputFormat == FormatCsv) {
-        cout << estimationCsvHeader() << '\n';
-    }
+    // if (outputFormat == FormatCsv) {
+    //     cout << estimationCsvHeader() << '\n';
+    // }
 
-    if (inputFormat == FormatReadableStr) {
-        std::string line;
-        while (std::getline(std::cin, line)) {
-            std::string error;
-            sample = parseSample(line.c_str(), &error);
-            if (!error.empty()) {
-                cerr << "Failed to parse line: " << line << '\n';
-                cerr << "Error: " << error << '\n';
-                return 1;
-            }
-            estimator.updateEstimation(sample);
-            phasor = estimator.currentEstimation();
-            print();
-        }
-    } else if (inputFormat == FormatBinary) {
-        while (fread(&sample, sizeof(Sample), 1, stdin)) {
-            estimator.updateEstimation(sample);
-            phasor = estimator.currentEstimation();
-            print();
-        }
-    }
+    // if (inputFormat == FormatReadableStr) {
+    //     std::string line;
+    //     while (std::getline(std::cin, line)) {
+    //         std::string error;
+    //         sample = parseSample(line.c_str(), &error);
+    //         if (!error.empty()) {
+    //             cerr << "Failed to parse line: " << line << '\n';
+    //             cerr << "Error: " << error << '\n';
+    //             return 1;
+    //         }
+    //         estimator.updateEstimation(sample);
+    //         phasor = estimator.currentEstimation();
+    //         print();
+    //     }
+    // } else if (inputFormat == FormatBinary) {
+    //     while (fread(&sample, sizeof(Sample), 1, stdin)) {
+    //         estimator.updateEstimation(sample);
+    //         phasor = estimator.currentEstimation();
+    //         print();
+    //     }
+    // }
 
     return 0;
 }

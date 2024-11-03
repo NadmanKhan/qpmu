@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <complex>
+#include <chrono>
 
 namespace qpmu {
 
@@ -22,6 +23,9 @@ using ISize = ssize_t;
 using I64 = std::int64_t;
 using I32 = std::int16_t;
 using I16 = std::int16_t;
+using SystemClock = std::chrono::system_clock;
+using Duration = std::chrono::microseconds;
+constexpr USize TimeBase = Duration::period::den;
 
 constexpr USize CountSignalTypes = 2;
 constexpr USize CountSignalPhases = 3;
@@ -70,44 +74,17 @@ constexpr Signal SignalsOfType[CountSignalTypes][CountSignalPhases] = {
 constexpr Signal SignalId[CountSignals] = { SignalVA, SignalVB, SignalVC,
                                             SignalIA, SignalIB, SignalIC };
 
-struct RawSample
+struct RPMsg_Buffer
 {
-    uint64_t sampleNo = {}; // Sample number within the batch
-    uint16_t data[CountSignals] = {}; // Data from a single scan
+    uint64_t timestampNsec;
+    uint16_t data[6 * 30];
 };
 
-constexpr USize CountRawSamplesPerBatch = 128;
-
-struct RawSampleBatch
-{
-    uint64_t batchNo = {}; // Batch number
-    uint64_t firstSampleTimeUs = {}; // Timestamp at the start of the batch
-    uint64_t lastSampleTimeUs = {}; // Timestamp at the end of the batch
-    uint64_t timeSinceLastBatchUs = {}; // Time since the last batch
-    RawSample samples[CountRawSamplesPerBatch] = {}; // Buffer for 128 samples
-};
-
-/// @brief Time-stamped ADC sample vector obtained from the sampling module.
 struct Sample
 {
-    /// Sequence number of the sample. This is a monotonically increasing number that is used to
-    /// identify the order of the samples.
-    U64 seqNo = {};
-
-    /// Time (in microseconds) stamped by the sampling module's GPS-synchronized clock. This should
-    /// be accurate to within a few microseconds of the actual time of the sample.
-    U64 timestampUs = {};
-
-    /// Time (in microseconds) since the last sample.
-    U64 timeDeltaUs = {};
-
-    /// Digitized signal samples be obtained from the ADC of the sampling module. The order is as
-    /// per `SignalNames`.
-    U64 channels[CountSignals] = {};
+    Duration timestamp = {};
+    U16 channels[CountSignals] = {};
 };
-
-using SampleFieldVector =
-        std::array<U64, 3 + CountSignals>; // seq, timestampUs, timeDeltaUs, channels
 
 /// @brief Estimations of phasors, frequency and rate-of-change-of-frequency
 /// of each phasor, and sapling rate, to be computed by the estimations module

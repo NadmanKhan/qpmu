@@ -9,14 +9,13 @@
 
 namespace qpmu {
 
+Duration getDuration(const SystemClock::time_point &duration);
+SystemClock::time_point durationToSystemTime(const Duration &duration);
+I64 durationToMicrosec(const Duration &duration);
+
 std::string phasorToString(const Complex &phasor);
 std::string phasorPolarToString(const Complex &phasor);
-std::string estimationCsvHeader();
-std::string toCsv(const Estimation &estimation);
 std::string toString(const Estimation &estimation);
-Sample parseSample(const char *const s, std::string *errorOut = nullptr);
-std::string sampleCsvHeader();
-std::string toCsv(const Sample &sample);
 std::string toString(const Sample &sample);
 
 std::pair<Float, Float> linearRegression(const std::vector<Float> &x, const std::vector<Float> &y);

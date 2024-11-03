@@ -24,64 +24,15 @@
 
 #include <functional>
 
-constexpr int ConnectionWaitTime = 10;
-constexpr int ReadWaitTime = 100;
-
-constexpr qpmu::USize SampleReadBufferSize = 1200;
-using SampleReadBuffer = std::array<qpmu::Sample, SampleReadBufferSize>;
-
-constexpr qpmu::USize SampleStoreBufferSize = 64;
-using SampleStoreBuffer = std::array<qpmu::Sample, SampleStoreBufferSize>;
-
-class SampleReader : public QObject
-{
-    Q_OBJECT
-public:
-    enum StateFlag {
-        Enabled = 1 << 0,
-        Connected = 1 << 1,
-        DataReading = 1 << 2,
-    };
-
-    SampleReader() = default;
-    SampleReader(const SamplerSettings &settings);
-    virtual ~SampleReader()
-    {
-        if (m_device) {
-            m_device->close();
-        }
-    }
-
-    static QString stateString(int state)
-    {
-        return QStringLiteral("%1, %2, %3, %4")
-                .arg(bool(state & Enabled) ? "Enabled" : "")
-                .arg(bool(state & Connected) ? "Connected" : "")
-                .arg(bool(state & DataReading) ? "DataReading" : "");
-    }
-
-    int state() const { return m_state; }
-    SamplerSettings settings() const { return m_settings; }
-
-    qpmu::USize attemptRead(SampleReadBuffer &outSample);
-
-private:
-    int m_state = 0;
-    SamplerSettings m_settings;
-    QIODevice *m_device = nullptr;
-    char m_line[1000];
-    qpmu::RawSampleBatch m_batch = {};
-
-    std::function<bool()> m_waitForConnected = nullptr;
-    std::function<qpmu::USize(SampleReadBuffer &)> m_readSamples = nullptr;
-};
+constexpr qpmu::USize SampleStoreSize = 64;
+using SampleStore = std::array<qpmu::Sample, SampleStoreSize>;
 
 class PhasorSender : public QObject
 {
     Q_OBJECT
 public:
     enum StateFlag {
-        Enabled = 1 << 0,
+        Listening = 1 << 0,
         Connected = 1 << 1,
         DataSending = 1 << 2,
     };
@@ -103,7 +54,7 @@ public:
     static QString stateString(int state)
     {
         return QStringLiteral("%1, %2, %3")
-                .arg(bool(state & Enabled) ? "Enabled" : "")
+                .arg(bool(state & Listening) ? "Listening" : "")
                 .arg(bool(state & Connected) ? "Connected" : "")
                 .arg(bool(state & DataSending) ? "DataSending" : "");
     }
@@ -139,42 +90,32 @@ public:
 
     void run() override;
 
-    int sampleReaderState()
-    {
-        QMutexLocker locker(&m_mutex);
-        return m_reader->state();
-    }
     int phasorSenderState()
     {
         QMutexLocker locker(&m_mutex);
         return m_sender->state();
     }
+
     const qpmu::Estimation &currentEstimation()
     {
         QMutexLocker locker(&m_mutex);
         return m_estimator->currentEstimation();
     }
 
-    const SampleStoreBuffer &currentSampleBuffer()
+    const SampleStore &currentSampleBuffer()
     {
         QMutexLocker locker(&m_mutex);
         return m_sampleStoreBuffer;
     }
 
-    void updateSampleReader();
-
 signals:
-    void sampleReaderStateChanged(int);
     void phasorSenderStateChanged(int);
 
 private:
     QMutex m_mutex;
     qpmu::PhasorEstimator *m_estimator = nullptr;
-    SampleStoreBuffer m_sampleStoreBuffer = {};
-    SampleReadBuffer m_sampleReadBuffer = {};
+    SampleStore m_sampleStoreBuffer = {};
 
-    SampleReader *m_reader = nullptr;
-    SampleReader *m_newReader = nullptr;
     PhasorSender *m_sender = nullptr;
 };
 

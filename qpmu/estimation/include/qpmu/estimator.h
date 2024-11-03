@@ -45,6 +45,12 @@ public:
     using Float = qpmu::Float;
     using USize = qpmu::USize;
     using ISize = qpmu::ISize;
+    using U32 = qpmu::U32;
+    using I32 = qpmu::I32;
+    using U64 = qpmu::U64;
+    using I64 = qpmu::I64;
+    using U16 = qpmu::U16;
+    using I16 = qpmu::I16;
     using Complex = qpmu::Complex;
     using SdftType = sdft::SDFT<Float, Float>;
     static constexpr USize CountSignals = qpmu::CountSignals;
@@ -86,8 +92,8 @@ private:
     USize m_estimationBufIdx = 0;
     USize m_sampleBufIdx = 0;
 
-    qpmu::U64 m_windowStartTimeUs = 0;
-    qpmu::U64 m_windowEndTimeUs = 0;
+    I64 m_windowStartTime = 0;
+    I64 m_windowEndTime = 0;
 };
 
 } // namespace qpmu

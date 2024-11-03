@@ -17,7 +17,7 @@ public:
     explicit Oscilloscope(QWidget *parent = nullptr);
 
 private slots:
-    void updateView(const SampleStoreBuffer &samples);
+    void updateView(const SampleStore &samples);
 
 private:
     QLineSeries *m_series[qpmu::CountSignals] = {};

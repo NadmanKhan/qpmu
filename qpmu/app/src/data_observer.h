@@ -26,7 +26,7 @@ public:
     explicit DataObserver();
 
 signals:
-    void sampleBufferUpdated(const SampleStoreBuffer &sampleBuffer);
+    void sampleBufferUpdated(const SampleStore &sampleBuffer);
     void estimationUpdated(const qpmu::Estimation &estimation);
 
 private slots:

@@ -16,156 +16,39 @@
 
 #include <cctype>
 #include <chrono>
-#include <netinet/in.h>
 #include <openc37118-1.0/c37118command.h>
+#include <fcntl.h>
+#include <qdir.h>
+#include <unistd.h>
 
 using namespace qpmu;
-
-SampleReader::SampleReader(const SamplerSettings &settings) : m_settings(settings)
-{
-    if (m_settings.connection == SamplerSettings::Socket) {
-        QAbstractSocket *socket;
-        if (m_settings.socketConfig.socketType == SamplerSettings::TcpSocket)
-            socket = new QTcpSocket(this);
-        else
-            socket = new QUdpSocket(this);
-        m_device = socket;
-        m_waitForConnected = [=] {
-            return socket->state() >= QAbstractSocket::ConnectedState
-                    || socket->waitForConnected(10);
-        };
-        socket->connectToHost(m_settings.socketConfig.host, m_settings.socketConfig.port);
-    } else if (m_settings.connection == SamplerSettings::Process) {
-        auto process = new QProcess(this);
-        m_device = process;
-        process->setProgram(m_settings.processConfig.prog);
-        process->setArguments(m_settings.processConfig.args);
-        m_waitForConnected = [=] {
-            return process->state() >= QProcess::Running || process->waitForStarted(10);
-        };
-        process->start(QProcess::ReadOnly);
-    }
-
-    m_readSamples = [](SampleReadBuffer &) -> qpmu::USize { return 0; };
-
-    if (settings.connection != SamplerSettings::None) {
-        if (qgetenv("BATCHED_SAMPLES").toLower() == "true") {
-            /// Read a batch of samples.
-            /// Only works with binary data.
-            if (settings.isDataBinary) {
-                m_readSamples = [this](SampleReadBuffer &outSamples) -> qpmu::USize {
-                    auto bytesRead = m_device->read((char *)&m_batch, sizeof(RawSampleBatch));
-                    // qDebug() << "bytesRead: " << bytesRead;
-                    // qDebug() << "sizeof(RawSampleBatch): " << sizeof(RawSampleBatch);
-                    // qDebug() << "batchNo: " << m_batch.batchNo;
-                    // qDebug() << "firstSampleTimeUs: " << m_batch.firstSampleTimeUs;
-                    // qDebug() << "lastSampleTimeUs: " << m_batch.lastSampleTimeUs;
-                    // qDebug() << "timeSinceLastBatchUs: " << m_batch.timeSinceLastBatchUs;
-                    if (bytesRead == sizeof(RawSampleBatch)) {
-                        auto timeWindow = m_batch.lastSampleTimeUs - m_batch.firstSampleTimeUs;
-                        auto timeDelta = timeWindow / (CountRawSamplesPerBatch - 1);
-                        for (USize i = 0; i < CountRawSamplesPerBatch; ++i) {
-                            auto &rawSample = m_batch.samples[i];
-                            Sample &sample = outSamples[i];
-                            sample.seqNo = (m_batch.batchNo - 1) * CountRawSamplesPerBatch
-                                    + rawSample.sampleNo;
-                            sample.timestampUs = m_batch.firstSampleTimeUs + i * timeDelta;
-                            sample.timeDeltaUs = timeDelta;
-                            for (USize j = 0; j < CountSignals; ++j) {
-                                sample.channels[j] = rawSample.data[j];
-                            }
-                            // qDebug() << "Sample " << i << ": " << toString(sample).c_str();
-                        }
-                        return CountRawSamplesPerBatch;
-                    }
-                    return 0;
-                };
-            } else {
-                qWarning("Batched samples only work with binary data");
-            }
-        } else {
-            /// Read just one sample at a time.
-            if (settings.isDataBinary) {
-                m_readSamples = [this](SampleReadBuffer &outSamples) -> qpmu::USize {
-                    auto bytesRead = m_device->read((char *)outSamples.data(), sizeof(Sample));
-                    if (bytesRead != sizeof(Sample)) {
-                        qWarning("Failed to read a sample");
-                        qDebug() << "bytesRead: " << bytesRead;
-                        qDebug() << "sizeof(Sample): " << sizeof(Sample);
-                    }
-                    return (qpmu::USize)(bytesRead == sizeof(Sample));
-                };
-            } else {
-                m_readSamples = [this](SampleReadBuffer &outSamples) -> qpmu::USize {
-                    USize ok = 1;
-                    if (m_device->readLine(m_line, sizeof(m_line)) > 0) {
-                        std::string error;
-                        outSamples[0] = parseSample(m_line, &error);
-                        if (!error.empty()) {
-                            ok = 0;
-                            qDebug() << "Error parsing sample: " << error.c_str();
-                            qDebug() << "Sample line:   " << m_line;
-                            qDebug() << "Parsed sample: " << toString(outSamples[0]).c_str();
-                        }
-                    }
-                    return ok;
-                };
-            }
-        }
-    }
-}
-
-qpmu::USize SampleReader::attemptRead(SampleReadBuffer &outSamples)
-{
-    int newState = 0;
-    /// Check if enabled
-    newState |= (Enabled * bool(m_settings.connection != SamplerSettings::None));
-    /// Check if connected
-    newState |= (Connected * bool((newState & Enabled) && m_waitForConnected()));
-    /// Check if reading
-    newState |= (DataReading
-                 * bool((newState & Connected) && m_device->waitForReadyRead(ReadWaitTime)));
-    USize nread = 0;
-    newState |=
-            (DataReading * bool((newState & DataReading) && (nread = m_readSamples(outSamples))));
-
-    m_state = newState;
-
-    return nread;
-}
 
 PhasorSender::PhasorSender()
 {
     m_config2 = new CONFIG_Frame();
     m_config1 = new CONFIG_1_Frame();
     m_dataframe = new DATA_Frame(m_config2);
-    m_header = new HEADER_Frame("PMU VERSAO 1.0 LSEE");
+    m_header = new HEADER_Frame("PMU VERSAO 1.0 1");
     m_cmd = new CMD_Frame();
 
-    U64 current_time = std::chrono::duration_cast<std::chrono::microseconds>(
-                               std::chrono::steady_clock::now().time_since_epoch())
-                               .count();
-
     // Create config packet
-    constexpr U64 TIME_BASE = 1'000'000;
     constexpr U16 ID_CODE = 17;
     m_config2->IDCODE_set(ID_CODE);
-    m_config2->SOC_set(current_time / TIME_BASE);
-    m_config2->FRACSEC_set(current_time % TIME_BASE);
-    m_config2->TIME_BASE_set(TIME_BASE);
-    m_config2->DATA_RATE_set(100);
-
     m_config1->IDCODE_set(ID_CODE);
-    m_config1->SOC_set(current_time / TIME_BASE);
-    m_config1->FRACSEC_set(current_time % TIME_BASE);
-    m_config1->TIME_BASE_set(TIME_BASE);
-    m_config1->DATA_RATE_set(100);
-
     m_dataframe->IDCODE_set(ID_CODE);
-    m_dataframe->SOC_set(current_time / TIME_BASE);
-    m_dataframe->FRACSEC_set(current_time % TIME_BASE);
+    m_config2->DATA_RATE_set(50);
+    m_config1->DATA_RATE_set(50);
+    auto t = getDuration(SystemClock::now());
+    m_config1->SOC_set(t.count() / 1000);
+    m_config2->SOC_set(t.count() / 1000);
+    m_dataframe->SOC_set(t.count() / 1000);
+    m_config1->FRACSEC_set(t.count() % 1000);
+    m_config2->FRACSEC_set(t.count() % 1000);
+    m_dataframe->FRACSEC_set(t.count() % 1000);
+    m_config1->TIME_BASE_set(TimeBase);
+    m_config2->TIME_BASE_set(TimeBase);
 
-    m_station = new PMU_Station("PMU LSEE", ID_CODE, true, true, true, false);
+    m_station = new PMU_Station("PMU 1", ID_CODE, true, true, true, false);
 
     for (USize i = 0; i < CountSignals; ++i) {
         m_station->PHASOR_add(NameOfSignal[i], 1, TypeOfSignal[i]);
@@ -184,80 +67,15 @@ PhasorSender::PhasorSender()
 
 void PhasorSender::attemptSend(const qpmu::Sample &sample, const qpmu::Estimation &estimation)
 {
-    // if (!m_server->isListening()) {
-    //     qDebug() << "tcp server: not listening";
-    //     return;
-    // }
-    // if (m_server->waitForNewConnection(ConnectionWaitTime)) {
-    //     qDebug() << "tcp server: new connection";
-    //     auto client = m_server->nextPendingConnection();
-    //     if (client)
-    //         m_clients.append(client);
-    // }
-    // // qDebug() << "tcp server: count clients:" << m_clients.size();
-
-    // int deadClients = 0;
-    // for (int i = 0; i < m_clients.size(); ++i) {
-    //     auto client = m_clients[i];
-    //     bool isAlive = true;
-    //     if (client->waitForReadyRead(10)) {
-    //         auto n = client->read((char *)m_buffer, sizeof(m_buffer));
-
-    //         if (n < 0) {
-    //             qWarning("ERROR reading from socket, but continuing to run.\n");
-
-    //         } else if (n == 0) {
-    //             isAlive = false;
-
-    //         } else /* if (n > 0) */ {
-    //             if (m_buffer[0] == A_SYNC_AA) {
-    //                 switch (m_buffer[1]) {
-    //                 case A_SYNC_CMD:
-    //                     qDebug() << "Command received\n";
-    //                     m_cmd->unpack(m_buffer);
-    //                     handleCommand(client);
-    //                     break;
-    //                 default:
-    //                     qWarning("Unknown command received.\n");
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     if (!isAlive) {
-    //         qDebug() << "tcp server: client" << i << "is dead";
-    //         std::swap(m_clients[i], m_clients[m_clients.size() - 1 - deadClients]);
-    //         ++deadClients;
-    //     }
-    // }
-
-    // if (m_sendDataFlag) {
-    //     m_state |= DataSending;
-    //     updateData(sample, estimation);
-    //     qDebug() << "tcp server: sending data:" << toString(sample).c_str()
-    //              << toString(estimation).c_str();
-    //     char *dataBuffer = nullptr;
-    //     unsigned short size = m_dataframe->pack((unsigned char **)&dataBuffer);
-    //     for (int i = 0; i < m_clients.size() - deadClients; ++i) {
-    //         auto client = m_clients[i];
-    //         if (client && client->isOpen()) {
-    //             auto n = client->write(dataBuffer, size);
-    //             if (n < 0) {
-    //                 qWarning("ERROR writing to socket, but continuing to run.\n");
-    //             }
-    //         }
-    //     }
-    // } else {
-    //     m_state &= ~DataSending;
-    // }
-
-    // m_clients.resize(m_clients.size() - deadClients);
-
     int newState = 0;
-    newState |= (Enabled * bool(m_server->isListening()));
+    newState |= (Listening * bool(m_server->isListening()));
+    if (!m_server->isListening()) {
+        if (!m_server->listen(QHostAddress::LocalHost, 4712)) {
+            qWarning("Failed to start listening on port 4712\n");
+        }
+    }
 
-    if (m_server->waitForNewConnection(ConnectionWaitTime)) {
+    if (m_server->waitForNewConnection(10)) {
         auto client = m_server->nextPendingConnection();
         if (client)
             m_clients.append(client);
@@ -382,9 +200,8 @@ void PhasorSender::handleCommand(QTcpSocket *client)
 
 void PhasorSender::updateData(const qpmu::Sample &sample, const qpmu::Estimation &estimation)
 {
-    U64 ts = sample.timestampUs;
-    m_dataframe->SOC_set(ts / 1'000'000);
-    m_dataframe->FRACSEC_set(ts % 1'000'000);
+    m_dataframe->SOC_set(sample.timestamp.count() / 1000);
+    m_dataframe->FRACSEC_set(sample.timestamp.count() % 1000);
     for (USize i = 0; i < CountSignals; ++i) {
         m_station->PHASOR_VALUE_set(estimation.phasors[i], i);
     }
@@ -395,63 +212,83 @@ void PhasorSender::updateData(const qpmu::Sample &sample, const qpmu::Estimation
 DataProcessor::DataProcessor() : QThread()
 {
     m_estimator = new PhasorEstimator(50, 1200);
-    updateSampleReader();
     m_sender = new PhasorSender();
     m_sender->moveToThread(this);
 }
 
-void DataProcessor::updateSampleReader()
-{
-    SamplerSettings newSettings;
-    newSettings.load();
-    auto newSampler = new SampleReader(newSettings);
-
-    QMutexLocker locker(&m_mutex);
-    m_newReader = newSampler;
-    /// `moveToThread` must be called from the thread where the object was
-    /// created, so we do it here
-    m_newReader->moveToThread(this); /// Move the new sampler to `this`, a `QThread` object
-}
-
 void DataProcessor::run()
 {
+    auto rpmsg_file_path = qgetenv("ADC_RPMSG_FILE");
+    qDebug() << "ADC_RPMSG_FILE: " << rpmsg_file_path;
+    auto fd = open(rpmsg_file_path, O_RDWR);
+    if (fd < 0) {
+        perror("Failed to open PRU RPMSG device");
+        qFatal("Failed to open PRU RPMSG device\n");
+    }
+
+    RPMsg_Buffer msgBuf;
+    Sample sample;
+
+    constexpr USize TimeQueryPoint = 1000;
+    USize counter = 0;
+    auto lastTime = getDuration(SystemClock::now());
+    auto lastPRUTimeNsec = 0;
+
     while (true) {
-        if (m_newReader) {
-            {
-                QMutexLocker locker(&m_mutex);
-                std::swap(m_reader, m_newReader);
-            }
-            delete m_newReader;
-            m_newReader = nullptr;
+        if (write(fd, 0, 0) < 0) {
+            qFatal("Failed to write to PRU RPMSG device\n");
         }
 
-        if (m_reader) {
-            auto readerOldState = m_reader->state();
-            auto nread = m_reader->attemptRead(m_sampleReadBuffer);
-            auto readerNewState = m_reader->state();
+        auto nread = read(fd, (char *)&msgBuf, sizeof(msgBuf));
+        qDebug() << "nread: " << nread;
 
-            if (readerNewState & SampleReader::DataReading) {
-                for (USize i = 0; i < nread; ++i) {
-
-                    const auto &sample = m_sampleReadBuffer[i];
-                    for (USize j = 1; j < SampleStoreBufferSize; ++j) {
-                        m_sampleStoreBuffer[j - 1] = m_sampleStoreBuffer[j];
-                    }
-                    m_sampleStoreBuffer[SampleStoreBufferSize - 1] = sample;
-                    m_estimator->updateEstimation(sample);
-
-                    auto senderOldState = m_sender->state();
-                    m_sender->attemptSend(sample, m_estimator->currentEstimation());
-                    auto senderNewState = m_sender->state();
-
-                    if (senderOldState != senderNewState) {
-                        emit phasorSenderStateChanged(senderNewState);
-                    }
-                }
+        if (nread == sizeof(RPMsg_Buffer)) {
+            if (counter == 0) {
+                sample.timestamp = getDuration(SystemClock::now());
+            } else {
+                sample.timestamp = Duration(lastTime.count()
+                                            + (msgBuf.timestampNsec - lastPRUTimeNsec) / 1000);
             }
-            if (readerOldState != readerNewState) {
-                emit sampleReaderStateChanged(readerNewState);
+
+            counter = (counter + 1) % TimeQueryPoint;
+            lastTime = sample.timestamp;
+            lastPRUTimeNsec = msgBuf.timestampNsec;
+
+            for (USize i = 0; i < CountSignals; ++i) {
+                sample.channels[i] = msgBuf.data[i];
             }
+
+            qDebug() << "sample: " << toString(sample).c_str();
+            m_estimator->updateEstimation(sample);
+
+            auto senderOldState = m_sender->state();
+            m_sender->attemptSend(sample, m_estimator->currentEstimation());
+            auto senderNewState = m_sender->state();
+            if (senderOldState != senderNewState) {
+                emit phasorSenderStateChanged(senderNewState);
+            }
+
+            // if (readerNewState & SampleReader::DataReading) {
+            //     for (USize i = 0; i < nread; ++i) {
+
+            //         const auto &sample = m_sampleReadBuffer[i];
+            //         for (USize j = 1; j < SampleStoreBufferSize; ++j) {
+            //             m_sampleStoreBuffer[j - 1] = m_sampleStoreBuffer[j];
+            //         }
+            //         m_sampleStoreBuffer[SampleStoreBufferSize - 1] = sample;
+            //         m_estimator->updateEstimation(sample);
+
+            //         auto senderOldState = m_sender->state();
+            //         m_sender->attemptSend(sample, m_estimator->currentEstimation());
+            //         auto senderNewState = m_sender->state();
+            //         if (senderOldState != senderNewState) {
+            //             emit phasorSenderStateChanged(senderNewState);
+            //         }
+            //     }
+            // }
+            // if (readerOldState != readerNewState) {
+            //     emit sampleReaderStateChanged(readerNewState);
+            // }
         }
     }
 }

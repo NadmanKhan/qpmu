@@ -12,7 +12,10 @@
             "console": "integratedTerminal",
             "args": [
                 "${command:pickArgs}"
-            ]
+            ],
+            "env": {
+                "ADC_RPMSG_FILE": "/home/nadman/adc-rpmsg-sim"
+            }
         },
         {
             "name": "(gdb) Launch QPMU App",
@@ -22,7 +25,12 @@
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
-            "environment": [],
+            "environment": [
+                {
+                    "name": "ADC_RPMSG_FILE",
+                    "value": "/home/nadman/adc-rpmsg-sim"
+                }
+            ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
@@ -37,7 +45,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "CMake: build"
+            "preLaunchTask": "CMake: build",
         }
     ]
 }

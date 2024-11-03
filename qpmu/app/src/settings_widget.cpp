@@ -298,7 +298,7 @@ QWidget *SettingsWidget::samplerSettingsPage(const SamplerSettings &settings)
             updateConnectionButton->setText("Save and Update Connection");
             connect(updateConnectionButton, &QPushButton::clicked, [=] {
                 if (saveSettings()) {
-                    APP->dataProcessor()->updateSampleReader();
+                    // APP->dataProcessor()->updateSampleReader();
                 }
             });
         }

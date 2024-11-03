@@ -97,6 +97,9 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
     const Estimation &prevEstimation = m_estimationBuffer[ESTIMATION_PREV(m_estimationBufIdx)];
     Estimation &currEstimation = m_estimationBuffer[m_estimationBufIdx];
 
+    const Sample &prevSample = m_sampleBuffer[SAMPLE_PREV(m_sampleBufIdx)];
+    const Sample &currSample = m_sampleBuffer[m_sampleBufIdx];
+
     { /// Estimate phasors
 
         if (m_phasorStrategy == PhasorEstimationStrategy::FFT) {
@@ -138,9 +141,9 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
 
     { /// Estimate frequency and ROCOF, and sampling rate
 
-        if (m_windowStartTimeUs == 0) {
-            m_windowStartTimeUs = sample.timestampUs;
-            m_windowEndTimeUs = m_windowStartTimeUs + (USize)1e6;
+        if (m_windowStartTime == 0) {
+            m_windowStartTime = sample.timestamp.count();
+            m_windowEndTime = m_windowStartTime + TimeBase;
         }
 
         std::copy(prevEstimation.frequencies, prevEstimation.frequencies + CountSignals,
@@ -151,7 +154,7 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
 
         currEstimation.samplingRate = prevEstimation.samplingRate;
 
-        if (m_windowEndTimeUs <= sample.timestampUs) {
+        if (m_windowEndTime <= sample.timestamp.count()) {
             /// The 1-second window has ended, hence
             /// - estimate
             ///   * channel frequencies,
@@ -180,8 +183,8 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
                     for (USize i = 1; i <= m_sampleBufIdx; ++i) {
                         const I64 &x0 = (I64)m_sampleBuffer[i - 1].channels[ch] - zeroValue;
                         const I64 &x1 = (I64)m_sampleBuffer[i].channels[ch] - zeroValue;
-                        const I64 &t0 = m_sampleBuffer[i - 1].timestampUs;
-                        const I64 &t1 = m_sampleBuffer[i].timestampUs;
+                        const I64 &t0 = m_sampleBuffer[i - 1].timestamp.count();
+                        const I64 &t1 = m_sampleBuffer[i].timestamp.count();
 
                         if (isPositive(x0) != isPositive(x1)) {
                             ++countZeroCrossings;
@@ -204,14 +207,15 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
                 }
 
                 { /// ROCOF estimation
-                    currEstimation.rocofs[ch] =
-                            (currEstimation.frequencies[ch] - prevEstimation.frequencies[ch])
-                            / sample.timeDeltaUs * 1e6;
+                    auto fdelta = currEstimation.frequencies[ch] - prevEstimation.frequencies[ch];
+                    auto tdelta = currSample.timestamp.count() - prevSample.timestamp.count();
+                    currEstimation.rocofs[ch] = fdelta / tdelta * TimeBase;
                 }
             }
 
             { /// Sampling rate estimation
-                auto samplesWindowSec = (Float)(sample.timestampUs - m_windowStartTimeUs) * 1e-6;
+                auto samplesWindowSec =
+                        (Float)(sample.timestamp.count() - m_windowStartTime) * 1e-6;
                 auto residueSec = (Float)1.0 - samplesWindowSec;
                 USize countSamples = m_sampleBufIdx + 1;
 
@@ -221,8 +225,8 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
 
             { /// Reset window variables
                 m_sampleBufIdx = m_sampleBuffer.size() - 1;
-                m_windowStartTimeUs = sample.timestampUs;
-                m_windowEndTimeUs = m_windowStartTimeUs + (USize)1e6;
+                m_windowStartTime = sample.timestamp.count();
+                m_windowEndTime = m_windowStartTime + TimeBase;
             }
         }
     }

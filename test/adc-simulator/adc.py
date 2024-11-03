@@ -81,71 +81,56 @@ class TimestampedADC:
         return result
 
     def stream(self):
-        sequence_num = 1
-        tracker_time_ns = time.time_ns()
         while True:
             time.sleep(self.sampling_period_s * 0.9)
             time_ns = time.time_ns()
             yield TimestampedADC.Sample(
-                sequence_num=sequence_num,
                 channel_values=tuple(self.generate_sample(s, n, time_ns / 1e9) for s, n in self.channels),
-                timestamp_us=time_ns // 1000,
-                timedelta_us=(time_ns - tracker_time_ns) // 1000,
+                timestamp_us=time_ns // 1000
             )
-            sequence_num += 1
-            tracker_time_ns = time_ns
 
     @dataclass
     class Sample:
 
-        STRUCT_FORMAT = "@9q"
+        STRUCT_FORMAT = "@Q180H"
+        SAMPLE_SIZE = struct.calcsize(STRUCT_FORMAT)
 
-        CSV_FORMAT = "seq_no={sequence_num},ts={timestamp_us},\tdelta={timedelta_us},\tch0={channel_values[0]:4},ch1={channel_values[1]:4},ch2={channel_values[2]:4},\
+        CSV_FORMAT = "ts={timestamp_us},\tch0={channel_values[0]:4},ch1={channel_values[1]:4},ch2={channel_values[2]:4},\
             ch3={channel_values[3]:4},ch4={channel_values[4]:4},ch5={channel_values[5]:4},"
 
         def __init__(
-            self,
-            sequence_num: int,
-            channel_values: Tuple[int],
+            self,\
             timestamp_us: int,
-            timedelta_us: int,
+            channel_values: Tuple[int]
         ):
-            assert isinstance(sequence_num, int), "Sequence number must be an integer"
             assert isinstance(timestamp_us, int), "Timestamp must be an integer"
-            assert isinstance(timedelta_us, int), "Time delta must be an integer"
             assert all(isinstance(value, int) for value in channel_values), "Channel values must be integers"
             assert len(channel_values) == 6, "Channel values must have 6 elements"
 
-            self.sequence_num = sequence_num
-            self.channel_values = channel_values
             self.timestamp_us = timestamp_us
-            self.timedelta_us = timedelta_us
+            self.channel_values = channel_values
 
         def __bytes__(self) -> bytes:
-            return struct.pack(
+            b = struct.pack(
                 TimestampedADC.Sample.STRUCT_FORMAT,
-                self.sequence_num,
                 self.timestamp_us,
-                self.timedelta_us,
                 *self.channel_values,
+                *([0] * (180 - len(self.channel_values)))
             )
+            return b
 
         def __str__(self) -> str:
             return TimestampedADC.Sample.CSV_FORMAT.format(
-                sequence_num=self.sequence_num,
                 timestamp_us=self.timestamp_us,
-                timedelta_us=self.timedelta_us,
                 channel_values=self.channel_values,
             )
 
         @classmethod
         def from_bytes(cls, data: bytes) -> "TimestampedADC.Sample":
             values = struct.unpack(cls.STRUCT_FORMAT, data)
-            sequence_num = values[0]
-            timestamp_us = values[1]
-            timedelta_us = values[2]
-            channel_values = values[3:9]
-            return cls(sequence_num, timestamp_us, timedelta_us, channel_values)
+            timestamp_us = values[0]
+            channel_values = values[1:7]
+            return cls(timestamp_us, channel_values)
 
         @classmethod
         def from_str(cls, data: str) -> "TimestampedADC.Sample":
@@ -153,8 +138,6 @@ class TimestampedADC:
                 return int(kvs.split("=")[1])
 
             kvstrings = data.split(",")
-            sequence_num = value_from_kvstring(kvstrings[0])
-            timestamp_us = value_from_kvstring(kvstrings[1])
-            timedelta_us = value_from_kvstring(kvstrings[2])
-            channel_values = tuple(value_from_kvstring(kvs) for kvs in kvstrings[3:9])
-            return cls(sequence_num, timestamp_us, timedelta_us, channel_values)
+            timestamp_us = value_from_kvstring(kvstrings[0])
+            channel_values = tuple(value_from_kvstring(kvs) for kvs in kvstrings[1:7])
+            return cls(timestamp_us, channel_values)

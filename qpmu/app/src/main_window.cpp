@@ -48,31 +48,31 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
             return separator;
         };
 
-        { /// 1. Sampling status indicators
-            statusBar()->addPermanentWidget(new QLabel("Sampling:"));
-            auto createSamplingIndicator = [=](const QString &name, SampleReader::StateFlag flag) {
-                auto pixmapSize = statusBar()->font().pointSizeF() * 0.85;
-                const auto redCircle = circlePixmap(QColor("red"), pixmapSize);
-                const auto greenCircle = circlePixmap(QColor("green"), pixmapSize);
-                const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
-                auto indicator = new QLabel(statusBar());
-                statusBar()->addPermanentWidget(indicator);
-                indicator->setToolTip(name + "?");
-                auto updateIndicator = [=](int state) {
-                    indicator->setPixmap(pixmapChoices[bool(state & flag)]);
-                };
-                connect(APP->dataProcessor(), &DataProcessor::sampleReaderStateChanged,
-                        updateIndicator);
-                return updateIndicator;
-            };
-            for (auto f : { createSamplingIndicator("Enabled", SampleReader::Enabled),
-                            createSamplingIndicator("Connected", SampleReader::Connected),
-                            createSamplingIndicator("Data Reading", SampleReader::DataReading) }) {
-                f(APP->dataProcessor()->sampleReaderState());
-            }
-        }
+        // { /// 1. Sampling status indicators
+        //     statusBar()->addPermanentWidget(new QLabel("Sampling:"));
+        //     auto createSamplingIndicator = [=](const QString &name, SampleReader::StateFlag flag) {
+        //         auto pixmapSize = statusBar()->font().pointSizeF() * 0.85;
+        //         const auto redCircle = circlePixmap(QColor("red"), pixmapSize);
+        //         const auto greenCircle = circlePixmap(QColor("green"), pixmapSize);
+        //         const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
+        //         auto indicator = new QLabel(statusBar());
+        //         statusBar()->addPermanentWidget(indicator);
+        //         indicator->setToolTip(name + "?");
+        //         auto updateIndicator = [=](int state) {
+        //             indicator->setPixmap(pixmapChoices[bool(state & flag)]);
+        //         };
+        //         connect(APP->dataProcessor(), &DataProcessor::sampleReaderStateChanged,
+        //                 updateIndicator);
+        //         return updateIndicator;
+        //     };
+        //     for (auto f : { createSamplingIndicator("Enabled", SampleReader::Enabled),
+        //                     createSamplingIndicator("Connected", SampleReader::Connected),
+        //                     createSamplingIndicator("Data Reading", SampleReader::DataReading) }) {
+        //         f(APP->dataProcessor()->sampleReaderState());
+        //     }
+        // }
 
-        statusBar()->addPermanentWidget(makeSeparator());
+        // statusBar()->addPermanentWidget(makeSeparator());
 
         { /// 2. Data reporting status indicators
             statusBar()->addPermanentWidget(new QLabel("Reporting:"));
@@ -94,7 +94,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
                 return updateIndicator;
             };
             for (auto f :
-                 { createDataReportingIndicator("Enabled", PhasorSender::Enabled),
+                 { createDataReportingIndicator("Listening", PhasorSender::Listening),
                    createDataReportingIndicator("Connected", PhasorSender::Connected),
                    createDataReportingIndicator("Data Sending", PhasorSender::DataSending) }) {
                 f(APP->dataProcessor()->phasorSenderState());

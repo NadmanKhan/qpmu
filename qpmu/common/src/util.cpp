@@ -8,6 +8,12 @@
 
 namespace qpmu {
 
+Duration getDuration(const SystemClock::time_point &duration)
+{
+    auto t = duration.time_since_epoch();
+    return std::chrono::duration_cast<Duration>(t);
+}
+
 std::string phasorToString(const Complex &phasor)
 {
     std::stringstream ss;
@@ -27,9 +33,7 @@ std::string phasorPolarToString(const Complex &phasor)
 std::string toString(const Sample &sample)
 {
     std::stringstream ss;
-    ss << "seq=" << sample.seqNo << ',' << '\t';
-    ss << "ts=" << sample.timestampUs << ',' << '\t';
-    ss << "delta=" << sample.timeDeltaUs << ',' << '\t';
+    ss << "ts=" << sample.timestamp.count() << ',' << '\t';
     for (USize i = 0; i < CountSignals; ++i) {
         ss << "ch" << i << "=" << std::setw(4) << sample.channels[i] << ", ";
     }
@@ -50,126 +54,6 @@ std::string toString(const Estimation &est)
     }
     ss << "sampling_rate=" << est.samplingRate << ',';
     return ss.str();
-}
-
-std::string sampleCsvHeader()
-{
-    std::string header;
-    header += "seq,";
-    for (USize i = 0; i < CountSignals; ++i) {
-        header += "ch" + std::to_string(i) + ',';
-    }
-    header += "ts,delta";
-    return header;
-}
-
-std::string estimationCsvHeader()
-{
-    std::string header;
-    header += "timestamp_micros,";
-    for (USize i = 0; i < CountSignals; ++i) {
-        header += "phasor_" + std::to_string(i) + ',';
-    }
-    for (USize i = 0; i < CountSignals; ++i) {
-        header += "freq_" + std::to_string(i) + ',';
-    }
-    for (USize i = 0; i < CountSignals; ++i) {
-        header += "rocof_" + std::to_string(i) + ',';
-    }
-    header += "sampling_rate";
-    return header;
-}
-
-/// Parse a sample from a string.
-/// See `toString(const Sample&)` for the expected format.
-Sample parseSample(const char *const s, std::string *errorOut)
-{
-    std::string error;
-    SampleFieldVector fieldVector = {};
-    ISize fieldIndex = 0;
-    U64 value = 0;
-    bool readingValue = false;
-    const char *charPtr = s;
-
-    while (fieldIndex < (ISize)fieldVector.size()
-           && (*charPtr && *charPtr != '\n')) { // Read until end or newline
-        const char &c = *charPtr++;
-        switch (c) {
-        case '=': // End of field's key, start of field's value
-            readingValue = true;
-            break;
-        case '0':
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
-            value = (value * 10) + readingValue * (c - '0');
-            break;
-        case ',': // End of field's value, start of NEXT field's key
-            fieldVector[fieldIndex++] = value;
-            value = 0;
-
-            if (!readingValue) {
-                error = "Unexpected comma";
-                break;
-            }
-            readingValue = false;
-        }
-    }
-
-    Sample sample;
-
-    if (error.empty()) {
-        U64 *fieldPtr = (U64 *)&sample + fieldVector.size();
-        while (fieldIndex > 0) {
-            *(--fieldPtr) = fieldVector[--fieldIndex];
-        }
-    }
-
-    if (errorOut) {
-        *errorOut = error;
-    }
-    return sample;
-}
-
-std::string toCsv(const Sample &sample)
-{
-    std::string str;
-    str += std::to_string(sample.seqNo);
-    str += ',';
-    str += std::to_string(sample.timestampUs);
-    str += ',';
-    str += std::to_string(sample.timeDeltaUs);
-    for (size_t i = 0; i < CountSignals; ++i) {
-        if (i > 0)
-            str += ',';
-        str += std::to_string(sample.channels[i]);
-    }
-    return str;
-}
-
-std::string toCsv(const Estimation &est)
-{
-    std::string str;
-    for (size_t i = 0; i < CountSignals; ++i) {
-        str += phasorPolarToString(est.phasors[i]);
-        str += ',';
-    }
-    for (size_t i = 0; i < CountSignals; ++i) {
-        str += std::to_string(est.frequencies[i]);
-        str += ',';
-    }
-    for (size_t i = 0; i < CountSignals; ++i) {
-        str += std::to_string(est.rocofs[i]);
-        str += ',';
-    }
-    str += std::to_string(est.samplingRate);
-    return str;
 }
 
 std::pair<Float, Float> linearRegression(const std::vector<Float> &x, const std::vector<Float> &y)
