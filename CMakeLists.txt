@@ -68,6 +68,5 @@ target_compile_definitions(
 link_libraries(${COMMON_LIB})
 
 # Add the remaining subdirectories
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/qpmu/sampling)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/qpmu/estimation)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/qpmu/app)
