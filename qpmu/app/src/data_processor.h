@@ -24,7 +24,7 @@
 
 #include <functional>
 
-using SampleStore = std::array<qpmu::Sample, 64>;
+using SampleStore = std::array<qpmu::Sample, 32>;
 
 using SampleReadBuffer = std::array<qpmu::Sample, 8>;
 

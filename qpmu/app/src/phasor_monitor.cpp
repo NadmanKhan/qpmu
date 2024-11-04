@@ -21,6 +21,7 @@
 #include <QFormLayout>
 #include <QSizePolicy>
 #include <qnamespace.h>
+#include <qwidget.h>
 
 using namespace qpmu;
 #define QSL(s) QStringLiteral(s)
@@ -97,6 +98,8 @@ void PhasorMonitor::updateView()
     }
 
     const auto est = APP->dataProcessor()->currentEstimation();
+    const auto samples = APP->dataProcessor()->currentSampleStore();
+
     { /// To start, update colors of series and labels
 
         VisualisationSettings visualSettings;
@@ -298,8 +301,8 @@ void PhasorMonitor::updateView()
 
             auto ampliUnit = UnitSymbolOfSignalType[TypeOfSignal[i]];
             m_labels.ampli[i]->setText(FMT_FIELD(FMT_VALUE(ampli), QSL(" %1").arg(ampliUnit)));
-            m_labels.phase[i]->setText(FMT_FIELD(FMT_VALUE(phase), "°"));
-            m_labels.frequ[i]->setText(FMT_FIELD(FMT_VALUE(frequ), " Hz"));
+            m_labels.phase[i]->setText(FMT_FIELD(FMT_VALUE(phase), QSL("°")));
+            m_labels.frequ[i]->setText(FMT_FIELD(FMT_VALUE(frequ), QSL(" Hz")));
         }
 
         for (USize p = 0; p < CountSignalPhases; ++p) {
@@ -308,11 +311,15 @@ void PhasorMonitor::updateView()
             const auto iPhaseDeg = phasesDeg[iId];
             auto phaseDiff = diffAnglesDeg(vPhaseDeg, iPhaseDeg);
 
-            m_labels.phaseDiff[p]->setText(FMT_FIELD(FMT_VALUE(phaseDiff), "°"));
+            m_labels.phaseDiff[p]->setText(FMT_FIELD(FMT_VALUE(phaseDiff), QSL("°")));
         }
 
-        m_labels.summaryFrequency->setText(FMT_FIELD(FMT_VALUE(est.frequencies[0]), " Hz"));
-        m_labels.summarySamplingRate->setText(FMT_FIELD(FMT_VALUE(est.samplingRate), " samples/s"));
+        m_labels.summaryFrequency->setText(FMT_FIELD(FMT_VALUE(est.frequencies[0]), QSL(" Hz")));
+        m_labels.summarySamplingRate->setText(
+                FMT_FIELD(FMT_VALUE(est.samplingRate), QSL(" samples/s")));
+        m_labels.summaryLastSampleTime->setText(
+                QDateTime::fromMSecsSinceEpoch(samples.back().timestampUsec / 1000)
+                        .toString(QSL("hh:mm:ss.zzz")));
     }
 }
 
@@ -843,15 +850,18 @@ void PhasorMonitor::createSummaryBar()
     auto summaryLiveStatus = new QLabel(this);
     m_labels.summaryFrequency = new QLabel(this);
     m_labels.summarySamplingRate = new QLabel(this);
+    m_labels.summaryLastSampleTime = new QLabel(this);
     summaryLayout->addWidget(pausePlayButton);
     summaryLayout->addWidget(summaryLiveStatus);
-    summaryLayout->addWidget(m_labels.summarySamplingRate, 1);
+    summaryLayout->addWidget(m_labels.summaryLastSampleTime, 1);
+    summaryLayout->addWidget(m_labels.summarySamplingRate);
     summaryLayout->addWidget(m_labels.summaryFrequency);
 
     /// Set styles
     for (auto widget :
          { (QWidget *)pausePlayButton, (QWidget *)summaryLiveStatus,
-           (QWidget *)m_labels.summaryFrequency, (QWidget *)m_labels.summarySamplingRate }) {
+           (QWidget *)m_labels.summaryFrequency, (QWidget *)m_labels.summarySamplingRate,
+           (QWidget *)m_labels.summaryLastSampleTime }) {
         widget->setAutoFillBackground(true);
         widget->setBackgroundRole(QPalette::Highlight);
         widget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
@@ -905,6 +915,9 @@ void PhasorMonitor::createSummaryBar()
 
         m_labels.summarySamplingRate->setText(FMT_FIELD("0.0", " samples/s"));
         m_labels.summarySamplingRate->setAlignment(Qt::AlignRight);
+
+        m_labels.summaryLastSampleTime->setText("_");
+        m_labels.summaryLastSampleTime->setAlignment(Qt::AlignRight);
     }
 }
 

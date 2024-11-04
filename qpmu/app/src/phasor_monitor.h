@@ -112,6 +112,7 @@ private:
 
         QLabel *summaryFrequency;
         QLabel *summarySamplingRate;
+        QLabel *summaryLastSampleTime;
     } m_labels;
 
     QVector<QLabel *> m_colorLabels[qpmu::CountSignals];

@@ -291,6 +291,10 @@ void DataProcessor::run()
 
         for (USize i = 0; i < nread; ++i) {
             const auto &sample = m_sampleReadBuffer[i];
+            for (USize j = 1; j < m_sampleStore.size(); ++j) {
+                m_sampleStore[j - 1] = m_sampleStore[j];
+            }
+            m_sampleStore.back() = sample;
 
             m_estimator->updateEstimation(sample);
 
