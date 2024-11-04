@@ -103,36 +103,36 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
     { /// Estimate phasors
 
         if (m_phasorStrategy == PhasorEstimationStrategy::FFT) {
-            /// Shift the previous inputs
+
             for (USize i = 0; i < CountSignals; ++i) {
+
+                /// Shift the previous inputs
                 for (USize j = 1; j < m_estimationBuffer.size(); ++j) {
                     m_fftwState.inputs[i][j - 1][0] = m_fftwState.inputs[i][j][0];
                     m_fftwState.inputs[i][j - 1][1] = m_fftwState.inputs[i][j][1];
                 }
-            }
-            /// Add the new sample's data
-            for (USize i = 0; i < CountSignals; ++i) {
+
+                /// Add the new sample's data
                 m_fftwState.inputs[i][m_estimationBuffer.size() - 1][0] = sample.channels[i];
                 m_fftwState.inputs[i][m_estimationBuffer.size() - 1][1] = 0;
-            }
-            /// Execute the FFT plan
-            for (USize i = 0; i < CountSignals; ++i) {
+
+                /// Execute the FFT plan
                 FFTW<Float>::execute(m_fftwState.plans[i]);
-            }
-            /// Phasor = output corresponding to the fundamental frequency
-            for (USize i = 0; i < CountSignals; ++i) {
+
+                /// Phasor = output corresponding to the fundamental frequency
                 Complex phasor = { m_fftwState.outputs[i][1][0], m_fftwState.outputs[i][1][1] };
                 phasor /= Float(m_estimationBuffer.size());
                 currEstimation.phasors[i] = phasor;
             }
 
         } else if (m_phasorStrategy == PhasorEstimationStrategy::SDFT) {
-            /// Run the SDFT on the new sample
+
             for (USize i = 0; i < CountSignals; ++i) {
+
+                /// Run the SDFT on the new sample
                 m_sdftState.workers[i].sdft(sample.channels[i], m_sdftState.outputs[i].data());
-            }
-            /// Phasor = output corresponding to the fundamental frequency
-            for (USize i = 0; i < CountSignals; ++i) {
+
+                /// Phasor = output corresponding to the fundamental frequency
                 const auto &phasor = m_sdftState.outputs[i][1] / Float(m_estimationBuffer.size());
                 currEstimation.phasors[i] = phasor;
             }
@@ -208,7 +208,8 @@ void PhasorEstimator::updateEstimation(const Sample &sample)
 
                 { /// ROCOF estimation
                     auto fdelta = currEstimation.frequencies[ch] - prevEstimation.frequencies[ch];
-                    auto tdelta = currSample.timestampUsec.count() - prevSample.timestampUsec.count();
+                    auto tdelta =
+                            currSample.timestampUsec.count() - prevSample.timestampUsec.count();
                     currEstimation.rocofs[ch] = fdelta / tdelta * TimeFracDenomUsec;
                 }
             }
