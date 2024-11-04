@@ -295,16 +295,15 @@ void DataProcessor::run()
                 m_sampleStore[j - 1] = m_sampleStore[j];
             }
             m_sampleStore.back() = sample;
-
             m_estimator->updateEstimation(sample);
+        }
 
-            auto senderOldState = m_sender->state();
-            m_sender->attemptSend(sample, m_estimator->currentEstimation());
-            auto senderNewState = m_sender->state();
+        auto senderOldState = m_sender->state();
+        m_sender->attemptSend(m_estimator->currentSample(), m_estimator->currentEstimation());
+        auto senderNewState = m_sender->state();
 
-            if (senderOldState != senderNewState) {
-                emit phasorSenderStateChanged(senderNewState);
-            }
+        if (senderOldState != senderNewState) {
+            emit phasorSenderStateChanged(senderNewState);
         }
     }
 }

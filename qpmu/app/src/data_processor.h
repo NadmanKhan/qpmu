@@ -26,7 +26,7 @@
 
 using SampleStore = std::array<qpmu::Sample, 32>;
 
-using SampleReadBuffer = std::array<qpmu::Sample, 8>;
+using SampleReadBuffer = std::array<qpmu::Sample, 1024>;
 
 class PhasorSender : public QObject
 {
