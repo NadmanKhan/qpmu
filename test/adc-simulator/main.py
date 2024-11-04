@@ -65,27 +65,28 @@ if __name__ == "__main__":
         channels=list(zip(signals, [args.noise] * len(signals))),
     )
 
-    try:
-        if not args.no_gui:
-            # TODO: Run the GUI
-            pass
-        
-        pipe_path = os.getenv("ADC_RPMSG_FILE")
-        pipe_path = Path(pipe_path).absolute()
-        print(f"Pipe path: {pipe_path}")
-        if pipe_path is None:
-            raise ValueError("ADC_RPMSG_FILE environment variable not set")
-        
-        if os.path.exists(pipe_path):
-            os.remove(pipe_path)
-        os.mkfifo(pipe_path)
-        with open(pipe_path, "wb") as pipe:
+    while True:
+        try:
+            if not args.no_gui:
+                # TODO: Run the GUI
+                pass
+            
+            pipe_path = os.getenv("ADC_STREAM")
+            if not os.getenv("ADC_STREAM"):
+                raise ValueError("ADC_STREAM environment variable not set")
+            pipe_path = Path(pipe_path).absolute()
+            print(f"Pipe path: {pipe_path}")
+            
+            if os.path.exists(pipe_path):
+                os.remove(pipe_path)
+            os.mkfifo(pipe_path)
+            with open(pipe_path, "wb") as pipe:
+                for sample in adc.stream():
+                    pipe.write(bytes(sample))
+
             for sample in adc.stream():
-                pipe.write(bytes(sample))
+                print(sample)
 
-        for sample in adc.stream():
-            print(sample)
-
-    except Exception as e:
-        print(f"Error: {e}")
+        except Exception as e:
+            print(f"Error: {e}")
 

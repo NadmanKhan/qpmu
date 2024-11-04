@@ -14,7 +14,7 @@
                 "${command:pickArgs}"
             ],
             "env": {
-                "ADC_RPMSG_FILE": "/home/nadman/adc-rpmsg-sim"
+                "ADC_STREAM": "/home/nadman/adc-rpmsg-sim"
             }
         },
         {
@@ -27,7 +27,7 @@
             "cwd": "${fileDirname}",
             "environment": [
                 {
-                    "name": "ADC_RPMSG_FILE",
+                    "name": "ADC_STREAM",
                     "value": "/home/nadman/adc-rpmsg-sim"
                 }
             ],
