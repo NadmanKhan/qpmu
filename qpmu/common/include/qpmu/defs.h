@@ -25,7 +25,7 @@ using I32 = std::int16_t;
 using I16 = std::int16_t;
 using SystemClock = std::chrono::system_clock;
 using Duration = std::chrono::microseconds;
-constexpr USize TimeBase = Duration::period::den;
+constexpr USize TimeFracDenomUsec = Duration::period::den;
 
 constexpr USize CountSignalTypes = 2;
 constexpr USize CountSignalPhases = 3;
@@ -74,16 +74,18 @@ constexpr Signal SignalsOfType[CountSignalTypes][CountSignalPhases] = {
 constexpr Signal SignalId[CountSignals] = { SignalVA, SignalVB, SignalVC,
                                             SignalIA, SignalIB, SignalIC };
 
-struct RPMsg_Buffer
+struct ADCStreamBuffer
 {
-    uint64_t timestampNsec;
-    uint16_t data[6 * 30];
+    U64 timestampNsec;
+    U16 data[6 * 30];
 };
 
 struct Sample
 {
-    Duration timestamp = {};
+    U64 seq = {};
     U16 channels[CountSignals] = {};
+    Duration timestampUsec = {};
+    Duration timeDeltaUsec = {};
 };
 
 /// @brief Estimations of phasors, frequency and rate-of-change-of-frequency

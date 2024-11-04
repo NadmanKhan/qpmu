@@ -8,10 +8,9 @@
 
 namespace qpmu {
 
-Duration getDuration(const SystemClock::time_point &duration)
+Duration epochTime(const SystemClock::time_point &timePoint)
 {
-    auto t = duration.time_since_epoch();
-    return std::chrono::duration_cast<Duration>(t);
+    return std::chrono::duration_cast<Duration>(timePoint.time_since_epoch());
 }
 
 std::string phasorToString(const Complex &phasor)
@@ -33,10 +32,12 @@ std::string phasorPolarToString(const Complex &phasor)
 std::string toString(const Sample &sample)
 {
     std::stringstream ss;
-    ss << "ts=" << sample.timestamp.count() << ',' << '\t';
+    ss << "seq=" << sample.seq << ",\t";
     for (USize i = 0; i < CountSignals; ++i) {
         ss << "ch" << i << "=" << std::setw(4) << sample.channels[i] << ", ";
     }
+    ss << "ts=" << sample.timestampUsec.count() << ",\t";
+    ss << "td=" << sample.timeDeltaUsec.count();
     return ss.str();
 }
 
@@ -52,7 +53,7 @@ std::string toString(const Estimation &est)
     for (USize i = 0; i < CountSignals; ++i) {
         ss << "rocof_" << i << "=" << est.rocofs[i] << ',' << '\t';
     }
-    ss << "sampling_rate=" << est.samplingRate << ',';
+    ss << "sampling_rate=" << est.samplingRate;
     return ss.str();
 }
 

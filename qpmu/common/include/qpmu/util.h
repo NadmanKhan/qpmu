@@ -9,9 +9,7 @@
 
 namespace qpmu {
 
-Duration getDuration(const SystemClock::time_point &duration);
-SystemClock::time_point durationToSystemTime(const Duration &duration);
-I64 durationToMicrosec(const Duration &duration);
+Duration epochTime(const SystemClock::time_point &timePoint);
 
 std::string phasorToString(const Complex &phasor);
 std::string phasorPolarToString(const Complex &phasor);

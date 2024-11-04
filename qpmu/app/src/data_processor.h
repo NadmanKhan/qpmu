@@ -102,10 +102,10 @@ public:
         return m_estimator->currentEstimation();
     }
 
-    const SampleStore &currentSampleBuffer()
+    const SampleStore &currentSampleStore()
     {
         QMutexLocker locker(&m_mutex);
-        return m_sampleStoreBuffer;
+        return m_sampleStore;
     }
 
 signals:
@@ -114,7 +114,7 @@ signals:
 private:
     QMutex m_mutex;
     qpmu::PhasorEstimator *m_estimator = nullptr;
-    SampleStore m_sampleStoreBuffer = {};
+    SampleStore m_sampleStore = {};
 
     PhasorSender *m_sender = nullptr;
 };
