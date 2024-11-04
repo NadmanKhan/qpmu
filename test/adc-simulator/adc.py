@@ -105,7 +105,7 @@ class TimestampedADC:
     
     @dataclass
     class Sample:
-        STRUCT_FORMAT = "@Q6H2Q" # 1 sequence number (64-bit), 6 ADC values (16-bit), 1 system timestamp (microseconds; 64-bit), 1 time delta since previous sample (microseconds; 64-bit)
+        STRUCT_FORMAT = "@q6H2q" # 1 sequence number (signed 64-bit), 6 ADC values (unsigned 16-bit), 1 system timestamp (microseconds; signed 64-bit), 1 time delta since previous sample (microseconds; signed 64-bit)
         BUFSIZE = struct.calcsize(STRUCT_FORMAT)
 
         CSV_FORMAT = "seq={sequence_number},\t ch0={channel_values[0]:4}, ch1={channel_values[1]:4}, ch2={channel_values[2]:4}, ch3={channel_values[3]:4}, ch4={channel_values[4]:4}, ch5={channel_values[5]:4},\t ts={timestamp_usec},\t delta={timedelta_usec}"
@@ -171,7 +171,7 @@ class TimestampedADC:
     @dataclass
     class RawBuffer:
 
-        STRUCT_FORMAT = "@Q180H" # 1 PRU timestamp (nanoseconds; 64-bit), 6 ADC values (16-bit), rest padding
+        STRUCT_FORMAT = "@Q180H" # 1 PRU timestamp (nanoseconds; unsigned 64-bit), 6 ADC values (unsigned 16-bit), rest padding
         BUFSIZE = struct.calcsize(STRUCT_FORMAT)
 
         CSV_FORMAT = "ts={timestamp_nsec},\t ch0={channel_values[0]:4}, ch1={channel_values[1]:4}, ch2={channel_values[2]:4}, ch3={channel_values[3]:4}, ch4={channel_values[4]:4}, ch5={channel_values[5]:4}"

@@ -36,8 +36,8 @@ std::string toString(const Sample &sample)
     for (USize i = 0; i < CountSignals; ++i) {
         ss << "ch" << i << "=" << std::setw(4) << sample.channels[i] << ", ";
     }
-    ss << "ts=" << sample.timestampUsec.count() << ",\t";
-    ss << "td=" << sample.timeDeltaUsec.count();
+    ss << "ts=" << sample.timestampUsec << ",\t";
+    ss << "td=" << sample.timeDeltaUsec;
     return ss.str();
 }
 

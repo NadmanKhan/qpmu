@@ -72,7 +72,7 @@ void Oscilloscope::updateView()
     I64 timeMax = std::numeric_limits<I64>::min();
 
     for (USize i = 0; i < (USize)samples.size(); ++i) {
-        const auto &t = samples[i].timestampUsec.count();
+        const auto &t = samples[i].timestampUsec;
         timeMin = std::min(timeMin, (I64)t);
         timeMax = std::max(timeMax, (I64)t);
         for (USize j = 0; j < qpmu::CountSignals; ++j) {

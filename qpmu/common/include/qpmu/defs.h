@@ -84,8 +84,8 @@ struct Sample
 {
     U64 seq = {};
     U16 channels[CountSignals] = {};
-    Duration timestampUsec = {};
-    Duration timeDeltaUsec = {};
+    I64 timestampUsec = {};
+    I64 timeDeltaUsec = {};
 };
 
 /// @brief Estimations of phasors, frequency and rate-of-change-of-frequency

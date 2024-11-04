@@ -115,7 +115,14 @@ private:
     QMutex m_mutex;
     qpmu::PhasorEstimator *m_estimator = nullptr;
     SampleStore m_sampleStore = {};
-
+    std::function<QString(qpmu::Sample *)> m_getSample = nullptr;
+    struct
+    {
+        qpmu::ADCStreamBuffer streamBuf = {};
+        qpmu::U64 counter = {};
+        qpmu::I64 lastTimeUsec = {};
+        qpmu::I64 lastBufTimeNsec = {};
+    } m_rawReadState;
     PhasorSender *m_sender = nullptr;
 };
 
