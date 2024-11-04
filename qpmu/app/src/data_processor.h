@@ -24,8 +24,9 @@
 
 #include <functional>
 
-constexpr qpmu::USize SampleStoreSize = 64;
-using SampleStore = std::array<qpmu::Sample, SampleStoreSize>;
+using SampleStore = std::array<qpmu::Sample, 64>;
+
+using SampleReadBuffer = std::array<qpmu::Sample, 1024>;
 
 class PhasorSender : public QObject
 {
@@ -115,7 +116,8 @@ private:
     QMutex m_mutex;
     qpmu::PhasorEstimator *m_estimator = nullptr;
     SampleStore m_sampleStore = {};
-    std::function<QString(qpmu::Sample *)> m_getSample = nullptr;
+    SampleReadBuffer m_sampleReadBuffer = {};
+    std::function<qpmu::USize(QString &)> m_readSamples = nullptr;
     struct
     {
         qpmu::ADCStreamBuffer streamBuf = {};

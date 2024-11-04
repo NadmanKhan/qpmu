@@ -1,5 +1,6 @@
 #include "oscilloscope.h"
 #include "settings_models.h"
+#include "src/data_processor.h"
 
 #include <QDateTime>
 #include <QVBoxLayout>
@@ -53,7 +54,7 @@ Oscilloscope::Oscilloscope(QWidget *parent) : QWidget(parent)
         m_series[i]->setName(NameOfSignal[i]);
         m_series[i]->setPen(QPen(settings->signalColors[i], 2));
 
-        m_points[i].resize(SampleStoreSize);
+        m_points[i].resize(std::tuple_size<SampleStore>());
     }
 
     connect(APP->timer(), &QTimer::timeout, this, &Oscilloscope::updateView);

@@ -14,6 +14,7 @@
 #include <QLabel>
 #include <QtGlobal>
 
+#include <utility>
 #include <cctype>
 #include <chrono>
 #include <openc37118-1.0/c37118command.h>
@@ -39,13 +40,13 @@ PhasorSender::PhasorSender()
     m_dataframe->IDCODE_set(ID_CODE);
     m_config2->DATA_RATE_set(50);
     m_config1->DATA_RATE_set(50);
-    auto t = epochTime(SystemClock::now());
-    m_config1->SOC_set(t.count() / 1000);
-    m_config2->SOC_set(t.count() / 1000);
-    m_dataframe->SOC_set(t.count() / 1000);
-    m_config1->FRACSEC_set(t.count() % 1000);
-    m_config2->FRACSEC_set(t.count() % 1000);
-    m_dataframe->FRACSEC_set(t.count() % 1000);
+    auto t = epochTime(SystemClock::now()).count();
+    m_config1->SOC_set(t / 1000);
+    m_config2->SOC_set(t / 1000);
+    m_dataframe->SOC_set(t / 1000);
+    m_config1->FRACSEC_set(t % 1000);
+    m_config2->FRACSEC_set(t % 1000);
+    m_dataframe->FRACSEC_set(t % 1000);
     m_config1->TIME_BASE_set(TimeFracDenomUsec);
     m_config2->TIME_BASE_set(TimeFracDenomUsec);
 
@@ -76,7 +77,7 @@ void PhasorSender::attemptSend(const qpmu::Sample &sample, const qpmu::Estimatio
         }
     }
 
-    if (m_server->waitForNewConnection(1)) {
+    if (m_server->waitForNewConnection(100)) {
         auto client = m_server->nextPendingConnection();
         if (client)
             m_clients.append(client);
@@ -87,7 +88,7 @@ void PhasorSender::attemptSend(const qpmu::Sample &sample, const qpmu::Estimatio
     for (int i = 0; i < m_clients.size(); ++i) {
         auto client = m_clients[i];
         bool isAlive = true;
-        if (client->waitForReadyRead(1)) {
+        if (client->waitForReadyRead(100)) {
             auto n = client->read((char *)m_buffer, sizeof(m_buffer));
 
             if (n < 0) {
@@ -231,51 +232,45 @@ DataProcessor::DataProcessor() : QThread()
             }
 
             constexpr USize TimeQueryPoint = 1024;
-            m_getSample = [=](Sample *outSample) -> QString {
-                if (!outSample)
-                    return "";
+            m_readSamples = [=](QString &error) -> USize {
                 if (write(fd, 0, 0) < 0) {
-                    QString error = QStringLiteral("Failed to write to PRU RPMsg device: %1")
-                                            .arg(strerror(errno));
+                    error = QStringLiteral("Failed to write to PRU RPMsg device: %1")
+                                    .arg(strerror(errno));
                     perror(error.toUtf8().constData());
-                    return error;
+                    return 0;
                 }
                 auto nread = read(fd, (char *)&m_rawReadState.streamBuf, sizeof(ADCStreamBuffer));
                 if (nread == sizeof(ADCStreamBuffer)) {
+                    Sample &s = m_sampleReadBuffer[0];
                     if (m_rawReadState.counter % TimeQueryPoint == 0) {
-                        outSample->timestampUsec = epochTime(SystemClock::now()).count();
+                        s.timestampUsec = epochTime(SystemClock::now()).count();
                     } else {
-                        outSample->timestampUsec = m_rawReadState.lastTimeUsec
+                        s.timestampUsec = m_rawReadState.lastTimeUsec
                                 + (m_rawReadState.streamBuf.timestampNsec
                                    - m_rawReadState.lastBufTimeNsec)
                                         / 1000;
                     }
-                    outSample->seq = m_rawReadState.counter;
-                    outSample->timeDeltaUsec =
-                            outSample->timestampUsec - m_rawReadState.lastTimeUsec;
+                    s.seq = m_rawReadState.counter;
+                    s.timeDeltaUsec = s.timestampUsec - m_rawReadState.lastTimeUsec;
                     for (USize i = 0; i < CountSignals; ++i) {
-                        outSample->channels[i] = m_rawReadState.streamBuf.data[i];
+                        s.channels[i] = m_rawReadState.streamBuf.data[i];
                     }
                     m_rawReadState.counter += 1;
-                    m_rawReadState.lastTimeUsec = outSample->timestampUsec;
+                    m_rawReadState.lastTimeUsec = s.timestampUsec;
                     m_rawReadState.lastBufTimeNsec = m_rawReadState.streamBuf.timestampNsec;
-                    return "";
+                    return 1;
                 } else {
-                    return QStringLiteral("Failed to read from PRU RPMsg device: %1")
-                            .arg(strerror(errno));
+                    error = QStringLiteral("Failed to read from PRU RPMsg device: %1")
+                                    .arg(strerror(errno));
+                    return 0;
                 }
             };
         } else {
             qDebug() << "Reading processed samples (in binary) from stdin";
-            m_getSample = [=](Sample *outSample) -> QString {
-                if (!outSample)
-                    return "";
-                auto nread = fread(outSample, sizeof(Sample), 1, stdin);
-                if (nread == 1) {
-                    return "";
-                } else {
-                    return QStringLiteral("Failed to read from stdin: %1").arg(ferror(stdin));
-                }
+            m_readSamples = [=](QString &) -> USize {
+                auto nread = fread(m_sampleReadBuffer.data(), sizeof(Sample),
+                                   std::tuple_size<SampleReadBuffer>(), stdin);
+                return nread;
             };
         }
     } else {
@@ -285,74 +280,27 @@ DataProcessor::DataProcessor() : QThread()
 
 void DataProcessor::run()
 {
-    Sample sample;
-
-    // auto adc_stream = qgetenv("ADC_STREAM");
-    // qDebug() << "ADC_STREAM: " << adc_stream;
-    // auto fd = open(adc_stream, O_RDWR);
-    // if (fd < 0) {
-    //     perror("Failed to open PRU RPMsg device");
-    //     qFatal("Failed to open PRU RPMsg device\n");
-    // }
-
-    // ADCStreamBuffer streamBuf;
-
-    // constexpr USize TimeQueryPoint = 1024;
-    // USize counter = 0;
-    // I64 lastTimeUsec = epochTime(SystemClock::now()).count();
-    // I64 lastPRUTimeNsec = 0;
-
     while (true) {
-        // if (write(fd, 0, 0) < 0) {
-        //     perror("Failed to write to PRU RPMsg device");
-        //     qFatal("Failed to write to PRU RPMsg device\n");
-        // }
 
-        // auto nread = read(fd, (char *)&streamBuf, sizeof(streamBuf));
-
-        // if (nread == sizeof(ADCStreamBuffer)) {
-        //     if (counter % TimeQueryPoint == 0) {
-        //         sample.timestampUsec = epochTime(SystemClock::now()).count();
-        //     } else {
-        //         sample.timestampUsec =
-        //                 lastTimeUsec + (streamBuf.timestampNsec - lastPRUTimeNsec) / 1000;
-        //     }
-
-        //     sample.seq = counter;
-        //     sample.timeDeltaUsec = sample.timestampUsec - lastTimeUsec;
-        //     for (USize i = 0; i < CountSignals; ++i) {
-        //         sample.channels[i] = streamBuf.data[i];
-        //     }
-
-        //     counter += 1;
-        //     lastTimeUsec = sample.timestampUsec;
-        //     lastPRUTimeNsec = streamBuf.timestampNsec;
-
-        //     qDebug() << toString(sample).c_str();
-        //     m_estimator->updateEstimation(sample);
-
-        //     auto senderOldState = m_sender->state();
-        //     m_sender->attemptSend(sample, m_estimator->currentEstimation());
-        //     auto senderNewState = m_sender->state();
-        //     if (senderOldState != senderNewState) {
-        //         emit phasorSenderStateChanged(senderNewState);
-        //     }
-        // }
-
-        QString error = m_getSample(&sample);
+        QString error;
+        auto nread = m_readSamples(error);
         if (!error.isEmpty()) {
             qWarning() << error;
             continue;
         }
 
-        qDebug() << toString(sample).c_str();
-        m_estimator->updateEstimation(sample);
+        for (USize i = 0; i < nread; ++i) {
+            const auto &sample = m_sampleReadBuffer[i];
 
-        auto senderOldState = m_sender->state();
-        m_sender->attemptSend(sample, m_estimator->currentEstimation());
-        auto senderNewState = m_sender->state();
-        if (senderOldState != senderNewState) {
-            emit phasorSenderStateChanged(senderNewState);
+            m_estimator->updateEstimation(sample);
+
+            auto senderOldState = m_sender->state();
+            m_sender->attemptSend(sample, m_estimator->currentEstimation());
+            auto senderNewState = m_sender->state();
+
+            if (senderOldState != senderNewState) {
+                emit phasorSenderStateChanged(senderNewState);
+            }
         }
     }
 }
