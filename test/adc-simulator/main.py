@@ -89,7 +89,6 @@ if __name__ == "__main__":
                         for rawbuf in adc.stream_raw():
                             print(rawbuf)
                     else:
-                        print("Time, VA, VB, VC, IA, IB, IC")
                         for sample in adc.stream_samples():
                             print(sample)
             
