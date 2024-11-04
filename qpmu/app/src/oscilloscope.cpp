@@ -1,6 +1,5 @@
 #include "oscilloscope.h"
 #include "settings_models.h"
-#include "src/data_processor.h"
 
 #include <QDateTime>
 #include <QVBoxLayout>
@@ -57,23 +56,23 @@ Oscilloscope::Oscilloscope(QWidget *parent) : QWidget(parent)
         m_points[i].resize(SampleStoreSize);
     }
 
-    connect(APP->dataObserver(), &DataObserver::sampleBufferUpdated, this,
-            &Oscilloscope::updateView);
+    connect(APP->timer(), &QTimer::timeout, this, &Oscilloscope::updateView);
 }
 
-void Oscilloscope::updateView(const SampleStore &samples)
+void Oscilloscope::updateView()
 {
     if (!isVisible()) {
         return;
     }
 
     auto settings = new VisualisationSettings();
+    auto samples = APP->dataProcessor()->currentSampleStore();
 
     I64 timeMin = std::numeric_limits<I64>::max();
     I64 timeMax = std::numeric_limits<I64>::min();
 
     for (USize i = 0; i < (USize)samples.size(); ++i) {
-        const auto &t = samples[i].timestamp.count();
+        const auto &t = samples[i].timestampUsec.count();
         timeMin = std::min(timeMin, (I64)t);
         timeMax = std::max(timeMax, (I64)t);
         for (USize j = 0; j < qpmu::CountSignals; ++j) {

@@ -12,7 +12,6 @@
 #include <QStringList>
 
 QT_FORWARD_DECLARE_CLASS(DataProcessor)
-QT_FORWARD_DECLARE_CLASS(DataObserver)
 QT_FORWARD_DECLARE_CLASS(MainWindow)
 
 class App : public QApplication
@@ -22,8 +21,7 @@ class App : public QApplication
     Q_OBJECT
 
 public:
-    static constexpr quint32 TimerIntervalMs = 100;
-    static constexpr quint32 DataViewUpdateIntervalMs = 200;
+    static constexpr quint32 ViewUpdateIntervalMs = 400;
 
     App(int &argc, char **argv);
 
@@ -35,10 +33,6 @@ public:
     {
         return m_dataProcessor;
     }
-    DataObserver *dataObserver() const
-    {
-        return m_dataObserver;
-    }
     MainWindow *mainWindow() const
     {
         return m_mainWindow;
@@ -48,7 +42,6 @@ private:
     QTimer *m_timer = nullptr;
     MainWindow *m_mainWindow = nullptr;
     DataProcessor *m_dataProcessor = nullptr;
-    DataObserver *m_dataObserver = nullptr;
 };
 
 #endif // QPMU_APP_H

@@ -1,9 +1,9 @@
+#include "qpmu/defs.h"
 #include "app.h"
+#include "data_processor.h"
 #include "equally_scaled_axes_chart.h"
-#include "data_observer.h"
 #include "phasor_monitor.h"
 #include "settings_models.h"
-#include "qpmu/defs.h"
 #include "src/main_page_interface.h"
 #include "util.h"
 
@@ -87,15 +87,16 @@ PhasorMonitor::PhasorMonitor(QWidget *parent) : QWidget(parent)
     createControls();
     updateVisibility();
 
-    connect(APP->dataObserver(), &DataObserver::estimationUpdated, this,
-            &PhasorMonitor::updateView);
+    connect(APP->timer(), &QTimer::timeout, this, &PhasorMonitor::updateView);
 }
 
-void PhasorMonitor::updateView(const Estimation &est)
+void PhasorMonitor::updateView()
 {
     if (!isVisible()) {
         return;
     }
+
+    const auto est = APP->dataProcessor()->currentEstimation();
     { /// To start, update colors of series and labels
 
         VisualisationSettings visualSettings;
@@ -747,7 +748,6 @@ void PhasorMonitor::createTable()
         label->setTextFormat(Qt::RichText);
         auto font = label->font();
         font.setFamily("monospace");
-        // font.setPointSize(font.pointSize() * 0.95);
         label->setFont(font);
         return label;
     };
@@ -770,28 +770,17 @@ void PhasorMonitor::createTable()
 
         QLabel *colorLabel; // e.g. color square
         QLabel *ampliLabel; // e.g. "120.0"
-        QLabel *textLabel1; // e.g. " V"
         QLabel *phaseLabel; // e.g. "30.0"
-        QLabel *textLabel2; // e.g. "°"
         QLabel *frequLabel; // e.g. "50.0"
-        QLabel *textLabel3; // e.g. " Hz"
 
         layout->addWidget(colorLabel = makeDecorativeLabel(widget));
         layout->addWidget(ampliLabel = makeDataLabel(widget), 1);
-        // layout->addWidget(textLabel1 = makeDecorativeLabel(widget));
         layout->addWidget(phaseLabel = makeDataLabel(widget), 1);
-        // layout->addWidget(textLabel2 = makeDecorativeLabel(widget));
         layout->addWidget(frequLabel = makeDataLabel(widget), 1);
-        // layout->addWidget(textLabel3 = makeDecorativeLabel(widget));
 
         colorLabel->setPixmap(
                 rectPixmap(visualSettings.signalColors[signalId], 6, 0.7 * colorLabel->height()));
         colorLabel->setScaledContents(false);
-
-        // textLabel1->setText(QSL("<pre><small> %1</small></pre>")
-        //                             .arg(UnitSymbolOfSignalType[TypeOfSignal[signalId]]));
-        // textLabel2->setText(QSL("<pre><small> °</small></pre>"));
-        // textLabel3->setText(QSL("<pre><small> Hz</small></pre>"));
 
         m_colorLabels[signalId].append(colorLabel);
         m_labels.ampli[signalId] = ampliLabel;
@@ -808,12 +797,9 @@ void PhasorMonitor::createTable()
             auto layout = static_cast<QHBoxLayout *>(phaseDiffWidget->layout());
 
             QLabel *phaseDiffLabel; // e.g. "15.0"
-            QLabel *degreeLabel; // e.g. "°"
 
             layout->addWidget(phaseDiffLabel = makeDataLabel(phaseDiffWidget), 1);
-            // layout->addWidget(degreeLabel = makeDecorativeLabel(phaseDiffWidget));
 
-            // degreeLabel->setText(QSL("<pre><small> °</small></pre>"));
             m_labels.phaseDiff[phase] = phaseDiffLabel;
         }
 

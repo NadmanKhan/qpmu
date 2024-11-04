@@ -1,6 +1,5 @@
 #include "app.h"
 #include "data_processor.h"
-#include "data_observer.h"
 #include "main_window.h"
 
 #include <QFont>
@@ -23,14 +22,12 @@ App::App(int &argc, char **argv) : QApplication(argc, argv)
     }
 
     m_timer = new QTimer(this);
-    m_timer->setInterval(TimerIntervalMs);
+    m_timer->setInterval(ViewUpdateIntervalMs);
     m_timer->start();
 
     m_dataProcessor = new DataProcessor();
     m_dataProcessor->start();
     m_dataProcessor->setPriority(QThread::TimeCriticalPriority);
-
-    m_dataObserver = new DataObserver();
 
     m_mainWindow = new MainWindow();
 }

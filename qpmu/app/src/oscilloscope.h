@@ -3,7 +3,7 @@
 
 #include "qpmu/defs.h"
 #include "main_page_interface.h"
-#include "data_observer.h"
+#include "data_processor.h"
 
 #include <QWidget>
 #include <QtCharts>
@@ -17,7 +17,7 @@ public:
     explicit Oscilloscope(QWidget *parent = nullptr);
 
 private slots:
-    void updateView(const SampleStore &samples);
+    void updateView();
 
 private:
     QLineSeries *m_series[qpmu::CountSignals] = {};
