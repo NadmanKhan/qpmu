@@ -64,7 +64,6 @@ DataProcessor::DataProcessor() : QThread()
                     for (uint64_t i = 0; i < CountSignals; ++i) {
                         s.channels[i] = m_rawReadState.streamBuf.data[i];
                     }
-                    qDebug() << "Sample: " << toString(s).c_str();
                     m_rawReadState.counter += 1;
                     m_rawReadState.lastTimeUsec = s.timestampUsec;
                     m_rawReadState.lastBufTimeNsec = m_rawReadState.streamBuf.timestampNsec;
