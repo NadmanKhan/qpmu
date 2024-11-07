@@ -41,9 +41,19 @@ void NetworkSettings::load(QSettings settings)
 
     auto socketSting = settings.value(QSL("socket")).toString();
     auto parts = socketSting.split(':');
-    socketConfig.socketType = (parts.size() >= 1 && parts[0] == QSL("udp")) ? UdpSocket : TcpSocket;
-    socketConfig.host = (parts.size() >= 2) ? parts[1] : "127.0.0.1";
-    socketConfig.port = (parts.size() >= 3) ? parts[2].toUShort() : 4712;
+    if (parts.size() >= 1) {
+        socketConfig.socketType = (parts[0] == QSL("udp")) ? UdpSocket : TcpSocket;
+        if (parts.size() >= 2) {
+            socketConfig.host = parts[1];
+            if (parts.size() >= 3) {
+                bool ok;
+                socketConfig.port = parts[2].toUShort(&ok);
+                if (!ok) {
+                    socketConfig.port = 4712;
+                }
+            }
+        }
+    }
 
     settings.endGroup();
 }

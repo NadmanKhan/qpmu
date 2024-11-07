@@ -34,7 +34,6 @@ public:
 
     ~PhasorSender()
     {
-        emit stateChanged(0);
         if (m_server && m_server->isListening()) {
             for (auto client : m_clients) {
                 client->close();
@@ -88,9 +87,6 @@ public:
     void updateData(const qpmu::Sample &sample, const qpmu::Estimation &estimation);
 
     void stopRunning();
-
-signals:
-    void stateChanged(int state);
 
 private:
     NetworkSettings m_settings = {};

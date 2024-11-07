@@ -45,7 +45,7 @@ struct NetworkSettings : public AbstractSettingsModel
 
     struct SocketConfig
     {
-        SocketType socketType = UdpSocket;
+        SocketType socketType = TcpSocket;
         QString host = "127.0.0.1";
         quint16 port = 4712;
     };

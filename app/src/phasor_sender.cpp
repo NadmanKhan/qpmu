@@ -72,18 +72,19 @@ void PhasorSender::run()
         qDebug() << "* At data rate: " << m_config1->DATA_RATE_get() << "Hz";
         m_state |= Listening;
     }
-    emit stateChanged(m_state);
 
     while (m_keepRunning) {
         int newState = 0;
 
         // Check if the server is listening
-        newState |= (Listening * bool(m_server->isListening()));
         if (!m_server->isListening()) {
             if (!m_server->listen(m_server->serverAddress(), m_server->serverPort())) {
-                qWarning("Failed to start listening on port 4712");
+                qWarning() << "Failed to start listening on address" << addr;
+            } else {
+                qDebug() << "Started listening again on addres " << addr;
             }
         }
+        newState |= (Listening * bool(m_server->isListening()));
 
         // Check if there are new connections
         if (m_server->waitForNewConnection(100)) {
@@ -91,7 +92,7 @@ void PhasorSender::run()
             if (client)
                 m_clients.append(client);
         }
-        newState |= (Connected * bool(m_clients.size() > 0));
+        newState |= (Connected * bool((newState & listening) && m_clients.size() > 0));
 
         // Handle clients
         int deadClients = 0;
@@ -132,7 +133,6 @@ void PhasorSender::run()
 
         // Send data
         if (m_sendDataFlag) {
-            newState |= DataSending;
             updateData(m_sample, m_estimation);
             // qDebug() << "PhasorSender: sending data:" << toString(m_sample).c_str()
             //          << toString(m_estimation).c_str();
@@ -147,18 +147,13 @@ void PhasorSender::run()
                     }
                 }
             }
-        } else {
-            newState &= ~DataSending;
         }
+        newState |= DataSending * m_sendDataFlag;
 
         // Remove dead clients
         m_clients.resize(m_clients.size() - deadClients);
 
-        // Update state
-        if (newState != m_state) {
-            emit stateChanged(newState);
-            m_state = newState;
-        }
+        m_state = newState;
 
         // Sleep to match the data rate
         msleep(m_sleepTime);
@@ -168,7 +163,6 @@ void PhasorSender::run()
         client->close();
     }
     m_server->close();
-    emit stateChanged(m_server->isListening() ? Listening : 0);
 }
 
 void PhasorSender::handleCommand(QTcpSocket *client)

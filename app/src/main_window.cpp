@@ -59,18 +59,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
                 statusBar()->addPermanentWidget(indicator);
                 auto name = PhasorSender::stateFlagName(flag);
                 indicator->setToolTip(name + "?");
-                auto updateIndicator = [=](int state) {
+                auto updateIndicator = [=]() {
+                    auto state = APP->dataProcessor()->phasorSender()->state();
                     indicator->setPixmap(pixmapChoices[bool(state & flag)]);
                 };
 
-                connect(APP->dataProcessor()->phasorSender(), &PhasorSender::stateChanged,
-                        updateIndicator);
+                connect(APP->timer(), &QTimer::timeout, updateIndicator);
                 return updateIndicator;
             };
             for (auto f : { createDataReportingIndicator(PhasorSender::Listening),
                             createDataReportingIndicator(PhasorSender::Connected),
                             createDataReportingIndicator(PhasorSender::DataSending) }) {
-                f(APP->dataProcessor()->phasorSender()->state());
+                f();
             }
         }
 

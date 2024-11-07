@@ -39,10 +39,9 @@ public:
         return m_sampleStore;
     }
 
+    void replacePhasorSender();
     PhasorSender *phasorSender() const { return m_sender; }
 
-public slots:
-    void replacePhasorSender();
 
 private:
     QMutex m_mutex;
