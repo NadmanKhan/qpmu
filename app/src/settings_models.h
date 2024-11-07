@@ -36,13 +36,8 @@ struct AbstractSettingsModel
   static_assert(std::is_copy_assignable<T>::value, #T " must be trivially copyable");              \
   static_assert(std::is_move_assignable<T>::value, #T " must be trivially move assignable");
 
-struct SamplerSettings : public AbstractSettingsModel
+struct NetworkSettings : public AbstractSettingsModel
 {
-    enum ConnectionType {
-        None = 0,
-        Socket = 1,
-        Process = 2,
-    };
     enum SocketType {
         UdpSocket = 0,
         TcpSocket = 1,
@@ -52,7 +47,7 @@ struct SamplerSettings : public AbstractSettingsModel
     {
         SocketType socketType = UdpSocket;
         QString host = "127.0.0.1";
-        quint16 port = 12345;
+        quint16 port = 4712;
     };
 
     struct ProcessConfig
@@ -61,30 +56,23 @@ struct SamplerSettings : public AbstractSettingsModel
         QStringList args = {};
     };
 
-    ConnectionType connection = None;
     SocketConfig socketConfig = {};
-    ProcessConfig processConfig = {};
-    bool isDataBinary = true;
 
     void load(QSettings settings = QSettings()) override;
     bool save() const override;
     QString validate() const override;
 
-    bool operator==(const SamplerSettings &other) const
+    bool operator==(const NetworkSettings &other) const
     {
-        return connection == other.connection
-                && socketConfig.socketType == other.socketConfig.socketType
+        return socketConfig.socketType == other.socketConfig.socketType
                 && socketConfig.host == other.socketConfig.host
-                && socketConfig.port == other.socketConfig.port
-                && processConfig.prog == other.processConfig.prog
-                && processConfig.args == other.processConfig.args
-                && isDataBinary == other.isDataBinary;
+                && socketConfig.port == other.socketConfig.port;
     }
 
-    bool operator!=(const SamplerSettings &other) const { return !(*this == other); }
+    bool operator!=(const NetworkSettings &other) const { return !(*this == other); }
 };
 
-STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(SamplerSettings)
+STATIC_ASSERT_SETTINGS_MODEL_CONCEPTS(NetworkSettings)
 
 struct CalibrationSettings : public AbstractSettingsModel
 {

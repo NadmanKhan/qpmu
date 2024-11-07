@@ -27,11 +27,11 @@ signals:
     void visualisationSettingsChanged(const VisualisationSettings &settings);
 
 private:
-    QWidget *samplerSettingsPage(const SamplerSettings &settings);
+    QWidget *networkSettingsPage(const NetworkSettings &settings);
     QWidget *calibrationWidget(const size_t signalIndex,
                                const CalibrationSettings::DataPerSignal &signalData);
 
-    SamplerSettings m_oldSamplerSettings;
+    NetworkSettings m_oldNetworkSettings;
     CalibrationSettings m_oldCalibrationSettings;
 };
 

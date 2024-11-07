@@ -35,49 +35,26 @@ QStringList parsePrcoessString(const QString &processString)
     return tokens;
 }
 
-void SamplerSettings::load(QSettings settings)
+void NetworkSettings::load(QSettings settings)
 {
-    settings.beginGroup(QSL("sample_source"));
+    settings.beginGroup(QSL("network"));
 
-    auto connString = settings.value(QSL("connection"), "none").toString();
-    if (connString == QSL("socket")) {
-        connection = Socket;
-    } else if (connString == QSL("process")) {
-        connection = Process;
-    } else {
-        connection = None;
-    }
-
-    isDataBinary = settings.value(QSL("is_data_binary"), true).toBool();
-
-    if (settings.contains(QSL("process"))) {
-        auto processString = settings.value(QSL("process")).toString();
-        QStringList parts = parsePrcoessString(processString);
-        if (!parts.isEmpty()) {
-            processConfig.prog = parts.takeFirst();
-            processConfig.args = parts;
-        }
-    }
-
-    if (settings.contains(QSL("socket"))) {
-        auto socketSting = settings.value(QSL("socket")).toString();
-        auto parts = socketSting.split(':');
-        socketConfig.socketType =
-                (parts.size() >= 1 && parts[0] == QSL("tcp")) ? TcpSocket : UdpSocket;
-        socketConfig.host = (parts.size() >= 2) ? parts[1] : "127.0.0.1";
-        socketConfig.port = (parts.size() >= 3) ? parts[2].toUShort() : 12345;
-    }
+    auto socketSting = settings.value(QSL("socket")).toString();
+    auto parts = socketSting.split(':');
+    socketConfig.socketType = (parts.size() >= 1 && parts[0] == QSL("udp")) ? UdpSocket : TcpSocket;
+    socketConfig.host = (parts.size() >= 2) ? parts[1] : "127.0.0.1";
+    socketConfig.port = (parts.size() >= 3) ? parts[2].toUShort() : 4712;
 
     settings.endGroup();
 }
 
-bool SamplerSettings::save() const
+bool NetworkSettings::save() const
 {
     if (!validate().isEmpty()) {
         return false;
     }
     QSettings settings;
-    settings.beginGroup(QSL("sample_source"));
+    settings.beginGroup(QSL("network"));
 
     settings.setValue(QSL("socket"),
                       QSL("%1:%2:%3")
@@ -85,33 +62,14 @@ bool SamplerSettings::save() const
                               .arg(socketConfig.host)
                               .arg(socketConfig.port));
 
-    settings.setValue(QSL("process"),
-                      QSL("%1 %2").arg(processConfig.prog).arg(processConfig.args.join(QSL(" "))));
-
-    if (connection == Socket) {
-        settings.setValue(QSL("connection"), QSL("socket"));
-    } else if (connection == Process) {
-        settings.setValue(QSL("connection"), QSL("process"));
-    } else {
-        settings.setValue(QSL("connection"), QSL("none"));
-    }
-
-    settings.setValue(QSL("is_data_binary"), isDataBinary);
-
     settings.endGroup();
     return true;
 }
 
-QString SamplerSettings::validate() const
+QString NetworkSettings::validate() const
 {
-    if (connection == Socket) {
-        if (QHostAddress(socketConfig.host).isNull()) {
-            return "Invalid host address";
-        }
-    } else if (connection == Process) {
-        if (!QFileInfo(processConfig.prog).isExecutable()) {
-            return "Invalid program path; file not found or not executable";
-        }
+    if (QHostAddress(socketConfig.host).isNull()) {
+        return "Invalid host address";
     }
     return "";
 }

@@ -43,11 +43,11 @@ SettingsWidget::SettingsWidget(QWidget *parent) : QTabWidget(parent)
 {
     hide();
 
-    { /// Sampler settings page
-        auto settings = SamplerSettings();
+    { /// Network settings page
+        auto settings = NetworkSettings();
         settings.load();
-        auto page = samplerSettingsPage(settings);
-        addTab(page, "Signal Sampler");
+        auto page = networkSettingsPage(settings);
+        addTab(page, "Network");
     }
 
     { /// Calibration settings page
@@ -61,32 +61,19 @@ SettingsWidget::SettingsWidget(QWidget *parent) : QTabWidget(parent)
     }
 }
 
-QWidget *SettingsWidget::samplerSettingsPage(const SamplerSettings &settings)
+QWidget *SettingsWidget::networkSettingsPage(const NetworkSettings &settings)
 {
 
     auto page = new QWidget();
-    m_oldSamplerSettings = settings;
+    m_oldNetworkSettings = NetworkSettings();
 
     auto outerLayout = new QVBoxLayout(page);
-
-    auto dataFormatGroup = new QButtonGroup();
-    auto isDataBinaryCheckBox = new QCheckBox();
-    auto isDataFormattedCheckBox = new QCheckBox();
-
-    auto connectionTypeGroup = new QButtonGroup();
-    auto noConnectionRadio = new QRadioButton();
-    auto socketConnectionRadio = new QRadioButton();
-    auto processConnectionRadio = new QRadioButton();
 
     auto socketTypeGroup = new QButtonGroup();
     auto udpRadio = new QRadioButton();
     auto tcpRadio = new QRadioButton();
     auto hostEdit = new QLineEdit();
     auto portEdit = new QLineEdit();
-
-    auto browseFileButton = new QPushButton();
-    auto progEdit = new QLineEdit();
-    auto argsEdit = new QLineEdit();
 
     auto dialogButtonBox = new QDialogButtonBox();
     auto updateConnectionButton = dialogButtonBox->addButton(QDialogButtonBox::Apply);
@@ -96,39 +83,27 @@ QWidget *SettingsWidget::samplerSettingsPage(const SamplerSettings &settings)
     /// Common operations
 
     /// * Extract settings data from UI
-    auto extractSettings = [=]() -> SamplerSettings {
-        SamplerSettings newSettings;
-        newSettings.isDataBinary = dataFormatGroup->checkedId();
-        newSettings.connection = (SamplerSettings::ConnectionType)connectionTypeGroup->checkedId();
+    auto extractSettings = [=]() -> NetworkSettings {
+        NetworkSettings newSettings;
 
         newSettings.socketConfig.host = hostEdit->text();
         newSettings.socketConfig.port = portEdit->text().toInt();
         newSettings.socketConfig.socketType =
-                (SamplerSettings::SocketType)socketTypeGroup->checkedId();
-
-        newSettings.processConfig.prog = progEdit->text();
-        newSettings.processConfig.args = parsePrcoessString(argsEdit->text());
-
+                (NetworkSettings::SocketType)socketTypeGroup->checkedId();
         return newSettings;
     };
 
     /// * Load settings data into UI
-    auto loadSettings = [=](const SamplerSettings &settings) {
-        m_oldSamplerSettings = extractSettings();
-
-        dataFormatGroup->button(settings.isDataBinary)->setChecked(true);
-        connectionTypeGroup->button(settings.connection)->setChecked(true);
+    auto loadSettings = [=](const NetworkSettings &settings) {
+        m_oldNetworkSettings = extractSettings();
 
         hostEdit->setText(settings.socketConfig.host);
         portEdit->setText(QString::number(settings.socketConfig.port));
         socketTypeGroup->button(settings.socketConfig.socketType)->setChecked(true);
-
-        progEdit->setText(settings.processConfig.prog);
-        argsEdit->setText(settings.processConfig.args.join(" "));
     };
 
     /// * Check if settings are changed
-    auto isSettingsChanged = [=] { return extractSettings() != m_oldSamplerSettings; };
+    auto isSettingsChanged = [=] { return extractSettings() != m_oldNetworkSettings; };
 
     /// * Update enabled state of buttons
     auto updateEnabledState = [=] {
@@ -136,13 +111,14 @@ QWidget *SettingsWidget::samplerSettingsPage(const SamplerSettings &settings)
         resetButton->setEnabled(changed);
     };
 
-    /// * Save settings to the file
+    /// * Save settings to the file, and update connection
     auto saveSettings = [=]() -> bool {
         auto newSettings = extractSettings();
         if (newSettings.save()) {
-            m_oldSamplerSettings = newSettings;
+            m_oldNetworkSettings = newSettings;
             updateEnabledState();
             qInfo() << "Settings saved";
+            APP->dataProcessor()->replacePhasorSender();
             return true;
         }
         qInfo() << "Failed to save settings";
@@ -151,129 +127,50 @@ QWidget *SettingsWidget::samplerSettingsPage(const SamplerSettings &settings)
         return false;
     };
 
-    { /// Process/socket configuration tab-widget
-        auto tabWidget = new QTabWidget(page);
-        outerLayout->addWidget(tabWidget);
+    { /// Socket configuration
+        auto socketConfigForm = new QFormLayout();
+        auto socketTypeLayout = new QHBoxLayout();
+        outerLayout->addLayout(socketConfigForm);
 
-        auto socketPage = new QWidget();
-        auto processPage = new QWidget();
-        tabWidget->addTab(socketPage, "Socket configuratin");
-        tabWidget->addTab(processPage, "Process configuratin");
+        socketConfigForm->addRow("Host IP", hostEdit);
+        socketConfigForm->addRow("Port", portEdit);
+        socketConfigForm->addRow("Socket type", socketTypeLayout);
 
-        { /// Socket configuration
-            auto socketConfigForm = new QFormLayout(socketPage);
-            auto socketTypeLayout = new QHBoxLayout();
-
-            socketConfigForm->addRow("Host IP", hostEdit);
-            socketConfigForm->addRow("Port", portEdit);
-            socketConfigForm->addRow("Socket type", socketTypeLayout);
-
-            { /// Host edit
-                auto ipPattern = QString("^(%1\\.%1\\.%1\\.%1)|localhost$")
-                                         .arg("(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})");
-                auto ipValidator = new QRegularExpressionValidator(QRegularExpression(ipPattern));
-                hostEdit->setValidator(ipValidator);
-                hostEdit->setPlaceholderText("xxx.xxx.xxx.xxx");
-                hostEdit->setFixedWidth(150);
-                hostEdit->setText(settings.socketConfig.host);
-            }
-
-            { /// Port edit
-                auto portValidator = new QIntValidator(0, 65535);
-                portEdit->setValidator(portValidator);
-                portEdit->setPlaceholderText("0-65535");
-                portEdit->setFixedWidth(150);
-                portEdit->setText(QString::number(settings.socketConfig.port));
-            }
-
-            { /// Socket type
-                udpRadio->setText("UDP");
-                tcpRadio->setText("TCP");
-
-                socketTypeLayout->addWidget(udpRadio);
-                socketTypeLayout->addWidget(tcpRadio);
-                socketTypeLayout->setAlignment(Qt::AlignLeft);
-
-                socketTypeGroup->addButton(udpRadio, SamplerSettings::UdpSocket);
-                socketTypeGroup->addButton(tcpRadio, SamplerSettings::TcpSocket);
-                socketTypeGroup->button(settings.socketConfig.socketType)->setChecked(true);
-            }
+        { /// Host edit
+            auto ipPattern = QString("^(%1\\.%1\\.%1\\.%1)|localhost$")
+                                     .arg("(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})");
+            auto ipValidator = new QRegularExpressionValidator(QRegularExpression(ipPattern));
+            hostEdit->setValidator(ipValidator);
+            hostEdit->setPlaceholderText("xxx.xxx.xxx.xxx");
+            hostEdit->setFixedWidth(150);
+            hostEdit->setText(settings.socketConfig.host);
         }
 
-        { /// Process configuration
-            auto processConfigForm = new QFormLayout(processPage);
-            auto programLayout = new QHBoxLayout();
-
-            processConfigForm->addRow("Program", programLayout);
-            processConfigForm->addRow("Arguments", argsEdit);
-
-            { /// Program edit
-                programLayout->addWidget(progEdit, 1);
-                programLayout->addWidget(browseFileButton);
-
-                progEdit->setText(settings.processConfig.prog);
-                browseFileButton->setText("Browse");
-                browseFileButton->setFixedWidth(80);
-
-                connect(browseFileButton, &QPushButton::clicked, [=] {
-                    auto file = QFileDialog::getOpenFileName(this, "Select program");
-                    if (!file.isEmpty()) {
-                        progEdit->setText(file);
-                    }
-                });
-            }
-
-            { /// Arguments edit
-                argsEdit->setText(settings.processConfig.args.join(" "));
-            }
-        }
-    }
-
-    { /// Connection type and binary-data flag
-        auto form = new QFormLayout();
-        outerLayout->addLayout(form);
-
-        auto connectionTypeLayout = new QHBoxLayout();
-        auto dataFormatLayout = new QVBoxLayout();
-
-        form->addRow("Connection type", connectionTypeLayout);
-        form->addRow("Data format", dataFormatLayout);
-
-        { /// Connection type config
-
-            noConnectionRadio->setText("None (disable connection)");
-            socketConnectionRadio->setText("Socket connection");
-            processConnectionRadio->setText("Process connection");
-
-            connectionTypeLayout->addWidget(noConnectionRadio);
-            connectionTypeLayout->addWidget(socketConnectionRadio);
-            connectionTypeLayout->addWidget(processConnectionRadio);
-            connectionTypeLayout->setAlignment(Qt::AlignLeft);
-
-            connectionTypeGroup->addButton(noConnectionRadio, SamplerSettings::None);
-            connectionTypeGroup->addButton(socketConnectionRadio, SamplerSettings::Socket);
-            connectionTypeGroup->addButton(processConnectionRadio, SamplerSettings::Process);
-            connectionTypeGroup->button(settings.connection)->setChecked(true);
+        { /// Port edit
+            auto portValidator = new QIntValidator(0, 65535);
+            portEdit->setValidator(portValidator);
+            portEdit->setPlaceholderText("0-65535");
+            portEdit->setFixedWidth(150);
+            portEdit->setText(QString::number(settings.socketConfig.port));
         }
 
-        { /// Data format config
-            dataFormatLayout->addWidget(isDataBinaryCheckBox);
-            dataFormatLayout->addWidget(isDataFormattedCheckBox);
-            dataFormatLayout->setAlignment(Qt::AlignLeft);
+        { /// Socket type
+            udpRadio->setText("UDP");
+            tcpRadio->setText("TCP");
 
-            isDataBinaryCheckBox->setText("Binary-encoded (raw)");
-            isDataFormattedCheckBox->setText("ASCII string formatted");
+            socketTypeLayout->addWidget(udpRadio);
+            socketTypeLayout->addWidget(tcpRadio);
+            socketTypeLayout->setAlignment(Qt::AlignLeft);
 
-            dataFormatGroup->addButton(isDataBinaryCheckBox, true);
-            dataFormatGroup->addButton(isDataFormattedCheckBox, false);
-            isDataBinaryCheckBox->setChecked(settings.isDataBinary);
+            socketTypeGroup->addButton(udpRadio, NetworkSettings::UdpSocket);
+            socketTypeGroup->addButton(tcpRadio, NetworkSettings::TcpSocket);
+            socketTypeGroup->button(settings.socketConfig.socketType)->setChecked(true);
         }
     }
 
     { /// Initialize
-        for (QObject *obj : { (QObject *)dataFormatGroup, (QObject *)connectionTypeGroup,
-                              (QObject *)socketTypeGroup, (QObject *)hostEdit, (QObject *)portEdit,
-                              (QObject *)progEdit, (QObject *)argsEdit }) {
+        for (QObject *obj :
+             { (QObject *)socketTypeGroup, (QObject *)hostEdit, (QObject *)portEdit }) {
 
             if (auto edit = qobject_cast<QLineEdit *>(obj)) {
                 connect(edit, &QLineEdit::textChanged, updateEnabledState);
@@ -298,21 +195,21 @@ QWidget *SettingsWidget::samplerSettingsPage(const SamplerSettings &settings)
             updateConnectionButton->setText("Save and Update Connection");
             connect(updateConnectionButton, &QPushButton::clicked, [=] {
                 if (saveSettings()) {
-                    // APP->dataProcessor()->updateSampleReader();
+                    // APP->dataProcessor()->updateNetworkeader();
                 }
             });
         }
 
         { /// Reset button
             connect(resetButton, &QPushButton::clicked, [=] {
-                loadSettings(m_oldSamplerSettings);
+                loadSettings(m_oldNetworkSettings);
                 updateEnabledState();
             });
         }
 
         { /// Restore defaults button
             connect(restoreDefaultsButton, &QPushButton::clicked, [=] {
-                loadSettings(SamplerSettings());
+                loadSettings(NetworkSettings());
                 updateEnabledState();
             });
         }

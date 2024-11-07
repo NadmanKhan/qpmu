@@ -21,7 +21,7 @@
             "name": "(gdb) Launch QPMU App",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/qpmu/app/qpmu-app",
+            "program": "${workspaceFolder}/build/app/qpmu-app",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

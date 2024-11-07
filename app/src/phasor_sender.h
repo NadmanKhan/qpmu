@@ -2,6 +2,7 @@
 #define QPMU_APP_PHASOR_SENDER_H
 
 #include "qpmu/defs.h"
+#include "settings_models.h"
 
 #include <openc37118-1.0/c37118.h>
 #include <openc37118-1.0/c37118configuration.h>
@@ -15,6 +16,8 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QTcpServer>
+#include <QTcpSocket>
+#include <qmutex.h>
 #include <sys/types.h>
 
 class PhasorSender : public QThread
@@ -31,9 +34,14 @@ public:
 
     ~PhasorSender()
     {
-        if (m_server) {
-            m_server->deleteLater();
+        emit stateChanged(0);
+        if (m_server && m_server->isListening()) {
+            for (auto client : m_clients) {
+                client->close();
+            }
+            m_server->close();
         }
+        delete m_server;
         delete m_station;
         delete m_config2;
         delete m_config1;
@@ -66,25 +74,33 @@ public:
                 .arg(bool(state & DataSending) ? "Data Sending" : "");
     }
 
-    int state() const { return m_state; }
+    int state() const
+    {
+        QMutexLocker locker(&m_mutex);
+        return m_state;
+    }
     QTcpServer *server() const { return m_server; }
 
     void handleCommand(QTcpSocket *client);
-    
+
     void attemptSend();
 
     void updateData(const qpmu::Sample &sample, const qpmu::Estimation &estimation);
+
+    void stopRunning();
 
 signals:
     void stateChanged(int state);
 
 private:
-    int m_state = 0;
+    NetworkSettings m_settings = {};
     QTcpServer *m_server = nullptr;
     QVector<QTcpSocket *> m_clients = {};
-    uint8_t m_buffer[10000] = {};
-
+    bool m_keepRunning = true;
     QMutex m_mutex;
+    uint8_t m_buffer[10000] = {};
+    int m_state = 0;
+
     qpmu::Sample m_sample = {};
     qpmu::Estimation m_estimation = {};
 
@@ -95,6 +111,7 @@ private:
     HEADER_Frame *m_header = nullptr;
     CMD_Frame *m_cmd = nullptr;
     bool m_sendDataFlag = false;
+    int m_sleepTime = 0;
 };
 
 #endif // QPMU_APP_PHASOR_SENDER_H

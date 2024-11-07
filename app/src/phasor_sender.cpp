@@ -47,14 +47,34 @@ PhasorSender::PhasorSender()
     m_config2->PMUSTATION_ADD(m_station);
     m_config1->PMUSTATION_ADD(m_station);
 
-    m_server = new QTcpServer(this);
-    m_server->listen(QHostAddress::LocalHost, 4712);
-    m_server->setMaxPendingConnections(1); // Only one connection at a time
+    m_server = new QTcpServer();
+    m_server->moveToThread(this);
+
+    m_sleepTime = int(1000.0 / m_config2->DATA_RATE_get());
 }
 
 void PhasorSender::run()
 {
-    while (true) {
+    m_state = 0;
+    m_settings.load();
+    m_server->setMaxPendingConnections(1); // Only one connection at a time
+    auto listening = m_server->listen(QHostAddress(m_settings.socketConfig.host),
+                                      m_settings.socketConfig.port);
+    auto addr =
+            QString("%1:%2").arg(m_settings.socketConfig.host).arg(m_settings.socketConfig.port);
+
+    if (!listening) {
+        qWarning() << "Failed to start listening on " << addr;
+        qWarning() << "Error: " << m_server->errorString();
+    } else {
+        qDebug() << "* PMU with ID: " << m_config1->IDCODE_get();
+        qDebug() << "* Listening on: " << addr;
+        qDebug() << "* At data rate: " << m_config1->DATA_RATE_get() << "Hz";
+        m_state |= Listening;
+    }
+    emit stateChanged(m_state);
+
+    while (m_keepRunning) {
         int newState = 0;
 
         // Check if the server is listening
@@ -114,8 +134,8 @@ void PhasorSender::run()
         if (m_sendDataFlag) {
             newState |= DataSending;
             updateData(m_sample, m_estimation);
-            qDebug() << "PhasorSender: sending data:" << toString(m_sample).c_str()
-                     << toString(m_estimation).c_str();
+            // qDebug() << "PhasorSender: sending data:" << toString(m_sample).c_str()
+            //          << toString(m_estimation).c_str();
             char *dataBuffer = nullptr;
             unsigned short size = m_dataframe->pack((unsigned char **)&dataBuffer);
             for (int i = 0; i < m_clients.size() - deadClients; ++i) {
@@ -137,13 +157,18 @@ void PhasorSender::run()
         // Update state
         if (newState != m_state) {
             emit stateChanged(newState);
-            QMutexLocker locker(&m_mutex);
             m_state = newState;
         }
 
         // Sleep to match the data rate
-        msleep(1000 / m_config2->DATA_RATE_get());
+        msleep(m_sleepTime);
     }
+
+    for (auto client : m_clients) {
+        client->close();
+    }
+    m_server->close();
+    emit stateChanged(m_server->isListening() ? Listening : 0);
 }
 
 void PhasorSender::handleCommand(QTcpSocket *client)
@@ -206,11 +231,10 @@ void PhasorSender::handleCommand(QTcpSocket *client)
 
 void PhasorSender::updateData(const qpmu::Sample &sample, const qpmu::Estimation &estimation)
 {
-    {
-        QMutexLocker locker(&m_mutex);
-        m_sample = sample;
-        m_estimation = estimation;
-    }
+    QMutexLocker locker(&m_mutex);
+
+    m_sample = sample;
+    m_estimation = estimation;
 
     m_dataframe->SOC_set(m_sample.timestampUsec / 1000);
     m_dataframe->FRACSEC_set(m_sample.timestampUsec % 1000);
@@ -220,4 +244,10 @@ void PhasorSender::updateData(const qpmu::Sample &sample, const qpmu::Estimation
     }
     m_station->FREQ_set(m_estimation.frequencies[0]);
     m_station->DFREQ_set(m_estimation.rocofs[0]);
+}
+
+void PhasorSender::stopRunning()
+{
+    QMutexLocker locker(&m_mutex);
+    m_keepRunning = false;
 }

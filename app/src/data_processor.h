@@ -16,7 +16,7 @@
 
 using SampleStore = std::array<qpmu::Sample, 32>;
 
-using SampleReadBuffer = std::array<qpmu::Sample, 128>;
+using SampleReadBuffer = std::array<qpmu::Sample, 1>;
 
 class DataProcessor : public QThread
 {
@@ -40,6 +40,9 @@ public:
     }
 
     const PhasorSender *phasorSender() const { return m_sender; }
+
+public slots:
+    void replacePhasorSender();
 
 private:
     QMutex m_mutex;

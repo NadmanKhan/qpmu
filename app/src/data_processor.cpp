@@ -64,13 +64,15 @@ DataProcessor::DataProcessor() : QThread()
                     for (uint64_t i = 0; i < CountSignals; ++i) {
                         s.channels[i] = m_rawReadState.streamBuf.data[i];
                     }
+                    qDebug() << "Sample: " << toString(s).c_str();
                     m_rawReadState.counter += 1;
                     m_rawReadState.lastTimeUsec = s.timestampUsec;
                     m_rawReadState.lastBufTimeNsec = m_rawReadState.streamBuf.timestampNsec;
                     return 1;
                 } else {
-                    error = QStringLiteral("Failed to read from RPMsg device: %1")
-                                    .arg(strerror(errno));
+                    error = QStringLiteral("Expected %1 bytes, got %2 bytes")
+                                    .arg(sizeof(ADCStreamBuffer))
+                                    .arg(nread);
                     return 0;
                 }
             };
@@ -86,6 +88,17 @@ DataProcessor::DataProcessor() : QThread()
         qFatal("Not implemented\n");
     }
 
+    m_sender = new PhasorSender();
+    m_sender->start();
+}
+
+void DataProcessor::replacePhasorSender()
+{
+    QMutexLocker locker(&m_mutex);
+    if (m_sender) {
+        m_sender->stopRunning();
+        connect(m_sender, &QThread::finished, m_sender, &QObject::deleteLater);
+    }
     m_sender = new PhasorSender();
     m_sender->start();
 }

@@ -51,7 +51,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         { /// 2. Data reporting status indicators
             statusBar()->addPermanentWidget(new QLabel("Reporting:"));
             auto createDataReportingIndicator = [=](PhasorSender::StateFlag flag) {
-                auto pixmapSize = statusBar()->font().pointSizeF() * 0.85;
+                auto pixmapSize = statusBar()->font().pointSize();
                 const auto redCircle = circlePixmap(QColor(255, 0, 0), pixmapSize);
                 const auto greenCircle = circlePixmap(QColor(0, 255, 0), pixmapSize);
                 const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
