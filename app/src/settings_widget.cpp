@@ -158,12 +158,12 @@ QWidget *SettingsWidget::networkSettingsPage(const NetworkSettings &settings)
             udpRadio->setText("UDP");
             tcpRadio->setText("TCP");
 
-            socketTypeLayout->addWidget(udpRadio);
             socketTypeLayout->addWidget(tcpRadio);
+            socketTypeLayout->addWidget(udpRadio);
             socketTypeLayout->setAlignment(Qt::AlignLeft);
 
-            socketTypeGroup->addButton(udpRadio, NetworkSettings::UdpSocket);
             socketTypeGroup->addButton(tcpRadio, NetworkSettings::TcpSocket);
+            socketTypeGroup->addButton(udpRadio, NetworkSettings::UdpSocket);
             socketTypeGroup->button(settings.socketConfig.socketType)->setChecked(true);
         }
     }
