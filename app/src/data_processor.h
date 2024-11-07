@@ -39,7 +39,7 @@ public:
         return m_sampleStore;
     }
 
-    const PhasorSender *phasorSender() const { return m_sender; }
+    PhasorSender *phasorSender() const { return m_sender; }
 
 public slots:
     void replacePhasorSender();
