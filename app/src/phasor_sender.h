@@ -74,7 +74,7 @@ public:
                 .arg(bool(state & DataSending) ? "Data Sending" : "");
     }
 
-    int state() const
+    int state()
     {
         QMutexLocker locker(&m_mutex);
         return m_state;
