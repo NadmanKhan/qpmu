@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 set(QPMU_FLOAT_TYPE float)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -33,31 +33,35 @@ else()
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+enable_testing()
+
 # Find Qt
 find_package(
   QT NAMES Qt6 Qt5
-  COMPONENTS Core Widgets Charts Network
+  COMPONENTS Core Test Widgets Charts Network
   REQUIRED)
 find_package(
   Qt${QT_VERSION_MAJOR}
-  COMPONENTS Core Widgets Charts Network
-  REQUIRED)
-
-# Find Boost
-find_package(
-  Boost 1.70.0
-  COMPONENTS program_options
+  COMPONENTS Core Test Widgets Charts Network
   REQUIRED)
 
 # Find FFTW
 find_library(FFTW3_LIB fftw3)
 
-# Add third-party libraries
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external)
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.zip)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt
+    ON
+    CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+include(GoogleTest)
 
 # Add the "common" library and link it to the project
 set(COMMON_LIB ${PROJECT_NAME}-common)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/qpmu/common)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/common)
 target_compile_definitions(
   ${COMMON_LIB}
   PUBLIC FLOAT_TYPE=${QPMU_FLOAT_TYPE}
@@ -68,5 +72,7 @@ target_compile_definitions(
 link_libraries(${COMMON_LIB})
 
 # Add the remaining subdirectories
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/qpmu/estimation)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/qpmu/app)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/estimation)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/app)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/estimator)
