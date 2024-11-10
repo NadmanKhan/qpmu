@@ -1,9 +1,12 @@
 #include "phasor_sender.h"
+#include "data_processor.h"
 #include "qpmu/defs.h"
 #include "qpmu/util.h"
 
 #include <QTcpSocket>
 #include <openc37118-1.0/c37118.h>
+
+#include <cinttypes>
 
 using namespace qpmu;
 
@@ -23,12 +26,12 @@ PhasorSender::PhasorSender()
     m_config2->DATA_RATE_set(50);
     m_config1->DATA_RATE_set(50);
     auto t = epochTime(SystemClock::now()).count();
-    m_config1->SOC_set(t / 1000);
-    m_config2->SOC_set(t / 1000);
-    m_dataframe->SOC_set(t / 1000);
-    m_config1->FRACSEC_set(t % 1000);
-    m_config2->FRACSEC_set(t % 1000);
-    m_dataframe->FRACSEC_set(t % 1000);
+    m_config1->SOC_set(t / TimeDenom);
+    m_config2->SOC_set(t / TimeDenom);
+    m_dataframe->SOC_set(t / TimeDenom);
+    m_config1->FRACSEC_set(t % TimeDenom);
+    m_config2->FRACSEC_set(t % TimeDenom);
+    m_dataframe->FRACSEC_set(t % TimeDenom);
     m_config1->TIME_BASE_set(TimeDenom);
     m_config2->TIME_BASE_set(TimeDenom);
 
@@ -133,22 +136,24 @@ void PhasorSender::run()
 
         // Send data
         if (m_sendDataFlag) {
-            updateData(m_sample, m_estimation);
-            // qDebug() << "PhasorSender: sending data:" << toString(m_sample).c_str()
-            //          << toString(m_estimation).c_str();
-            char *dataBuffer = nullptr;
-            unsigned short size = m_dataframe->pack((unsigned char **)&dataBuffer);
+            updateData();
+            uint8_t *buffer;
+            int64_t size = m_dataframe->pack(&buffer);
             for (int i = 0; i < m_clients.size() - deadClients; ++i) {
                 auto client = m_clients[i];
                 if (client && client->isOpen()) {
-                    auto n = client->write(dataBuffer, size);
-                    if (n < 0) {
-                        qWarning("ERROR writing to socket, but continuing to run.");
+                    int64_t nwrite = client->write((char *)buffer, size);
+                    std::free(buffer);
+
+                    if (nwrite == size) {
+                        newState |= DataSending;
+                    } else if (nwrite < 0) {
+                        qWarning("ERROR writing to socket: attempted %" PRIi64 ", wrote %" PRIi64,
+                                 size, nwrite);
                     }
                 }
             }
         }
-        newState |= DataSending * m_sendDataFlag;
 
         // Remove dead clients
         m_clients.resize(m_clients.size() - deadClients);
@@ -223,15 +228,12 @@ void PhasorSender::handleCommand(QTcpSocket *client)
     }
 }
 
-void PhasorSender::updateData(const qpmu::Sample &sample, const qpmu::Estimation &estimation)
+void PhasorSender::updateData()
 {
-    QMutexLocker locker(&m_mutex);
+    APP->dataProcessor()->getCurrent(m_sample, m_estimation);
 
-    m_sample = sample;
-    m_estimation = estimation;
-
-    m_dataframe->SOC_set(m_sample.timestampUsec / 1000);
-    m_dataframe->FRACSEC_set(m_sample.timestampUsec % 1000);
+    m_dataframe->SOC_set(m_sample.timestampUsec / TimeDenom);
+    m_dataframe->FRACSEC_set(m_sample.timestampUsec % TimeDenom);
 
     for (uint64_t i = 0; i < CountSignals; ++i) {
         m_station->PHASOR_VALUE_set(m_estimation.phasors[i], i);

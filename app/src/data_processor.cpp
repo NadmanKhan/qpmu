@@ -124,7 +124,5 @@ void DataProcessor::run()
             m_sampleStore.back() = sample;
             m_estimator->updateEstimation(sample);
         }
-
-        m_sender->updateData(m_estimator->currentSample(), m_estimator->currentEstimation());
     }
 }

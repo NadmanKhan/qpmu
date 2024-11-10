@@ -42,6 +42,13 @@ public:
     void replacePhasorSender();
     PhasorSender *phasorSender() const { return m_sender; }
 
+public slots:
+    void getCurrent(qpmu::Sample &sample, qpmu::Estimation &estimation)
+    {
+        QMutexLocker locker(&m_mutex);
+        sample = m_estimator->currentSample();
+        estimation = m_estimator->currentEstimation();
+    }
 
 private:
     QMutex m_mutex;

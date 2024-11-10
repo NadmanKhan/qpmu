@@ -84,7 +84,7 @@ public:
 
     void attemptSend();
 
-    void updateData(const qpmu::Sample &sample, const qpmu::Estimation &estimation);
+    void updateData();
 
     void stopRunning();
 
