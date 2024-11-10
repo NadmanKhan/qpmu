@@ -11,7 +11,7 @@
 
 #include <cmath>
 
-QPixmap circlePixmap(const QColor &color, int size);
+QPixmap circlePixmap(const QColor &color, int size, qreal borderWidth = 0);
 
 QPixmap twoColorCirclePixmap(const QColor &color1, const QColor &color2, int size);
 

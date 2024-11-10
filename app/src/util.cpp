@@ -2,7 +2,7 @@
 
 #include <QDebug>
 
-QPixmap circlePixmap(const QColor &color, int size)
+QPixmap circlePixmap(const QColor &color, int size, qreal borderWidth)
 {
     QPixmap pixmap(size, size);
     pixmap.fill(Qt::transparent); // Fill the pixmap with transparent color
@@ -11,7 +11,11 @@ QPixmap circlePixmap(const QColor &color, int size)
     painter.setRenderHint(QPainter::Antialiasing);
 
     // Set the color and draw a solid circle
-    painter.setPen(Qt::NoPen);
+    if (borderWidth > 0) {
+        painter.setPen(QPen(Qt::black, borderWidth));
+    } else {
+        painter.setPen(Qt::NoPen);
+    }
     painter.setBrush(color);
     painter.drawEllipse(0, 0, size, size);
     painter.end();

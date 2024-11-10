@@ -52,8 +52,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
             statusBar()->addPermanentWidget(new QLabel("Reporting:"));
             auto createDataReportingIndicator = [=](PhasorSender::StateFlag flag) {
                 auto pixmapSize = statusBar()->font().pointSize();
-                const auto redCircle = circlePixmap(QColor(255, 0, 0), pixmapSize);
-                const auto greenCircle = circlePixmap(QColor(0, 255, 0), pixmapSize);
+                const auto redCircle = circlePixmap(QColor(255, 0, 0), pixmapSize, 0.5);
+                const auto greenCircle = circlePixmap(QColor(0, 255, 0), pixmapSize, 0.5);
                 const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
                 auto indicator = new QLabel(statusBar());
                 statusBar()->addPermanentWidget(indicator);
