@@ -137,7 +137,7 @@ void PhasorSender::run()
         // Send data
         if (m_sendDataFlag) {
             updateData();
-            uint8_t *buffer;
+            uint8_t *buffer = nullptr;
             int64_t size = m_dataframe->pack(&buffer);
             for (int i = 0; i < m_clients.size() - deadClients; ++i) {
                 auto client = m_clients[i];
@@ -186,7 +186,7 @@ void PhasorSender::handleCommand(QTcpSocket *client)
     case 0x03: { // Transmit Header Record Frame
         qDebug() << "PhasorSender: Transmit Header Record Frame";
 
-        uint8_t *buffer;
+        uint8_t *buffer = nullptr;
         auto size = m_header->pack(&buffer);
 
         auto nwrite = client->write((char *)buffer, size);
@@ -200,7 +200,7 @@ void PhasorSender::handleCommand(QTcpSocket *client)
     case 0x04: { // Transmit Configuration #1 Record Frame
         qDebug() << "PhasorSender: Transmit Configuration #1 Record Frame";
 
-        uint8_t *buffer;
+        uint8_t *buffer = nullptr;
         auto size = m_config1->pack(&buffer);
 
         auto nwrite = client->write((char *)buffer, size);
@@ -214,7 +214,7 @@ void PhasorSender::handleCommand(QTcpSocket *client)
     case 0x05: { // Transmit Configuration #2 Record Frame
         qDebug() << "PhasorSender: Transmit Configuration #2 Record Frame";
 
-        uint8_t *buffer;
+        uint8_t *buffer = nullptr;
         auto size = m_config2->pack(&buffer);
 
         auto nwrite = client->write((char *)buffer, size);
