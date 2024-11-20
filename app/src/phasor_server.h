@@ -12,15 +12,13 @@
 #include <openc37118-1.0/c37118command.h>
 
 #include <QObject>
-#include <QThread>
+#include <QTimer>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include <qmutex.h>
-#include <sys/types.h>
 
-class PhasorSender : public QThread
+class PhasorServer : public QTcpServer
 {
     Q_OBJECT
 public:
@@ -30,26 +28,25 @@ public:
         DataSending = 1 << 2,
     };
 
-    PhasorSender();
+    PhasorServer();
 
-    ~PhasorSender()
+    ~PhasorServer()
     {
-        if (m_server && m_server->isListening()) {
-            for (auto client : m_clients) {
-                client->close();
-            }
-            m_server->close();
-        }
-        delete m_server;
-        delete m_station;
-        delete m_config2;
-        delete m_config1;
-        delete m_dataframe;
-        delete m_header;
-        std::free(m_cmd); // Because it is allocated with `malloc` in `CMD_Frame::unpack`
+        if (m_client)
+            delete m_client;
+        if (m_station)
+            delete m_station;
+        if (m_config2)
+            delete m_config2;
+        if (m_config1)
+            delete m_config1;
+        if (m_dataframe)
+            delete m_dataframe;
+        if (m_header)
+            delete m_header;
+        if (m_cmd)
+            std::free(m_cmd); // Because it is allocated with `malloc` in `CMD_Frame::unpack`
     }
-
-    void run() override;
 
     static QString stateFlagName(StateFlag flag)
     {
@@ -67,38 +64,35 @@ public:
 
     static QString stateString(int state)
     {
-        return QStringLiteral("%1, %2, %3")
-                .arg(bool(state & Listening) ? "Listening" : "")
-                .arg(bool(state & Connected) ? "Connected" : "")
-                .arg(bool(state & DataSending) ? "Data Sending" : "");
+        return QStringLiteral("%1 %2, %3 %4, %5 %6")
+                .arg(bool(state & Listening) ? "✅" : "❌")
+                .arg("Listening")
+                .arg(bool(state & Connected) ? "✅" : "❌")
+                .arg("Connected")
+                .arg(bool(state & DataSending) ? "✅" : "❌")
+                .arg("Data Sending");
     }
 
-    int state()
+    int connState()
     {
         QMutexLocker locker(&m_mutex);
         return m_state;
     }
-    QTcpServer *server() const { return m_server; }
 
-    void handleCommand(QTcpSocket *client);
-
-    void attemptSend();
-
-    void updateData();
-
-    void stopRunning();
+private slots:
+    void handleClientConnection();
+    void disconnectClient();
+    void handleCommand();
+    void sendData();
 
 private:
-    NetworkSettings m_settings = {};
-    QTcpServer *m_server = nullptr;
-    QVector<QTcpSocket *> m_clients = {};
-    bool m_keepRunning = true;
     QMutex m_mutex;
-    uint8_t m_buffer[10000] = {};
-    int m_state = 0;
 
-    qpmu::Sample m_sample = {};
-    qpmu::Estimation m_estimation = {};
+    NetworkSettings m_settings = {};
+    QTcpSocket *m_client = nullptr;
+    QTimer *m_timer = nullptr;
+    bool m_sendDataFlag = false;
+    int m_state = 0;
 
     PMU_Station *m_station = nullptr;
     CONFIG_Frame *m_config2 = nullptr;
@@ -106,8 +100,6 @@ private:
     DATA_Frame *m_dataframe = nullptr;
     HEADER_Frame *m_header = nullptr;
     CMD_Frame *m_cmd = nullptr;
-    bool m_sendDataFlag = false;
-    int m_sleepTime = 0;
 };
 
 #endif // QPMU_APP_PHASOR_SENDER_H

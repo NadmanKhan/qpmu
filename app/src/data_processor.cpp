@@ -87,19 +87,17 @@ DataProcessor::DataProcessor() : QThread()
         qFatal("Not implemented\n");
     }
 
-    m_sender = new PhasorSender();
-    m_sender->start();
+    m_server = new PhasorServer();
+    m_serverThread = new QThread();
+    m_server->moveToThread(m_serverThread);
+    m_serverThread->start();
 }
 
-void DataProcessor::replacePhasorSender()
+void DataProcessor::replacePhasorServer()
 {
-    QMutexLocker locker(&m_mutex);
-    if (m_sender) {
-        m_sender->stopRunning();
-        connect(m_sender, &QThread::finished, m_sender, &QObject::deleteLater);
-    }
-    m_sender = new PhasorSender();
-    m_sender->start();
+    m_server->deleteLater();
+    m_server = new PhasorServer();
+    m_server->moveToThread(m_serverThread);
 }
 
 void DataProcessor::run()

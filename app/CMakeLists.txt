@@ -10,8 +10,8 @@ set(PROJECT_SOURCES
     src/main_page_interface.h
     src/phasor_monitor.h
     src/phasor_monitor.cpp
-    src/phasor_sender.h
-    src/phasor_sender.cpp
+    src/phasor_server.h
+    src/phasor_server.cpp
     src/data_processor.h
     src/data_processor.cpp
     src/settings_models.h

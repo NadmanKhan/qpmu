@@ -50,26 +50,26 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
         { /// 2. Data reporting status indicators
             statusBar()->addPermanentWidget(new QLabel("Reporting:"));
-            auto createDataReportingIndicator = [=](PhasorSender::StateFlag flag) {
+            auto createDataReportingIndicator = [=](PhasorServer::StateFlag flag) {
                 auto pixmapSize = statusBar()->font().pointSize();
                 const auto redCircle = circlePixmap(QColor(255, 0, 0), pixmapSize, 0.5);
                 const auto greenCircle = circlePixmap(QColor(0, 255, 0), pixmapSize, 0.5);
                 const QPixmap pixmapChoices[2] = { redCircle, greenCircle };
                 auto indicator = new QLabel(statusBar());
                 statusBar()->addPermanentWidget(indicator);
-                auto name = PhasorSender::stateFlagName(flag);
+                auto name = PhasorServer::stateFlagName(flag);
                 indicator->setToolTip(name + "?");
                 auto updateIndicator = [=]() {
-                    auto state = APP->dataProcessor()->phasorSender()->state();
+                    auto state = APP->dataProcessor()->phasorServer()->connState();
                     indicator->setPixmap(pixmapChoices[bool(state & flag)]);
                 };
 
                 connect(APP->timer(), &QTimer::timeout, updateIndicator);
                 return updateIndicator;
             };
-            for (auto f : { createDataReportingIndicator(PhasorSender::Listening),
-                            createDataReportingIndicator(PhasorSender::Connected),
-                            createDataReportingIndicator(PhasorSender::DataSending) }) {
+            for (auto f : { createDataReportingIndicator(PhasorServer::Listening),
+                            createDataReportingIndicator(PhasorServer::Connected),
+                            createDataReportingIndicator(PhasorServer::DataSending) }) {
                 f();
             }
         }

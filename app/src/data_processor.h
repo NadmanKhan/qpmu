@@ -5,7 +5,7 @@
 #include "qpmu/estimator.h"
 #include "app.h"
 #include "settings_models.h"
-#include "phasor_sender.h"
+#include "phasor_server.h"
 
 #include <QThread>
 #include <QMutex>
@@ -39,8 +39,8 @@ public:
         return m_sampleStore;
     }
 
-    void replacePhasorSender();
-    PhasorSender *phasorSender() const { return m_sender; }
+    void replacePhasorServer();
+    PhasorServer *phasorServer() const { return m_server; }
 
 public slots:
     void getCurrent(qpmu::Sample &sample, qpmu::Estimation &estimation)
@@ -63,7 +63,9 @@ private:
         int64_t lastTimeUsec = {};
         int64_t lastBufTimeNsec = {};
     } m_rawReadState;
-    PhasorSender *m_sender = nullptr;
+
+    PhasorServer *m_server = nullptr;
+    QThread *m_serverThread = nullptr;
 };
 
 #endif // QPMU_APP_DATA_PROCESSOR_H

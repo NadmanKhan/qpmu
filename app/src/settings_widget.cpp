@@ -118,7 +118,7 @@ QWidget *SettingsWidget::networkSettingsPage(const NetworkSettings &settings)
             m_oldNetworkSettings = newSettings;
             updateEnabledState();
             qInfo() << "Settings saved";
-            APP->dataProcessor()->replacePhasorSender();
+            APP->dataProcessor()->replacePhasorServer();
             return true;
         }
         qInfo() << "Failed to save settings";

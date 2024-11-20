@@ -14,7 +14,7 @@
                 "${command:pickArgs}"
             ],
             "env": {
-                "ADC_STREAM": "/home/nadman/adc-rpmsg-sim"
+                "ADC_STREAM": "/home/nadman/tmp-adc"
             }
         },
         {
@@ -22,13 +22,16 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/app/qpmu-app",
-            "args": [],
+            "args": [
+                "--binary",
+                "--rpmsg"
+            ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [
                 {
                     "name": "ADC_STREAM",
-                    "value": "/home/nadman/adc-rpmsg-sim"
+                    "value": "/home/nadman/tmp-adc"
                 }
             ],
             "externalConsole": false,
