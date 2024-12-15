@@ -302,7 +302,7 @@ void PhasorMonitor::updateView()
             auto ampliUnit = UnitSymbolOfSignalType[TypeOfSignal[i]];
             m_labels.ampli[i]->setText(FMT_FIELD(FMT_VALUE(ampli), QSL(" %1").arg(ampliUnit)));
             m_labels.phase[i]->setText(FMT_FIELD(FMT_VALUE(phase), QSL("°")));
-            m_labels.frequ[i]->setText(FMT_FIELD(FMT_VALUE(frequ), QSL(" Hz")));
+            // m_labels.frequ[i]->setText(FMT_FIELD(FMT_VALUE(frequ), QSL(" Hz")));
         }
 
         for (uint64_t p = 0; p < CountSignalPhases; ++p) {
@@ -778,12 +778,12 @@ void PhasorMonitor::createTable()
         QLabel *colorLabel; // e.g. color square
         QLabel *ampliLabel; // e.g. "120.0"
         QLabel *phaseLabel; // e.g. "30.0"
-        QLabel *frequLabel; // e.g. "50.0"
+        // QLabel *frequLabel; // e.g. "50.0"
 
         layout->addWidget(colorLabel = makeDecorativeLabel(widget));
         layout->addWidget(ampliLabel = makeDataLabel(widget), 1);
         layout->addWidget(phaseLabel = makeDataLabel(widget), 1);
-        layout->addWidget(frequLabel = makeDataLabel(widget), 1);
+        // layout->addWidget(frequLabel = makeDataLabel(widget), 1);
 
         colorLabel->setPixmap(
                 rectPixmap(visualSettings.signalColors[signalId], 6, 0.7 * colorLabel->height()));
@@ -792,7 +792,7 @@ void PhasorMonitor::createTable()
         m_colorLabels[signalId].append(colorLabel);
         m_labels.ampli[signalId] = ampliLabel;
         m_labels.phase[signalId] = phaseLabel;
-        m_labels.frequ[signalId] = frequLabel;
+        // m_labels.frequ[signalId] = frequLabel;
 
         return widget;
     };
