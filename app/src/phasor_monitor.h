@@ -78,7 +78,7 @@ private:
 
             QComboBox *voltage = nullptr;
             QComboBox *current = nullptr;
-        } ampliScale;
+        } ampliLimit;
 
     } m_ctrl;
 
@@ -105,10 +105,10 @@ private:
 
     struct
     {
-        QLabel *ampli[qpmu::CountSignals];
-        QLabel *phase[qpmu::CountSignals];
-        QLabel *frequ[qpmu::CountSignals];
+        QLabel *phasor[qpmu::CountSignals];
         QLabel *phaseDiff[qpmu::CountSignalPhases];
+        QLabel *realPower[qpmu::CountSignalPhases];
+        QLabel *reactivePower[qpmu::CountSignalPhases];
 
         QLabel *summaryFrequency;
         QLabel *summarySamplingRate;

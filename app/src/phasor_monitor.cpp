@@ -25,8 +25,8 @@
 
 using namespace qpmu;
 #define QSL(s) QStringLiteral(s)
-#define FMT_FIELD(value, unit) (QSL("<pre><b>%1</b><small>%2</small></pre>").arg(value, unit))
-#define FMT_VALUE(value) (QString::number(value, 'f', 1).rightJustified(6))
+#define FMT_VALUE(v, d, w) (QSL("<b>%1</b>").arg(QString::number(v, 'f', d).rightJustified(w)))
+#define FMT_UNIT(u) (QSL("<small>%1</small>").arg(u))
 
 constexpr Float Margin = 0.025;
 constexpr Float PhasorPlotWidth = 2;
@@ -158,15 +158,15 @@ void PhasorMonitor::updateView()
         phasesDeg[i] = phaseDeg;
     }
 
-    /// Get the amplitude scale values
-    Float vMaxAmpli = m_ctrl.ampliScale.voltage->currentData().toFloat();
-    if (m_ctrl.ampliScale.voltage->currentIndex() == 0) {
+    /// Get the amplitude limit values
+    Float vMaxAmpli = m_ctrl.ampliLimit.voltage->currentData().toFloat();
+    if (m_ctrl.ampliLimit.voltage->currentIndex() == 0) {
         for (auto signalId : SignalsOfType[VoltageSignal]) {
             vMaxAmpli = std::max(vMaxAmpli, amplis[signalId]);
         }
     }
-    Float iMaxAmpli = m_ctrl.ampliScale.current->currentData().toFloat();
-    if (m_ctrl.ampliScale.current->currentIndex() == 0) {
+    Float iMaxAmpli = m_ctrl.ampliLimit.current->currentData().toFloat();
+    if (m_ctrl.ampliLimit.current->currentIndex() == 0) {
         for (auto signalId : SignalsOfType[CurrentSignal]) {
             iMaxAmpli = std::max(iMaxAmpli, amplis[signalId]);
         };
@@ -293,30 +293,46 @@ void PhasorMonitor::updateView()
 
     { /// Update data labels
 
+        /// Phasor data labels
         for (uint64_t i = 0; i < CountSignals; ++i) {
-            const Float &frequ = est.frequencies[i];
             const Float &ampli = amplis[i];
             const Float &phase = m_ctrl.phaseRef.checkApplyToTable->isChecked() ? normPhasesDeg[i]
                                                                                 : phasesDeg[i];
-
             auto ampliUnit = UnitSymbolOfSignalType[TypeOfSignal[i]];
-            m_labels.ampli[i]->setText(FMT_FIELD(FMT_VALUE(ampli), QSL(" %1").arg(ampliUnit)));
-            m_labels.phase[i]->setText(FMT_FIELD(FMT_VALUE(phase), QSL("°")));
-            // m_labels.frequ[i]->setText(FMT_FIELD(FMT_VALUE(frequ), QSL(" Hz")));
+            auto text = QSL("<pre>%1 %2 %3 %4%5</pre>")
+                                .arg(FMT_VALUE(ampli, 1, 8))
+                                .arg(FMT_UNIT(ampliUnit))
+                                .arg(FMT_UNIT("∠"))
+                                .arg(FMT_VALUE(phase, 1, 6))
+                                .arg(FMT_UNIT("°"));
+            m_labels.phasor[i]->setText(text);
         }
-
+        /// Other data labels
         for (uint64_t p = 0; p < CountSignalPhases; ++p) {
             const auto &[vId, iId] = SignalsOfPhase[p];
             const auto vPhaseDeg = phasesDeg[vId];
             const auto iPhaseDeg = phasesDeg[iId];
             auto phaseDiff = diffAnglesDeg(vPhaseDeg, iPhaseDeg);
+            auto realPower = amplis[vId] * amplis[iId] * std::cos(phaseDiff * M_PI / 180);
+            auto reactivePower = amplis[vId] * amplis[iId] * std::sin(phaseDiff * M_PI / 180);
 
-            m_labels.phaseDiff[p]->setText(FMT_FIELD(FMT_VALUE(phaseDiff), QSL("°")));
+            QString text;
+
+            text = QSL("<pre>%1%2</pre>").arg(FMT_VALUE(phaseDiff, 1, 6)).arg(FMT_UNIT("°"));
+            m_labels.phaseDiff[p]->setText(text);
+
+            text = QSL("<pre>%1%2</pre>").arg(FMT_VALUE(realPower, 1, 10)).arg(FMT_UNIT(" W"));
+            m_labels.realPower[p]->setText(text);
+
+            text = QSL("<pre>%1%2</pre>")
+                           .arg(FMT_VALUE(reactivePower, 1, 10))
+                           .arg(FMT_UNIT(" VAR"));
+            m_labels.reactivePower[p]->setText(text);
         }
 
-        m_labels.summaryFrequency->setText(FMT_FIELD(FMT_VALUE(est.frequencies[0]), QSL(" Hz")));
-        m_labels.summarySamplingRate->setText(
-                FMT_FIELD(FMT_VALUE(est.samplingRate), QSL(" samples/s")));
+        m_labels.summaryFrequency->setText(FMT_VALUE(est.frequencies[0], 1, 4) + FMT_UNIT(" Hz"));
+        m_labels.summarySamplingRate->setText(FMT_VALUE(est.samplingRate, 1, 5)
+                                              + FMT_UNIT(" samples/s"));
         m_labels.summaryLastSampleTime->setText(
                 QDateTime::fromMSecsSinceEpoch(samples.back().timestampUsec / 1000)
                         .toString(QSL("hh:mm:ss.zzz")));
@@ -416,9 +432,9 @@ void PhasorMonitor::createControls()
 
     m_ctrl.visibility.box = new QGroupBox(this);
     m_ctrl.phaseRef.box = new QGroupBox(this);
-    m_ctrl.ampliScale.box = new QGroupBox(this);
+    m_ctrl.ampliLimit.box = new QGroupBox(this);
 
-    for (auto box : { m_ctrl.visibility.box, m_ctrl.ampliScale.box, m_ctrl.phaseRef.box }) {
+    for (auto box : { m_ctrl.visibility.box, m_ctrl.ampliLimit.box, m_ctrl.phaseRef.box }) {
         box->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
     }
 
@@ -514,27 +530,27 @@ void PhasorMonitor::createControls()
 
     { /// Amplitude ref
 
-        m_ctrl.ampliScale.voltage = new QComboBox(m_ctrl.ampliScale.box);
-        m_ctrl.ampliScale.current = new QComboBox(m_ctrl.ampliScale.box);
+        m_ctrl.ampliLimit.voltage = new QComboBox(m_ctrl.ampliLimit.box);
+        m_ctrl.ampliLimit.current = new QComboBox(m_ctrl.ampliLimit.box);
 
-        auto formLayout = new QFormLayout(m_ctrl.ampliScale.box);
-        formLayout->addRow("Voltage", m_ctrl.ampliScale.voltage);
-        formLayout->addRow("Current", m_ctrl.ampliScale.current);
+        auto formLayout = new QFormLayout(m_ctrl.ampliLimit.box);
+        formLayout->addRow("Voltage", m_ctrl.ampliLimit.voltage);
+        formLayout->addRow("Current", m_ctrl.ampliLimit.current);
 
-        m_ctrl.ampliScale.voltage->addItem("Auto", 0);
+        m_ctrl.ampliLimit.voltage->addItem("Auto", 0);
         for (Float v : { 60.0, 120.0, 180.0, 240.0, 300.0, 360.0 }) {
-            m_ctrl.ampliScale.voltage->addItem(
+            m_ctrl.ampliLimit.voltage->addItem(
                     QSL("%1 %2").arg(v).arg(UnitSymbolOfSignalType[VoltageSignal]), v);
         }
 
-        m_ctrl.ampliScale.current->addItem("Auto", 0);
+        m_ctrl.ampliLimit.current->addItem("Auto", 0);
         for (Float i : { 0.5, 1.0, 2.0, 4.0, 8.0, 16.0 }) {
-            m_ctrl.ampliScale.current->addItem(
+            m_ctrl.ampliLimit.current->addItem(
                     QSL("%1 %2").arg(i).arg(UnitSymbolOfSignalType[CurrentSignal]), i);
         }
 
-        m_ctrl.ampliScale.voltage->setCurrentIndex(0);
-        m_ctrl.ampliScale.current->setCurrentIndex(0);
+        m_ctrl.ampliLimit.voltage->setCurrentIndex(0);
+        m_ctrl.ampliLimit.current->setCurrentIndex(0);
     }
 }
 
@@ -732,8 +748,8 @@ void PhasorMonitor::createTable()
     table->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     table->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
-    table->setColumnCount(3);
-    table->setHorizontalHeaderLabels({ "Voltage", "Current", "ΔΦ" });
+    table->setColumnCount(5);
+    table->setHorizontalHeaderLabels({ "Voltage", "Current", "ΔΦ", "P", "Q" });
     table->setRowCount(3);
     table->setVerticalHeaderLabels({ "A", "B", "C" });
 
@@ -771,43 +787,38 @@ void PhasorMonitor::createTable()
         return label;
     };
 
+    // Phasor cell widgets
     auto makePhasorCellWidget = [=](Signal signalId) -> QWidget * {
         auto widget = makeCellWidget();
         auto layout = static_cast<QHBoxLayout *>(widget->layout());
 
-        QLabel *colorLabel; // e.g. color square
-        QLabel *ampliLabel; // e.g. "120.0"
-        QLabel *phaseLabel; // e.g. "30.0"
-        // QLabel *frequLabel; // e.g. "50.0"
+        auto colorLabel = makeDecorativeLabel(widget);
+        auto phasorLabel = makeDataLabel(widget);
 
-        layout->addWidget(colorLabel = makeDecorativeLabel(widget));
-        layout->addWidget(ampliLabel = makeDataLabel(widget), 1);
-        layout->addWidget(phaseLabel = makeDataLabel(widget), 1);
-        // layout->addWidget(frequLabel = makeDataLabel(widget), 1);
+        layout->addWidget(colorLabel);
+        layout->addWidget(phasorLabel, 1);
 
         colorLabel->setPixmap(
                 rectPixmap(visualSettings.signalColors[signalId], 6, 0.7 * colorLabel->height()));
         colorLabel->setScaledContents(false);
 
         m_colorLabels[signalId].append(colorLabel);
-        m_labels.ampli[signalId] = ampliLabel;
-        m_labels.phase[signalId] = phaseLabel;
-        // m_labels.frequ[signalId] = frequLabel;
+        m_labels.phasor[signalId] = phasorLabel;
 
         return widget;
     };
 
-    /// Cell widgets
+    /// Other cell widgets
     for (uint64_t phase = 0; phase < CountSignalPhases; ++phase) {
         auto phaseDiffWidget = makeCellWidget();
-        { /// Phase difference cell
-            auto layout = static_cast<QHBoxLayout *>(phaseDiffWidget->layout());
-
-            QLabel *phaseDiffLabel; // e.g. "15.0"
-
-            layout->addWidget(phaseDiffLabel = makeDataLabel(phaseDiffWidget), 1);
-
-            m_labels.phaseDiff[phase] = phaseDiffLabel;
+        auto realPowerWidget = makeCellWidget();
+        auto reactivePowerWidget = makeCellWidget();
+        for (auto &[widget, label] :
+             { std::make_pair(phaseDiffWidget, m_labels.phaseDiff),
+               std::make_pair(realPowerWidget, m_labels.realPower),
+               std::make_pair(reactivePowerWidget, m_labels.reactivePower) }) {
+            auto layout = static_cast<QHBoxLayout *>(widget->layout());
+            layout->addWidget(label[phase] = makeDataLabel(widget), 1);
         }
 
         const auto &[vId, iId] = SignalsOfPhase[phase];
@@ -815,26 +826,28 @@ void PhasorMonitor::createTable()
         table->setCellWidget(phase, 0, makePhasorCellWidget(vId));
         table->setCellWidget(phase, 1, makePhasorCellWidget(iId));
         table->setCellWidget(phase, 2, phaseDiffWidget);
+        table->setCellWidget(phase, 3, realPowerWidget);
+        table->setCellWidget(phase, 4, reactivePowerWidget);
     }
 
     { /// Fix table dimensions and alignment
         int tableHeight = 0;
         for (int i = 0; i < table->rowCount(); ++i) {
             table->resizeRowToContents(i);
-            auto h = table->rowHeight(i);
-            table->setRowHeight(i, h);
             tableHeight += table->rowHeight(i);
         }
         tableHeight += table->horizontalHeader()->height();
         table->setFixedHeight(tableHeight);
-        table->setMinimumHeight(tableHeight);
-        table->setMaximumHeight(tableHeight);
         table->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        table->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        table->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
         table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
         table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
         table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
-        table->horizontalHeader()->resizeSection(2, table->font().pointSize() * 7);
+        table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
+        table->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Fixed);
+        table->horizontalHeader()->resizeSection(2, table->font().pointSize() * 12);
+        table->horizontalHeader()->resizeSection(3, table->font().pointSize() * 12);
+        table->horizontalHeader()->resizeSection(4, table->font().pointSize() * 12);
     }
 }
 
@@ -910,10 +923,10 @@ void PhasorMonitor::createSummaryBar()
 
     { /// Frequency and sampling rate labels
 
-        m_labels.summaryFrequency->setText(FMT_FIELD("0.0", " Hz"));
+        m_labels.summaryFrequency->setText(FMT_VALUE(0.0, 1, 3) + FMT_UNIT(" Hz"));
         m_labels.summaryFrequency->setAlignment(Qt::AlignRight);
 
-        m_labels.summarySamplingRate->setText(FMT_FIELD("0.0", " samples/s"));
+        m_labels.summarySamplingRate->setText(FMT_VALUE(0.0, 1, 3) + FMT_UNIT(" samples/s"));
         m_labels.summarySamplingRate->setAlignment(Qt::AlignRight);
 
         m_labels.summaryLastSampleTime->setText("_");
@@ -927,7 +940,7 @@ QVector<SidePanelItem> PhasorMonitor::sidePanelItems() const
 
     items << SidePanelItem{ m_ctrl.visibility.box, "Visibility" };
     items << SidePanelItem{ m_ctrl.phaseRef.box, "Phase Reference" };
-    items << SidePanelItem{ m_ctrl.ampliScale.box, "Scale" };
+    items << SidePanelItem{ m_ctrl.ampliLimit.box, "Amplitude Limit" };
 
     return items;
 }
