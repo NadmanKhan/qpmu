@@ -5,13 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File with Arguments",
+            "name": "(debugpy) Run ADC Simulator",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "${workspaceFolder}/tools/adc-simulator/main.py",
             "console": "integratedTerminal",
             "args": [
-                "${command:pickArgs}"
+                "--binary",
+                "--rpmsg"
             ],
             "env": {
                 "ADC_STREAM": "/home/nadman/tmp-adc"
@@ -49,6 +50,15 @@
                 }
             ],
             "preLaunchTask": "CMake: build",
+        }
+    ],
+    "compounds": [
+        {
+            "name": "ADC Simulator + QPMU App",
+            "configurations": [
+                "(debugpy) Run ADC Simulator",
+                "(gdb) Launch QPMU App"
+            ]
         }
     ]
 }
