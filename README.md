@@ -31,5 +31,5 @@ Build the project using CMake (version 3.20 or higher is required):
 
 ```bash
 cd qpmu
-cmake -B build -S . --preset=default
+cmake -B build -S . --preset=release # or --preset=debug for debug mode
 ```
