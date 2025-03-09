@@ -1,0 +1,22 @@
+{
+    "builtin-baseline": "80b83502cf66a7f68d805489fff8ee272e0435b5",
+    "dependencies": [
+        {
+            "name": "qtbase",
+            "version>=": "6.8.2"
+        },
+        {
+            "name": "qtcharts",
+            "version>=": "6.8.2"
+        },
+        {
+            "name": "fftw3",
+            "version>=": "3.3.10"
+        },
+        {
+            "name": "gtest",
+            "version>=": "1.16.0"
+        },
+        "open-c37118"
+    ]
+}

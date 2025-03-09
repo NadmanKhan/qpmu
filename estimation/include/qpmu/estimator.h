@@ -14,22 +14,22 @@ struct FFTW
 {
 };
 
-#define SPECIALIZE_FFTW(type, suffix)                                   \
-  template <>                                                           \
-  struct FFTW<type>                                                     \
-  {                                                                     \
-    using Complex = fftw##suffix##_complex;                             \
-    using Plan = fftw##suffix##_plan;                                   \
-    static constexpr auto alloc_complex = fftw##suffix##_alloc_complex; \
-    static constexpr auto malloc = fftw##suffix##_malloc;               \
-    static constexpr auto plan_dft_1d = fftw##suffix##_plan_dft_1d;     \
-    static constexpr auto execute = fftw##suffix##_execute;             \
-    static constexpr auto destroy_plan = fftw##suffix##_destroy_plan;   \
-    static constexpr auto free = fftw##suffix##_free;                   \
-  };
+#define SPECIALIZE_FFTW(type, suffix)                                       \
+    template <>                                                             \
+    struct FFTW<type>                                                       \
+    {                                                                       \
+        using Complex = fftw##suffix##_complex;                             \
+        using Plan = fftw##suffix##_plan;                                   \
+        static constexpr auto alloc_complex = fftw##suffix##_alloc_complex; \
+        static constexpr auto malloc = fftw##suffix##_malloc;               \
+        static constexpr auto plan_dft_1d = fftw##suffix##_plan_dft_1d;     \
+        static constexpr auto execute = fftw##suffix##_execute;             \
+        static constexpr auto destroy_plan = fftw##suffix##_destroy_plan;   \
+        static constexpr auto free = fftw##suffix##_free;                   \
+    };
 
-SPECIALIZE_FFTW(float, f)
 SPECIALIZE_FFTW(double, )
+SPECIALIZE_FFTW(float, f)
 SPECIALIZE_FFTW(long double, l)
 #undef SPECIALIZE_FFTW
 

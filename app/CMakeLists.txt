@@ -54,10 +54,12 @@ target_link_libraries(
           Qt${QT_VERSION_MAJOR}::Widgets
           Qt${QT_VERSION_MAJOR}::Charts
           Qt${QT_VERSION_MAJOR}::Network
-          fftw3
+          FFTW3::fftw3
+          FFTW3::fftw3f
+          FFTW3::fftw3l
           ${PROJECT_NAME}-common
           ${PROJECT_NAME}-estimation
-          openc37118-1.0
+          OpenC37118::open-c37118
           )
 
 set_target_properties(
