@@ -13,7 +13,12 @@ constexpr auto AppName = PROJECT_APP_NAME;
 constexpr auto AppDisplayName = PROJECT_APP_NAME;
 constexpr int AdcBits = PROJECT_ADC_BITS;
 
+#ifdef FLOAT_TYPE
 using Float = FLOAT_TYPE;
+#else
+using Float = double;
+#endif
+
 using Complex = std::complex<Float>;
 using SystemClock = std::chrono::system_clock;
 using Duration = std::chrono::microseconds;
