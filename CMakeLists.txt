@@ -1,4 +1,13 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
+
+# Set vcpkg toolchain file before project()
+if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "Vcpkg toolchain file")
+endif()
+
+# Set Qt path from vcpkg
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
 
 set(QPMU_FLOAT_TYPE float)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -37,27 +46,27 @@ enable_testing()
 
 # Find Qt
 find_package(
-  QT NAMES Qt6 Qt5
-  COMPONENTS Core Test Widgets Charts Network
-  REQUIRED)
+  QT REQUIRED 
+  NAMES Qt6 Qt5
+)
 find_package(
-  Qt${QT_VERSION_MAJOR}
-  COMPONENTS Core Test Widgets Charts Network
-  REQUIRED)
+  Qt${QT_VERSION_MAJOR} REQUIRED
+  COMPONENTS Core Gui Test Widgets Charts Network
+)
 
 # Find FFTW
-find_library(FFTW3_LIB fftw3)
+find_package(FFTW3 CONFIG REQUIRED)
+find_package(FFTW3f CONFIG REQUIRED)
+find_package(FFTW3l CONFIG REQUIRED)
 
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.zip)
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt
-    ON
-    CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
-include(GoogleTest)
+# Add FFTW include directories to all targets
+include_directories(${FFTW3_INCLUDE_DIRS})
+
+# Find GTest
+find_package(GTest REQUIRED)
+
+# Find Open-C37.118
+find_package(open-c37118 CONFIG REQUIRED)
 
 # Add the "common" library and link it to the project
 set(COMMON_LIB ${PROJECT_NAME}-common)

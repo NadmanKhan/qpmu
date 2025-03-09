@@ -4,12 +4,12 @@
 #include "qpmu/defs.h"
 #include "settings_models.h"
 
-#include <openc37118-1.0/c37118.h>
-#include <openc37118-1.0/c37118configuration.h>
-#include <openc37118-1.0/c37118pmustation.h>
-#include <openc37118-1.0/c37118data.h>
-#include <openc37118-1.0/c37118header.h>
-#include <openc37118-1.0/c37118command.h>
+#include <open-c37118/c37118.h>
+#include <open-c37118/c37118configuration.h>
+#include <open-c37118/c37118pmustation.h>
+#include <open-c37118/c37118data.h>
+#include <open-c37118/c37118header.h>
+#include <open-c37118/c37118command.h>
 
 #include <QObject>
 #include <QTimer>
