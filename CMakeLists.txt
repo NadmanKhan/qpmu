@@ -65,9 +65,6 @@ include_directories(${FFTW3_INCLUDE_DIRS})
 # Find GTest
 find_package(GTest REQUIRED)
 
-# Find Open-C37.118
-find_package(open-c37118 CONFIG REQUIRED)
-
 # Add the "common" library and link it to the project
 set(COMMON_LIB ${PROJECT_NAME}-common)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/common)
@@ -80,7 +77,7 @@ target_compile_definitions(
   PUBLIC PROJECT_ADC_BITS=12)
 link_libraries(${COMMON_LIB})
 
-# Add the remaining subdirectories
+# Add the external subdirectory first to build open-c37118
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/estimation)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/app)
