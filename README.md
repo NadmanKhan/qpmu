@@ -12,11 +12,12 @@ QPMU is a software tool to control and monitor Phasor Measurement Unit (PMU) dev
 
 ### Install dependencies
 
-The project uses vcpkg to manage dependencies. You need to get a specific version of vcpkg and set its location as the environment variable `VCPKG_ROOT`:
+The project uses vcpkg to manage dependencies. Pull vcpkg from the official repository, bootstrap it, and set the environment variable `VCPKG_ROOT`:
 
 ```bash
-git clone https://github.com/NadmanKhan/vcpkg.git
-export VCPKG_ROOT=$PWD/vcpkg
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg && ./bootstrap-vcpkg.sh
+export VCPKG_ROOT=$PWD
 ```
 
 ### Building QPMU
@@ -24,12 +25,12 @@ export VCPKG_ROOT=$PWD/vcpkg
 Clone the repository:
 
 ```bash
-git clone qpmu
+git clone https://github.com/NadmanKhan/qpmu.git
 ```
 
 Build the project using CMake (version 3.20 or higher is required):
 
 ```bash
 cd qpmu
-cmake -B build -S . --preset=release # or --preset=debug for debug mode
+cmake --preset=release # or --preset=debug for debug mode
 ```
