@@ -6,7 +6,7 @@
 #include <QDateTime>
 #include <QTcpSocket>
 
-#include <open-c37118/c37118.h>
+#include <c37118.h>
 
 using namespace qpmu;
 

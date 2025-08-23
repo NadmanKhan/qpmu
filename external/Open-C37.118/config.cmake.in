@@ -1,0 +1,4 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/open-c37118-targets.cmake")
+check_required_components(open-c37118)

@@ -59,7 +59,7 @@ target_link_libraries(
           FFTW3::fftw3l
           ${PROJECT_NAME}-common
           ${PROJECT_NAME}-estimation
-          OpenC37118::open-c37118
+          open-c37118
           )
 
 set_target_properties(

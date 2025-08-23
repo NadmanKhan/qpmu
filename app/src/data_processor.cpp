@@ -17,7 +17,7 @@
 #include <utility>
 #include <cctype>
 #include <chrono>
-#include <open-c37118/c37118command.h>
+#include <c37118command.h>
 #include <fcntl.h>
 #include <qdir.h>
 #include <qstringliteral.h>
