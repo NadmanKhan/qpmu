@@ -48,11 +48,11 @@ using RangeMinSegTree = atcoder::segtree<T, detail::fmin<T>, std::numeric_limits
 template <class T>
 using RangeMaxSegTree = atcoder::segtree<T, detail::fmax<T>, std::numeric_limits<T>::min>;
 
-template <class SampleTypeIntegral>
+template <class _SampleType>
 class SlidingZeroCrossingCounter
 {
 public:
-    using SampleType = SampleTypeIntegral;
+    using SampleType = _SampleType;
     using TimeType = uint64_t;
 
     SlidingZeroCrossingCounter() = delete;
