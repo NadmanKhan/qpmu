@@ -219,7 +219,7 @@ QWidget *SettingsWidget::networkSettingsPage(const NetworkSettings &settings)
 
 Float sampleMagnitude(size_t signalIndex)
 {
-    const auto &phasors = APP->dataProcessor()->currentEstimation().phasors;
+    const auto &phasors = APP->dataProcessor()->lastEstimation().phasors;
     return std::abs(phasors[signalIndex]);
 }
 

@@ -25,66 +25,82 @@
 
 using namespace qpmu;
 
+template <class T>
+T median(std::vector<T> vec)
+{
+    assert(!vec.empty());
+    std::sort(vec.begin(), vec.end());
+    size_t n = vec.size();
+    if (n % 2 == 1) {
+        return vec[n / 2];
+    } else {
+        return (vec[n / 2 - 1] + vec[n / 2]) / 2;
+    }
+}
+
+const Estimation &DataProcessor::lastEstimation()
+{
+    QMutexLocker locker(&m_mutex);
+    return m_estimations.back();
+}
+
+/// Get estimation after running median filters
+const Estimation DataProcessor::lastEstimationFiltered()
+{
+    std::vector<Float> filterableMagnitudes[CountSignals];
+    Estimation result;
+
+    {
+        QMutexLocker locker(&m_mutex);
+        result = m_estimations.back();
+        for (size_t i = 0; i < CountSignals; ++i) {
+            size_t medianWindowSize =
+                    std::min(TypeOfSignal[i] == VoltageSignal ? 100ul : 32ul, m_estimations.size());
+            filterableMagnitudes[i].resize(medianWindowSize);
+            size_t offset = m_estimations.size() - medianWindowSize;
+            for (size_t j = 0; j < medianWindowSize; ++j) {
+                filterableMagnitudes[i][j] = std::abs(m_estimations[j + offset].phasors[i]);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < CountSignals; ++i) {
+        auto medianMagnitude = median(filterableMagnitudes[i]);
+        result.phasors[i] = std::polar(medianMagnitude, std::arg(result.phasors[i]));
+    }
+    return result;
+}
+
+const qpmu::Sample &DataProcessor::lastSample()
+{
+    QMutexLocker locker(&m_mutex);
+    return m_samples.back();
+}
+
+const SampleWindow &DataProcessor::sampleWindow()
+{
+    QMutexLocker locker(&m_mutex);
+    return m_samples;
+}
+
 DataProcessor::DataProcessor() : QThread()
 {
     m_estimator = new PhasorEstimator(50, 1200);
 
-    if (APP->arguments().contains("--binary")) {
-        qDebug() << "Reading data as binary";
-        if (APP->arguments().contains("--rpmsg")) {
-            auto adc_stream = qgetenv("ADC_STREAM");
-            qDebug() << "Reading raw data buffer (in binary) from RPMsg device: " << adc_stream;
-            auto fd = open(adc_stream, O_RDWR);
-            if (fd < 0) {
-                perror("Failed to open RPMsg device");
-                qFatal("Failed to open RPMsg device\n");
-            }
-
-            constexpr uint64_t TimeQueryPoint = 1024;
-            m_readSamples = [=](QString &error) -> uint64_t {
-                if (write(fd, 0, 0) < 0) {
-                    error = QStringLiteral("Failed to write to RPMsg device: %1")
-                                    .arg(strerror(errno));
-                    perror(error.toUtf8().constData());
-                    return 0;
-                }
-                auto nread = read(fd, (char *)&m_rawReadState.streamBuf, sizeof(ADCStreamBuffer));
-                if (nread == sizeof(ADCStreamBuffer)) {
-                    Sample &s = m_sampleReadBuffer[0];
-                    if (m_rawReadState.counter % TimeQueryPoint == 0) {
-                        s.timestampUsec = epochTime(SystemClock::now()).count();
-                    } else {
-                        s.timestampUsec = m_rawReadState.lastTimeUsec
-                                + (m_rawReadState.streamBuf.timestampNsec
-                                   - m_rawReadState.lastBufTimeNsec)
-                                        / 1000;
-                    }
-                    s.seq = m_rawReadState.counter;
-                    s.timeDeltaUsec = s.timestampUsec - m_rawReadState.lastTimeUsec;
-                    for (uint64_t i = 0; i < CountSignals; ++i) {
-                        s.channels[i] = m_rawReadState.streamBuf.data[i];
-                    }
-                    m_rawReadState.counter += 1;
-                    m_rawReadState.lastTimeUsec = s.timestampUsec;
-                    m_rawReadState.lastBufTimeNsec = m_rawReadState.streamBuf.timestampNsec;
-                    return 1;
-                } else {
-                    error = QStringLiteral("Expected %1 bytes, got %2 bytes")
-                                    .arg(sizeof(ADCStreamBuffer))
-                                    .arg(nread);
-                    return 0;
-                }
-            };
-        } else {
-            qDebug() << "Reading processed samples (in binary) from stdin";
-            m_readSamples = [=](QString &) -> uint64_t {
-                auto nread = fread(m_sampleReadBuffer.data(), sizeof(Sample),
-                                   std::tuple_size<SampleReadBuffer>(), stdin);
-                return nread;
-            };
-        }
+    if (APP->arguments().contains("--binary") || APP->arguments().contains("-b")) {
+        m_readBinary = true;
+        qDebug() << "Reading processed samples (in binary) from stdin";
     } else {
         qFatal("Not implemented\n");
+    }
+
+    auto adcStreamPath = qgetenv("ADC_STREAM");
+    if (!adcStreamPath.isEmpty()) {
+        qDebug() << "Reading from the adc stream device: " << adcStreamPath;
+        inputFile = fopen(adcStreamPath.constData(), "rb");
+        if (!inputFile) {
+            qFatal("Failed to open ADC stream device");
+        }
     }
 
     m_server = new PhasorServer();
@@ -105,7 +121,7 @@ void DataProcessor::run()
     while (true) {
 
         QString error;
-        auto nread = m_readSamples(error);
+        auto nread = readSamples(error);
         if (!error.isEmpty()) {
             qWarning() << error;
             continue;
@@ -116,11 +132,36 @@ void DataProcessor::run()
 
             QMutexLocker locker(&m_mutex);
 
-            for (size_t j = 1; j < m_sampleStore.size(); ++j) {
-                m_sampleStore[j - 1] = m_sampleStore[j];
+            /// shift buffer and add new sample
+            for (size_t j = 1; j < m_samples.size(); ++j) {
+                m_samples[j - 1] = m_samples[j];
             }
-            m_sampleStore.back() = sample;
+            m_samples.back() = sample;
+            qDebug() << toString(sample);
+
+            /// shift buffer and add new estimation
+            for (size_t j = 1; j < m_estimations.size(); ++j) {
+                m_estimations[j - 1] = m_estimations[j];
+            }
             m_estimator->updateEstimation(sample);
+            m_estimations.back() = m_estimator->currentEstimation();
         }
     }
+}
+
+uint64_t DataProcessor::readSamples(QString &error) const
+{
+    uint64_t nread = 0;
+    if (m_readBinary) {
+        nread = fread((void *)m_sampleReadBuffer.data(), sizeof(Sample),
+                      std::tuple_size<SampleReadBuffer>(), inputFile);
+        if (nread < std::tuple_size<SampleReadBuffer>()) {
+            if (feof(inputFile)) {
+                error = "End of input stream reached";
+            } else if (ferror(inputFile)) {
+                error = "Error reading from input stream";
+            }
+        }
+    }
+    return nread;
 }

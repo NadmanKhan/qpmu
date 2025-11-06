@@ -71,7 +71,7 @@ constexpr Signal SignalsOfType[CountSignalTypes][CountSignalPhases] = {
 constexpr Signal SignalId[CountSignals] = { SignalVA, SignalVB, SignalVC,
                                             SignalIA, SignalIB, SignalIC };
 
-struct ADCStreamBuffer
+struct RawADCSample
 {
     uint64_t timestampNsec;
     uint16_t data[6 * 30];

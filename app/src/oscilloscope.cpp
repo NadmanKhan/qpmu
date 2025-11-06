@@ -54,7 +54,7 @@ Oscilloscope::Oscilloscope(QWidget *parent) : QWidget(parent)
         m_series[i]->setName(NameOfSignal[i]);
         m_series[i]->setPen(QPen(settings->signalColors[i], 2));
 
-        m_points[i].resize(std::tuple_size<SampleStore>());
+        m_points[i].resize(std::tuple_size<SampleWindow>());
     }
 
     connect(APP->timer(), &QTimer::timeout, this, &Oscilloscope::updateView);
@@ -67,7 +67,7 @@ void Oscilloscope::updateView()
     }
 
     auto settings = new VisualisationSettings();
-    auto samples = APP->dataProcessor()->currentSampleStore();
+    auto samples = APP->dataProcessor()->sampleWindow();
 
     int64_t timeMin = std::numeric_limits<int64_t>::max();
     int64_t timeMax = std::numeric_limits<int64_t>::min();
