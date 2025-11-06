@@ -97,8 +97,8 @@ void PhasorMonitor::updateView()
         return;
     }
 
-    const auto est = APP->dataProcessor()->currentEstimation();
-    const auto samples = APP->dataProcessor()->currentSampleStore();
+    const auto estimation = APP->dataProcessor()->lastEstimationFiltered();
+    const auto sample = APP->dataProcessor()->lastSample();
 
     { /// To start, update colors of series and labels
 
@@ -148,7 +148,7 @@ void PhasorMonitor::updateView()
     Float phasesDeg[CountSignals];
     for (uint64_t i = 0; i < CountSignals; ++i) {
         const auto &calibData = calibSettings.data[i];
-        const auto &phasor = est.phasors[i];
+        const auto &phasor = estimation.phasors[i];
         auto ampli = calibData.slope * std::abs(phasor) + calibData.intercept;
         auto phaseRad = std::arg(phasor);
         auto phaseDeg = phaseRad * 180 / M_PI; /// Convert to degrees
@@ -330,11 +330,12 @@ void PhasorMonitor::updateView()
             m_labels.reactivePower[p]->setText(text);
         }
 
-        m_labels.summaryFrequency->setText(FMT_VALUE(est.frequencies[0], 1, 4) + FMT_UNIT(" Hz"));
-        m_labels.summarySamplingRate->setText(FMT_VALUE(est.samplingRate, 1, 5)
+        m_labels.summaryFrequency->setText(FMT_VALUE(estimation.frequencies[0], 1, 4)
+                                           + FMT_UNIT(" Hz"));
+        m_labels.summarySamplingRate->setText(FMT_VALUE(estimation.samplingRate, 1, 5)
                                               + FMT_UNIT(" samples/s"));
         m_labels.summaryLastSampleTime->setText(
-                QDateTime::fromMSecsSinceEpoch(samples.back().timestampUsec / 1000)
+                QDateTime::fromMSecsSinceEpoch(sample.timestampUsec / 1000)
                         .toString(QSL("hh:mm:ss.zzz")));
     }
 }

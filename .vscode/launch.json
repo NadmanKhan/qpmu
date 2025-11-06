@@ -10,17 +10,18 @@
       "request": "launch",
       "program": "${workspaceFolder}/tools/adc-simulator/main.py",
       "console": "integratedTerminal",
-      "args": ["--binary", "--rpmsg"],
-      "env": {
-        "ADC_STREAM": "${workspaceFolder}/tmp-adc"
-      }
+      "args": [
+        "--binary",
+        "--presampled=120V-1000W-0Var",
+        "--pipe=${workspaceFolder}/tmp-adc"
+      ]
     },
     {
       "name": "(gdb) Launch QPMU App",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build-debug/app/qpmu-app",
-      "args": ["--binary", "--rpmsg"],
+      "args": ["--binary"],
       "stopAtEntry": false,
       "cwd": "${fileDirname}",
       "environment": [
@@ -53,7 +54,11 @@
   "compounds": [
     {
       "name": "ADC Simulator + QPMU App",
-      "configurations": ["(debugpy) Run ADC Simulator", "(gdb) Launch QPMU App"]
+      "configurations": [
+        "(gdb) Launch QPMU App",
+        "(debugpy) Run ADC Simulator"
+      ],
+      "stopAll": true
     }
   ]
 }

@@ -4,7 +4,6 @@
 #include "qpmu/defs.h"
 #include "qpmu/estimator.h"
 #include "app.h"
-#include "settings_models.h"
 #include "phasor_server.h"
 
 #include <QThread>
@@ -12,9 +11,9 @@
 #include <QMutexLocker>
 
 #include <array>
-#include <functional>
 
-using SampleStore = std::array<qpmu::Sample, 32>;
+using SampleWindow = std::array<qpmu::Sample, 128>;
+using EstimationWindow = std::array<qpmu::Estimation, 128>;
 
 using SampleReadBuffer = std::array<qpmu::Sample, 1>;
 
@@ -27,42 +26,31 @@ public:
 
     void run() override;
 
-    const qpmu::Estimation &currentEstimation()
-    {
-        QMutexLocker locker(&m_mutex);
-        return m_estimator->currentEstimation();
-    }
+    uint64_t readSamples(QString &error) const;
 
-    const SampleStore &currentSampleStore()
-    {
-        QMutexLocker locker(&m_mutex);
-        return m_sampleStore;
-    }
+    const qpmu::Estimation &lastEstimation();
+    const qpmu::Estimation lastEstimationFiltered();
+    const qpmu::Sample &lastSample();
+    const SampleWindow &sampleWindow();
 
     void replacePhasorServer();
     PhasorServer *phasorServer() const { return m_server; }
 
-public slots:
-    void getCurrent(qpmu::Sample &sample, qpmu::Estimation &estimation)
-    {
-        QMutexLocker locker(&m_mutex);
-        sample = m_estimator->currentSample();
-        estimation = m_estimator->currentEstimation();
-    }
-
 private:
     QMutex m_mutex;
     qpmu::PhasorEstimator *m_estimator = nullptr;
-    SampleStore m_sampleStore = {};
+    EstimationWindow m_estimations = {};
+    SampleWindow m_samples = {};
     SampleReadBuffer m_sampleReadBuffer = {};
-    std::function<uint64_t(QString &)> m_readSamples = nullptr;
+    bool m_readBinary = false;
+    FILE *inputFile = stdin;
     struct
     {
-        qpmu::ADCStreamBuffer streamBuf = {};
+        qpmu::RawADCSample rawAdcSample = {};
         uint64_t counter = {};
         int64_t lastTimeUsec = {};
         int64_t lastBufTimeNsec = {};
-    } m_rawReadState;
+    } m_rawAdcStreamState;
 
     PhasorServer *m_server = nullptr;
     QThread *m_serverThread = nullptr;

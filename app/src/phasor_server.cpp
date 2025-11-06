@@ -209,10 +209,8 @@ void PhasorServer::sendData()
     }
 
     { /// update data
-        Sample sample;
-        Estimation estimation;
-
-        APP->dataProcessor()->getCurrent(sample, estimation);
+        auto sample = APP->dataProcessor()->lastSample();
+        auto estimation = APP->dataProcessor()->lastEstimationFiltered();
 
         m_dataframe->SOC_set(sample.timestampUsec / TimeDenom);
         m_dataframe->FRACSEC_set(sample.timestampUsec % TimeDenom);
