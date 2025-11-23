@@ -1,7 +1,6 @@
 #ifndef QPMU_COMMON_DEFS_H
 #define QPMU_COMMON_DEFS_H
 
-#include <array>
 #include <cstdint>
 #include <complex>
 #include <chrono>
@@ -11,12 +10,11 @@ namespace qpmu {
 constexpr auto OrgName = PROJECT_ORG_NAME;
 constexpr auto AppName = PROJECT_APP_NAME;
 constexpr auto AppDisplayName = PROJECT_APP_NAME;
-constexpr int AdcBits = PROJECT_ADC_BITS;
 
-#ifdef FLOAT_TYPE
-using Float = FLOAT_TYPE;
-#else
+#ifdef USE_DOUBLE
 using Float = double;
+#else
+using Float = float;
 #endif
 
 using Complex = std::complex<Float>;

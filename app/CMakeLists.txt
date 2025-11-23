@@ -54,9 +54,6 @@ target_link_libraries(
           Qt${QT_VERSION_MAJOR}::Widgets
           Qt${QT_VERSION_MAJOR}::Charts
           Qt${QT_VERSION_MAJOR}::Network
-          FFTW3::fftw3
-          FFTW3::fftw3f
-          FFTW3::fftw3l
           ${PROJECT_NAME}-common
           ${PROJECT_NAME}-estimation
           open-c37118

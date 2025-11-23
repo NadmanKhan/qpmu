@@ -10,15 +10,19 @@ QPMU is a software tool to control and monitor Phasor Measurement Unit (PMU) dev
 
 ## Installation
 
-### Install dependencies
+### Prerequisites
 
-The project uses vcpkg to manage dependencies. Pull vcpkg from the official repository, bootstrap it, and set the environment variable `VCPKG_ROOT`:
+1. **Qt 6.8+**: Install Qt separately on your platform (not via vcpkg)
+   - **macOS**: `brew install qt@6`
+   - **BeagleBone Black/Debian**: `sudo apt install qt6-base-dev qt6-charts-dev`
+   - See [docs/qt-setup.md](docs/qt-setup.md) for detailed instructions
 
-```bash
-git clone https://github.com/microsoft/vcpkg.git
-cd vcpkg && ./bootstrap-vcpkg.sh
-export VCPKG_ROOT=$PWD
-```
+2. **vcpkg**: For other dependencies (FFTW3, GTest)
+   ```bash
+   git clone https://github.com/microsoft/vcpkg.git
+   cd vcpkg && ./bootstrap-vcpkg.sh
+   export VCPKG_ROOT=$PWD
+   ```
 
 ### Building QPMU
 
@@ -26,11 +30,17 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/NadmanKhan/qpmu.git
+cd qpmu
 ```
 
-Build the project using CMake (version 3.20 or higher is required):
+Build the project using CMake (version 3.20 or higher required):
 
 ```bash
-cd qpmu
-cmake --preset=release # or --preset=debug for debug mode
+# Configure (vcpkg will install FFTW3 and GTest automatically)
+cmake --preset debug   # or --preset release
+
+# Build
+cmake --build build-debug   # or build-release
 ```
+
+The built application will be in `build-debug/app/` (or `build-release/app/`).
