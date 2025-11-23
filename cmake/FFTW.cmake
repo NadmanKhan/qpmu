@@ -7,7 +7,8 @@ set(FFTW_INSTALL_DIR "${CMAKE_BINARY_DIR}/fftw_install") # Shared install for bo
 
 # Pre-download the source using a dedicated FetchContent target
 FetchContent_Declare(fftw_source_fetch
-    URL      "https://www.fftw.org/fftw-3.3.10.tar.gz"
+    URL                         "https://www.fftw.org/fftw-3.3.10.tar.gz"
+    DOWNLOAD_EXTRACT_TIMESTAMP  TRUE
 )
 FetchContent_MakeAvailable(fftw_source_fetch)
 set(FFTW_SRC_DIR ${fftw_source_fetch_SOURCE_DIR})

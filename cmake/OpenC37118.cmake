@@ -17,8 +17,9 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 
 # Fetch Open-C37.118 from your fork
 FetchContent_Declare(openc37118_source_fetch
-    GIT_REPOSITORY https://github.com/NadmanKhan/Open-C37.118.git
-    GIT_TAG        master
+    GIT_REPOSITORY              https://github.com/NadmanKhan/Open-C37.118.git
+    GIT_TAG                     master
+    DOWNLOAD_EXTRACT_TIMESTAMP  TRUE
 )
 FetchContent_MakeAvailable(openc37118_source_fetch)
 
