@@ -14,7 +14,6 @@ option(USE_DOUBLE "Whether to use double precision floating point" OFF)
 # Include custom CMake modules
 include(cmake/FFTW.cmake)
 include(cmake/OpenC37118.cmake)
-include(cmake/GoogleTest.cmake)
 include(cmake/Qt.cmake)
 
 # Enable compiler warnings
