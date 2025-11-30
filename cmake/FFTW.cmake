@@ -72,9 +72,9 @@ else()
 endif()
 
 # ---- 3. Builder Function ----
-function(add_fftw_variant SUFFIX CONFIGURE_PRECISION_FLAG SIMD_FLAGS)
+function(add_fftw_variant VARIANT_SUFFIX CONFIGURE_PRECISION_FLAG SIMD_FLAGS)
 
-    set(TARGET_NAME "fftw3${SUFFIX}")
+    set(TARGET_NAME "fftw3${VARIANT_SUFFIX}")
     set(BUILD_DIR   "${CMAKE_BINARY_DIR}/fftw_build_${TARGET_NAME}")
 
     set(LIB_FILENAME
