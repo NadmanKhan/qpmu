@@ -137,7 +137,7 @@ void DataProcessor::run()
                 m_samples[j - 1] = m_samples[j];
             }
             m_samples.back() = sample;
-            qDebug() << toString(sample);
+            qDebug() << QString::fromStdString(toString(sample));
 
             /// shift buffer and add new estimation
             for (size_t j = 1; j < m_estimations.size(); ++j) {
