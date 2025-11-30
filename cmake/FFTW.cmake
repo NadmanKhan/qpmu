@@ -15,7 +15,7 @@ function(find_fftw_variant VARIANT PKG_NAME TARGET_NAME)
     if(NOT ${VARIANT}_FOUND)
         find_package(PkgConfig QUIET)
         if(PkgConfig_FOUND)
-            pkg_check_modules(${VARIANT} IMPORTED_TARGET ${PKG_NAME})
+            pkg_check_modules(${VARIANT} IMPORTED_TARGET GLOBAL ${PKG_NAME})
         endif()
     endif()
     
