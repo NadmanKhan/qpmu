@@ -55,7 +55,8 @@ const Estimation DataProcessor::lastEstimationFiltered()
         result = m_estimations.back();
         for (size_t i = 0; i < CountSignals; ++i) {
             size_t medianWindowSize =
-                    std::min(TypeOfSignal[i] == VoltageSignal ? 100ul : 32ul, m_estimations.size());
+                    std::min(TypeOfSignal[i] == VoltageSignal ? (size_t)100 : (size_t)32,
+                             m_estimations.size());
             filterableMagnitudes[i].resize(medianWindowSize);
             size_t offset = m_estimations.size() - medianWindowSize;
             for (size_t j = 0; j < medianWindowSize; ++j) {
