@@ -17,7 +17,13 @@ QPMU is a software tool to control and monitor Phasor Measurement Unit (PMU) dev
 - **BeagleBone Black/Debian**: `sudo apt install qt6-base-dev qt6-charts-dev` or `sudo apt install qtbase5-dev libqt5charts5-dev`
 - See [docs/qt-setup.md](docs/qt-setup.md) for detailed instructions
 
-Other dependencies (FFTW3, Open-C37.118, GTest) will be automatically downloaded and built by CMake during configuration.
+**FFTW3**: Install FFTW library on your platform
+- **macOS**: `brew install fftw`
+- **Debian/Ubuntu**: `sudo apt install libfftw3-dev`
+- **Fedora/RHEL**: `sudo dnf install fftw-devel`
+- **Arch Linux**: `sudo pacman -S fftw`
+
+Other dependencies (Open-C37.118, GTest) will be automatically downloaded and built by CMake during configuration.
 
 ### Building QPMU
 
@@ -28,10 +34,10 @@ git clone https://github.com/NadmanKhan/qpmu.git
 cd qpmu
 ```
 
-Build the project using CMake (version 3.20 or higher required):
+Build the project using CMake (version 3.16 or higher required):
 
 ```bash
-# Configure (CMake will download and build FFTW3 and GTest automatically)
+# Configure (CMake will download and build Open-C37.118 and GTest automatically)
 cmake --preset debug   # or --preset release
 
 # Build
