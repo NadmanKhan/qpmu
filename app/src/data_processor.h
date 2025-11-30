@@ -44,13 +44,6 @@ private:
     SampleReadBuffer m_sampleReadBuffer = {};
     bool m_readBinary = false;
     FILE *inputFile = stdin;
-    struct
-    {
-        qpmu::RawADCSample rawAdcSample = {};
-        uint64_t counter = {};
-        int64_t lastTimeUsec = {};
-        int64_t lastBufTimeNsec = {};
-    } m_rawAdcStreamState;
 
     PhasorServer *m_server = nullptr;
     QThread *m_serverThread = nullptr;

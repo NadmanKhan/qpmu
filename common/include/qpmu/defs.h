@@ -31,8 +31,6 @@ constexpr char const *SymbolOfSignalType[CountSignalTypes] = { "V", "I" };
 constexpr char const *UnitNameOfSignalType[CountSignalTypes] = { "Volts", "Amperes" };
 constexpr char const *UnitSymbolOfSignalType[CountSignalTypes] = { "V", "A" };
 
-constexpr char const *NameOfSignalPhase[CountSignalPhases] = { "A", "B", "C" };
-
 constexpr char const *NameOfSignal[CountSignals] = { "VA", "VB", "VC", "IA", "IB", "IC" };
 
 enum SignalType {
@@ -68,12 +66,6 @@ constexpr Signal SignalsOfType[CountSignalTypes][CountSignalPhases] = {
 };
 constexpr Signal SignalId[CountSignals] = { SignalVA, SignalVB, SignalVC,
                                             SignalIA, SignalIB, SignalIC };
-
-struct RawADCSample
-{
-    uint64_t timestampNsec;
-    uint16_t data[6 * 30];
-};
 
 struct Sample
 {
