@@ -57,6 +57,8 @@ target_link_libraries(
           ${PROJECT_NAME}-common
           ${PROJECT_NAME}-estimation
           open-c37118
+          FFTW::Double
+          FFTW::Float
           )
 
 set_target_properties(

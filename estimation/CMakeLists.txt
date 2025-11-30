@@ -4,8 +4,9 @@ add_library(${PROJECT_NAME}-estimation STATIC
 target_include_directories(${PROJECT_NAME}-estimation
                          PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+
 target_link_libraries(
   ${PROJECT_NAME}-estimation
-  PUBLIC FFTW::fftw3
-  PUBLIC FFTW::fftw3f
+  PUBLIC FFTW::Double
+  PUBLIC FFTW::Float
 )
