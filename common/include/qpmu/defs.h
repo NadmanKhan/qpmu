@@ -11,7 +11,7 @@ constexpr auto OrgName = PROJECT_ORG_NAME;
 constexpr auto AppName = PROJECT_APP_NAME;
 constexpr auto AppDisplayName = PROJECT_APP_NAME;
 
-#ifdef USE_DOUBLE
+#if defined(USE_DOUBLE) && USE_DOUBLE
 using Float = double;
 #else
 using Float = float;
