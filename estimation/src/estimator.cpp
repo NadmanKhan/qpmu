@@ -59,7 +59,7 @@ PhasorEstimator::PhasorEstimator(size_t fn, size_t fs)
 }
 
 #define NEXT(i, x) (((i) != (m_##x##Buffer.size() - 1)) * ((i) + 1))
-#define PREV(i, x) (((i) != 0) * ((i)-1) + ((i) == 0) * (m_##x##Buffer.size() - 1))
+#define PREV(i, x) (((i) != 0) * ((i) - 1) + ((i) == 0) * (m_##x##Buffer.size() - 1))
 
 #define ESTIMATION_NEXT(i) NEXT(i, estimation)
 #define ESTIMATION_PREV(i) PREV(i, estimation)
