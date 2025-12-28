@@ -10,10 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 option(USE_DOUBLE "Whether to use double precision floating point" OFF)
-
-# Include custom CMake modules
-include(cmake/FFTW.cmake)
-include(cmake/Qt.cmake)
+option(BUILD_TESTING "Build tests" ON)
 
 # Enable compiler warnings
 if(MSVC)
@@ -21,6 +18,12 @@ if(MSVC)
 else()
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
+
+
+# Include custom CMake modules
+include(cmake/FFTW.cmake)
+include(cmake/Qt.cmake)
+include(cmake/GoogleTest.cmake)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/Open-C37.118)
 
@@ -38,5 +41,6 @@ if (USE_DOUBLE)
 endif()
 link_libraries(${COMMON_LIB})
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/core)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/estimation)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/app)
