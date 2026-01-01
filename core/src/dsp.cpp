@@ -27,38 +27,39 @@ public:
         _tail = Buffer_Length - N;
     }
 
-    inline bool push_sample(const Sample &new_sample) noexcept
+    inline bool push_reading(const Reading &new_reading) noexcept
     {
 
         const std::size_t prev1 = index_prev(_head);
         const std::size_t prev2 = index_prev(prev1);
 
         // Validate timestamp
-        if (_samples[prev1].timestamp != 0 && new_sample.timestamp <= _samples[prev1].timestamp) {
+        if (_readings[prev1].timestamp != 0
+            && new_reading.timestamp <= _readings[prev1].timestamp) {
             std::snprintf(_error, sizeof(_error),
                           "Timestamps must be strictly increasing: previous = %lld, current = %lld",
-                          _samples[prev1].timestamp, new_sample.timestamp);
+                          _readings[prev1].timestamp, new_reading.timestamp);
             return false;
         }
 
-        const auto &tail_sample = _samples[_tail];
-        const auto &prev_estimation = _estimations[prev1];
-        const auto &prev_prev_estimation = _estimations[prev2];
+        const auto &tail_reading = _readings[_tail];
+        const auto &prev_estimate = _estimates[prev1];
+        const auto &prev_prev_estimate = _estimates[prev2];
 
-        auto &head_sample = _samples[_head];
-        auto &head_estimation = _estimations[_head];
+        auto &head_reading = _readings[_head];
+        auto &head_estimate = _estimates[_head];
 
         // Store new sample in circular buffer
-        head_sample = new_sample;
+        head_reading = new_reading;
 
         for (std::size_t channel = 0; channel < N_Channels; ++channel) {
             Per_Channel_State &s = _channel_states[channel];
 
             // Phasor estimation via Sliding DFT
             auto phasor = _twiddle_factor // Rotate previous phasor
-                    * (prev_estimation.phasors[channel]
-                       - static_cast<Float>(tail_sample.values[channel]) // - Outgoing sample
-                       + static_cast<Float>(head_sample.values[channel]) // + Incoming sample
+                    * (prev_estimate.phasors[channel]
+                       - static_cast<Float>(tail_reading.samples[channel]) // - Outgoing sample
+                       + static_cast<Float>(head_reading.samples[channel]) // + Incoming sample
                     );
 
             // Frequency estimation via discrete differentiation over sliding window
@@ -74,7 +75,7 @@ public:
             s.window_sum_phase_diff += s.phase_diffs[_head]; // + Incoming phase deviation
             // - Frequency computation
             auto cycles_diff = s.window_sum_phase_diff / (2.0 * M_PI);
-            auto period = (head_sample.timestamp - tail_sample.timestamp) / One_Second_Period;
+            auto period = (head_reading.timestamp - tail_reading.timestamp) / Time_Resolutiion;
             auto frequency = F_Nominal + cycles_diff / period; // in Hz
 
             // ROCOF estimation via linear regression over the last 3 samples
@@ -85,15 +86,15 @@ public:
                             Float(2),
                     },
                     {
-                            prev_prev_estimation.frequencies[channel],
-                            prev_estimation.frequencies[channel],
+                            prev_prev_estimate.frequencies[channel],
+                            prev_estimate.frequencies[channel],
                             Float(frequency),
                     });
 
             // Store estimations
-            head_estimation.phasors[channel] = phasor;
-            head_estimation.frequencies[channel] = frequency;
-            head_estimation.rocofs[channel] = rocof;
+            head_estimate.phasors[channel] = phasor;
+            head_estimate.frequencies[channel] = frequency;
+            head_estimate.rocofs[channel] = rocof;
         }
 
         // Advance circular buffer indices
@@ -103,7 +104,7 @@ public:
         return true;
     }
 
-    inline const Estimation &estimation() const noexcept { return _estimations[index_prev(_head)]; }
+    inline const Estimate &estimate() const noexcept { return _estimates[index_prev(_head)]; }
     inline const char *error() const noexcept { return _error; }
 
 private:
@@ -116,15 +117,13 @@ private:
         return (i == 0) ? (Buffer_Length - 1) : (i - 1);
     }
 
-    // State
-    Sample _samples[Buffer_Length] = {};
-    Estimation _estimations[Buffer_Length] = {};
-    char _error[256] = {};
-
     // Constants
     Complex _twiddle_factor; // Rotates phasor by 2pi/N per sample
 
-    // Per-channel state; struct-of-arrays for cache efficiency
+    // State
+    Reading _readings[Buffer_Length] = {};
+    Estimate _estimates[Buffer_Length] = {};
+    char _error[256] = {};
     struct Per_Channel_State
     {
         Float prev_phase = 0.0;

@@ -10,10 +10,10 @@
 
 namespace qpmu {
 
-class RPMsg_Sample_Reader
+class RPMsg_Reader
 {
 public:
-    RPMsg_Sample_Reader(const std::string &device_path)
+    RPMsg_Reader(const std::string &device_path)
     {
         // Open RPMsg device
         _fd = open(device_path.c_str(), O_RDWR);
@@ -22,14 +22,14 @@ public:
         }
     }
 
-    ~RPMsg_Sample_Reader()
+    ~RPMsg_Reader()
     {
         if (_fd >= 0) {
             close(_fd);
         }
     }
 
-    inline bool read_sample() noexcept
+    inline bool read_next() noexcept
     {
         int nresult;
 
@@ -55,13 +55,13 @@ public:
     }
 
     inline const char *error() const noexcept { return _error; }
-    inline const Sample &sample() const noexcept { return _buffer.sample; }
+    inline const Reading &reading() const noexcept { return _buffer.reading; }
 
 private:
     struct Read_Buffer
     {
-        Sample sample;
-        char extra_bytes[sizeof(Sample::values) * 29]; // extra 29 readings per channel
+        Reading reading;
+        char extra_bytes[sizeof(Reading::samples) * 29]; // extra 29 samples per channel
     };
 
     int _fd = -1;

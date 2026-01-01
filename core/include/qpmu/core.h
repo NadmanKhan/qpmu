@@ -12,13 +12,6 @@ using Float = double;
 using Float = float;
 #endif
 
-using Complex = std::complex<Float>;
-
-// Time point in nanoseconds resolution using system clock (because we need the wall/NTP time)
-using Time_Point = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>;
-
-constexpr auto One_Second_Period = Time_Point::duration::period::den;
-
 struct SignalInfo
 {
     enum Type {
@@ -34,7 +27,7 @@ struct SignalInfo
 
     Type type;
     Phase phase;
-    char const id[3];
+    char const name[3];
     char type_symbol;
     char unit_symbol;
     char phase_symbol;
@@ -53,21 +46,32 @@ constexpr SignalInfo Signals[N_Channels] = {
     SignalInfo{ SignalInfo::Current, SignalInfo::Phase_C, "IC", 'I', 'A', 'C' }
 };
 
-using Sample_Value = std::uint16_t;
-using Timestamp = Time_Point::duration::rep;
+using Time_Point = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>;
+using Timestamp = Time_Point::rep;
+using ADC_Sample = std::uint16_t; // 12-bit ADC sample -> 16-bit unsigned integer
+using Complex = std::complex<Float>;
 
-struct Sample
+constexpr auto Time_Resolutiion = Time_Point::period::den;
+
+struct Reading
 {
     Timestamp timestamp;
-    Sample_Value values[N_Channels];
+    ADC_Sample samples[N_Channels];
 };
 
-struct Estimation
+struct Estimate
 {
     Complex phasors[N_Channels];
     Float frequencies[N_Channels];
     Float rocofs[N_Channels];
     Float sampling_rate;
+};
+
+struct Measurement
+{
+    std::size_t seq_num;
+    Reading reading;
+    Estimate estimate;
 };
 
 } // namespace qpmu
