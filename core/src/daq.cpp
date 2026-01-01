@@ -54,8 +54,8 @@ public:
         return true;
     }
 
-    inline const char *error() const { return _error; }
-    inline const Sample &sample() const { return _buffer.sample; }
+    inline const char *error() const noexcept { return _error; }
+    inline const Sample &sample() const noexcept { return _buffer.sample; }
 
 private:
     struct Read_Buffer

@@ -3,7 +3,6 @@
 #include <cstddef>
 
 #include "qpmu/algorithms/minmax_heap.hpp"
-#include "qpmu/utilities/modulo.hpp"
 
 namespace qpmu {
 
@@ -71,8 +70,8 @@ public:
             }
         }
 
-        // Advance window
-        _curr = wrapped_sum<std::size_t, 0, N>(_curr, 1);
+        // Advance window: curr = (curr + 1) % N
+        _curr = (_curr + 1 == N) ? 0 : _curr + 1;
     }
 
     inline const T &operator[](std::size_t index) const noexcept
