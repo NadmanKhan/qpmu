@@ -6,12 +6,6 @@
 
 namespace qpmu {
 
-#if defined(USE_DOUBLE) && USE_DOUBLE
-using Float = double;
-#else
-using Float = float;
-#endif
-
 struct SignalInfo
 {
     enum Type {
@@ -46,6 +40,7 @@ constexpr SignalInfo Signals[N_Channels] = {
     SignalInfo{ SignalInfo::Current, SignalInfo::Phase_C, "IC", 'I', 'A', 'C' }
 };
 
+using Float = float;
 using Time_Point = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>;
 using Timestamp = Time_Point::rep;
 using ADC_Sample = std::uint16_t; // 12-bit ADC sample -> 16-bit unsigned integer

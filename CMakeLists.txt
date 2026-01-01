@@ -9,7 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-option(USE_DOUBLE "Whether to use double precision floating point" OFF)
 option(BUILD_TESTING "Build tests" ON)
 
 # Enable compiler warnings
@@ -36,9 +35,6 @@ target_compile_definitions(
   PUBLIC PROJECT_APP_NAME="${PROJECT_NAME}"
   PUBLIC PROJECT_APP_DISPLAY_NAME="QPMU"
 )
-if (USE_DOUBLE)
-  target_compile_definitions(${COMMON_LIB} PUBLIC USE_DOUBLE)
-endif()
 link_libraries(${COMMON_LIB})
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/core)
