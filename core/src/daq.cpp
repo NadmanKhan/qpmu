@@ -29,7 +29,7 @@ public:
         }
     }
 
-    inline bool read_next() noexcept
+    inline bool read_sample_frame() noexcept
     {
         int nresult;
 
@@ -42,30 +42,37 @@ public:
         }
 
         // Read the sample and extra bytes from the RPMsg device
-        nresult = read(_fd, &_buffer, sizeof(_buffer));
-        if (nresult != sizeof(_buffer)) {
+        Input_Buffer buffer;
+        nresult = read(_fd, &buffer, sizeof(buffer));
+        if (nresult != sizeof(buffer)) {
             std::snprintf(_error, sizeof(_error),
                           "Failed to read sample from RPMsg device: read result is %d; expected to "
                           "read %zu bytes",
-                          nresult, sizeof(_buffer));
+                          nresult, sizeof(buffer));
             return false;
+        }
+
+        // Copy input buffer to reading
+        _sample_frame.timestamp = buffer.timestamp;
+        for (std::size_t i = 0; i < N_Channels; ++i) {
+            _sample_frame.sample_vector[i] = buffer.samples[i];
         }
 
         return true;
     }
 
     inline const char *error() const noexcept { return _error; }
-    inline const Reading &reading() const noexcept { return _buffer.reading; }
+    inline const Sample_Frame &sample_frame() const noexcept { return _sample_frame; }
 
 private:
-    struct Read_Buffer
+    struct Input_Buffer
     {
-        Reading reading;
-        char extra_bytes[sizeof(Reading::samples) * 29]; // extra 29 samples per channel
+        Timestamp timestamp;
+        std::array<Sample, N_Channels * 30> samples; // 30 samples per channel
     };
 
     int _fd = -1;
-    Read_Buffer _buffer = {};
+    Sample_Frame _sample_frame;
     char _error[256] = {};
 };
 
