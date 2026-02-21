@@ -25,11 +25,12 @@ struct Frame
      * Leading byte: AA hex
      * Second byte: Frame type and Version, divided as follows:
      * Bit 7: Reserved for future definition
-     * Bits 6–4: 000: Data Frame
-     * 001: Header Frame
-     * 010: Configuration Frame 1
-     * 011: Configuration Frame 2
-     * 100: Command Frame (received message)
+     * Bits 6–4:
+     *   000: Data Frame
+     *   001: Header Frame
+     *   010: Configuration Frame 1
+     *   011: Configuration Frame 2
+     *   100: Command Frame (received message)
      * Bits 3–0: Version number, in binary (1–15), version 1 for this initial
      * publication.
      */
