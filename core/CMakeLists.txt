@@ -27,6 +27,7 @@ add_executable(qpmu_service
         ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/daq.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pmu.cpp
 )
 
-target_link_libraries(qpmu_service PRIVATE qpmu)
+target_link_libraries(qpmu_service PRIVATE qpmu open-c37118)
