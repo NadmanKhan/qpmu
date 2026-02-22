@@ -10,7 +10,7 @@ ApplicationWindow {
     visible: true
     title: "QPMU - Phasor Measurement Unit"
 
-    PhasorView {
+    LiveMonitor {
         anchors.fill: parent
     }
 }

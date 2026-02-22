@@ -10,9 +10,11 @@ find_package(Qt6 6.10 REQUIRED COMPONENTS Quick Graphs)
 qt_standard_project_setup(REQUIRES 6.10)
 
 qt_add_executable(appqpmu
-    main.cpp
-    src/phasordatamodel.h
-    src/phasordatamodel.cpp
+    src/main.cpp
+    src/signaldatamodel.h
+    src/signaldatamodel.cpp
+    src/applicationdatamodel.h
+    src/applicationdatamodel.cpp
 )
 
 qt_add_qml_module(appqpmu
@@ -20,10 +22,17 @@ qt_add_qml_module(appqpmu
     VERSION 1.0
     QML_FILES
         src/views/Main.qml
-        src/views/PhasorView.qml
-        src/views/components/PhasorPlot.qml
-        src/views/components/WaveformPlot.qml
+        src/views/LiveMonitor.qml
         src/views/components/StatusBar.qml
+        src/views/components/PhasorPlotModel.qml
+        src/views/components/WaveformPlotModel.qml
+        src/views/components/SignalTable.qml
+        src/views/components/GraphViewSwitcher.qml
+    SOURCES
+        src/signaldatamodel.h
+        src/signaldatamodel.cpp
+        src/applicationdatamodel.h
+        src/applicationdatamodel.cpp
 )
 
 set_target_properties(appqpmu PROPERTIES
@@ -34,6 +43,7 @@ set_target_properties(appqpmu PROPERTIES
 )
 
 target_include_directories(appqpmu PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/include
 )
 
