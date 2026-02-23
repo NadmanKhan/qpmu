@@ -41,7 +41,7 @@ class SignalData : public QObject
     Q_PROPERTY(qreal normalizedMagnitude READ normalizedMagnitude NOTIFY dataChanged)
 
 public:
-    explicit SignalData(const qpmu::Signal_Info &info, const QColor &color,
+    explicit SignalData(const qpmu::Signal_Info &info = {}, const QColor &color = {},
                         QObject *parent = nullptr)
         : QObject(parent),
           m_info(info),
