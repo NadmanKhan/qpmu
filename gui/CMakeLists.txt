@@ -17,6 +17,12 @@ qt_add_executable(appqpmu
     src/applicationdatamodel.cpp
 )
 
+# Mark AppTheme.qml as a singleton so qt_add_qml_module generates correct qmldir
+set_source_files_properties(src/AppTheme.qml
+    PROPERTIES
+        QT_QML_SINGLETON_TYPE TRUE
+)
+
 qt_add_qml_module(appqpmu
     URI qpmu
     VERSION 1.0
@@ -28,6 +34,7 @@ qt_add_qml_module(appqpmu
         src/views/components/WaveformPlotModel.qml
         src/views/components/SignalTable.qml
         src/views/components/GraphViewSwitcher.qml
+        src/AppTheme.qml
     SOURCES
         src/signaldatamodel.h
         src/signaldatamodel.cpp

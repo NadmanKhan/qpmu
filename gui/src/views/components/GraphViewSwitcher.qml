@@ -1,11 +1,15 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import qpmu
 
 // Graph view switcher - toggles between phasor and waveform views
 Rectangle {
     id: root
-    color: "#0a0e14"
+
+    // Reference to singleton for qualified access
+
+    color: AppTheme.colors.surface
 
     required property ApplicationDataModel appDataModel
 
@@ -19,7 +23,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 55
-            color: "#0a0e14"
+            color: AppTheme.colors.surface
             z: 10
 
             Row {
@@ -30,12 +34,12 @@ Rectangle {
                 Rectangle {
                     width: 140
                     height: 42
-                    color: root.currentView === 0 ? "#3d5a80" : "#1b2838"
-                    radius: 8
+                    color: root.currentView === 0 ? AppTheme.colors.borderEmphasized : AppTheme.colors.surfaceElevated
+                    radius: AppTheme.radius.medium
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: 200
+                            duration: AppTheme.motion.normal
                         }
                     }
 
@@ -43,40 +47,40 @@ Rectangle {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        height: 3
-                        color: "#06d6a0"
-                        radius: 1.5
+                        height: AppTheme.border.thick
+                        color: AppTheme.colors.primary
+                        radius: AppTheme.border.thin
                         visible: root.currentView === 0
                     }
 
                     Row {
                         anchors.centerIn: parent
-                        spacing: 8
+                        spacing: AppTheme.spacing.small
 
                         Text {
                             text: "◉"
-                            font.pixelSize: 18
-                            color: root.currentView === 0 ? "#06d6a0" : "#6b8cae"
+                            font.pixelSize: AppTheme.typography.size.large
+                            color: root.currentView === 0 ? AppTheme.colors.primary : AppTheme.colors.textTertiary
                             anchors.verticalCenter: parent.verticalCenter
 
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: 200
+                                    duration: AppTheme.motion.normal
                                 }
                             }
                         }
 
                         Text {
                             text: "Phasor"
-                            font.pixelSize: 15
+                            font.pixelSize: AppTheme.typography.size.normal
                             font.weight: Font.DemiBold
-                            font.family: "SF Pro Text, Segoe UI, sans-serif"
-                            color: root.currentView === 0 ? "#d0dae8" : "#6b8cae"
+                            font.family: AppTheme.typography.fontFamily
+                            color: root.currentView === 0 ? AppTheme.colors.textPrimary : AppTheme.colors.textTertiary
                             anchors.verticalCenter: parent.verticalCenter
 
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: 200
+                                    duration: AppTheme.motion.normal
                                 }
                             }
                         }
@@ -99,12 +103,12 @@ Rectangle {
                 Rectangle {
                     width: 140
                     height: 42
-                    color: root.currentView === 1 ? "#3d5a80" : "#1b2838"
-                    radius: 8
+                    color: root.currentView === 1 ? AppTheme.colors.borderEmphasized : AppTheme.colors.surfaceElevated
+                    radius: AppTheme.radius.medium
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: 200
+                            duration: AppTheme.motion.normal
                         }
                     }
 
@@ -112,40 +116,40 @@ Rectangle {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        height: 3
-                        color: "#06d6a0"
-                        radius: 1.5
+                        height: AppTheme.border.thick
+                        color: AppTheme.colors.primary
+                        radius: AppTheme.border.thin
                         visible: root.currentView === 1
                     }
 
                     Row {
                         anchors.centerIn: parent
-                        spacing: 8
+                        spacing: AppTheme.spacing.small
 
                         Text {
                             text: "∿"
-                            font.pixelSize: 18
-                            color: root.currentView === 1 ? "#06d6a0" : "#6b8cae"
+                            font.pixelSize: AppTheme.typography.size.large
+                            color: root.currentView === 1 ? AppTheme.colors.primary : AppTheme.colors.textTertiary
                             anchors.verticalCenter: parent.verticalCenter
 
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: 200
+                                    duration: AppTheme.motion.normal
                                 }
                             }
                         }
 
                         Text {
                             text: "Waveform"
-                            font.pixelSize: 15
+                            font.pixelSize: AppTheme.typography.size.normal
                             font.weight: Font.DemiBold
-                            font.family: "SF Pro Text, Segoe UI, sans-serif"
-                            color: root.currentView === 1 ? "#d0dae8" : "#6b8cae"
+                            font.family: AppTheme.typography.fontFamily
+                            color: root.currentView === 1 ? AppTheme.colors.textPrimary : AppTheme.colors.textTertiary
                             anchors.verticalCenter: parent.verticalCenter
 
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: 200
+                                    duration: AppTheme.motion.normal
                                 }
                             }
                         }
@@ -174,8 +178,8 @@ Rectangle {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: 250
-                        easing.type: Easing.InOutQuad
+                        duration: AppTheme.motion.slow
+                        easing.type: AppTheme.motion.easeInOut
                     }
                 }
             }
@@ -189,8 +193,8 @@ Rectangle {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: 250
-                        easing.type: Easing.InOutQuad
+                        duration: AppTheme.motion.slow
+                        easing.type: AppTheme.motion.easeInOut
                     }
                 }
             }

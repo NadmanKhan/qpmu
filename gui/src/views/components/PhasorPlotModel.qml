@@ -1,18 +1,23 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQml
+import qpmu
 
 // "Dumb" phasor plot view - knows nothing about signal count or types
 // Just iterates over the provided model and renders each signal
 Rectangle {
     id: root
-    color: "#0a0e14"
+
+    color: AppTheme.colors.surface
 
     required property ApplicationDataModel appDataModel
 
     readonly property real plotRadius: Math.min(width, height) * 0.38
     readonly property real centerX: width / 2
     readonly property real centerY: height / 2
+    readonly property real lineWidth: 3
+    readonly property real thinLine: 1.2
+    readonly property real thickLine: 2.5
 
     property bool needsRepaint: false
 
@@ -50,8 +55,8 @@ Rectangle {
             for (let i = 0; i < circles.length; i++) {
                 ctx.beginPath();
                 ctx.arc(root.centerX, root.centerY, circles[i] * root.plotRadius, 0, 2 * Math.PI);
-                ctx.strokeStyle = (circles[i] === 1.0) ? "#3d5a80" : "#1b2838";
-                ctx.lineWidth = (circles[i] === 1.0) ? 2.5 : 1.2;
+                ctx.strokeStyle = (circles[i] === 1.0) ? AppTheme.colors.borderEmphasized : AppTheme.colors.borderSubtle;
+                ctx.lineWidth = (circles[i] === 1.0) ? root.thickLine : root.thinLine;
                 ctx.stroke();
             }
 
@@ -64,8 +69,8 @@ Rectangle {
                 ctx.beginPath();
                 ctx.moveTo(root.centerX, root.centerY);
                 ctx.lineTo(endX, endY);
-                ctx.strokeStyle = (angle % 90 === 0) ? "#2a3f5f" : "#1b2838";
-                ctx.lineWidth = (angle % 90 === 0) ? 1.5 : 0.8;
+                ctx.strokeStyle = (angle % 90 === 0) ? AppTheme.colors.border : AppTheme.colors.borderSubtle;
+                ctx.lineWidth = (angle % 90 === 0) ? root.thinLine * 1.25 : root.thinLine * 0.66;
                 ctx.stroke();
             }
 
@@ -87,7 +92,7 @@ Rectangle {
                 ctx.moveTo(root.centerX, root.centerY);
                 ctx.lineTo(tipX, tipY);
                 ctx.strokeStyle = color;
-                ctx.lineWidth = 3;
+                ctx.lineWidth = root.lineWidth;
                 ctx.lineCap = "round";
                 ctx.stroke();
 
@@ -106,12 +111,13 @@ Rectangle {
             }
 
             // Draw center dot
+            let centerDotRadius = 5;
             ctx.beginPath();
-            ctx.arc(root.centerX, root.centerY, 5, 0, 2 * Math.PI);
-            ctx.fillStyle = "#3d5a80";
+            ctx.arc(root.centerX, root.centerY, centerDotRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = AppTheme.colors.borderEmphasized;
             ctx.fill();
-            ctx.strokeStyle = "#6b8cae";
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = AppTheme.colors.textTertiary;
+            ctx.lineWidth = root.thinLine;
             ctx.stroke();
         }
     }
@@ -126,10 +132,10 @@ Rectangle {
             x: root.centerX + labelDist * Math.cos(angleRad) - width / 2
             y: root.centerY - labelDist * Math.sin(angleRad) - height / 2
             text: modelData + "°"
-            color: "#6b8cae"
-            font.pixelSize: 13
+            color: AppTheme.colors.textTertiary
+            font.pixelSize: AppTheme.typography.size.medium
             font.weight: Font.Medium
-            font.family: "sans-serif"
+            font.family: AppTheme.typography.fontFamily
         }
     }
 
@@ -153,23 +159,23 @@ Rectangle {
             property real tipX: root.centerX + normalizedMagnitude * root.plotRadius * Math.cos(phaseRad)
             property real tipY: root.centerY - normalizedMagnitude * root.plotRadius * Math.sin(phaseRad)
 
-            x: tipX + 18
+            x: tipX + AppTheme.typography.size.large
             y: tipY - height / 2
-            width: labelText.width + 16
-            height: labelText.height + 8
+            width: labelText.width + AppTheme.spacing.medium
+            height: labelText.height + AppTheme.spacing.small
             color: "transparent"
-            radius: 6
+            radius: AppTheme.radius.small
             border.color: signalColor
-            border.width: 0.5
+            border.width: AppTheme.border.thin
 
             Text {
                 id: labelText
                 anchors.centerIn: parent
                 text: labelRect.name + " " + labelRect.magnitude.toFixed(1) + labelRect.unit + " ∠" + labelRect.phase.toFixed(0) + "°"
                 color: labelRect.signalColor
-                font.pixelSize: 12
+                font.pixelSize: AppTheme.typography.size.small
                 font.weight: Font.Medium
-                font.family: "monospace"
+                font.family: AppTheme.typography.fontFamilyMonospace
             }
         }
     }

@@ -1,28 +1,30 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
+import qpmu
 
 // Signal data table using TableView with QAbstractItemModel
 Rectangle {
     id: root
-    color: "#0a0e14"
+
+    color: AppTheme.colors.surface
 
     required property ApplicationDataModel appDataModel
 
     Item {
         id: tableContainer
         anchors.fill: parent
-        anchors.margins: 15
+        anchors.margins: AppTheme.spacing.medium
 
         // Top-left corner spacer (aligns with vertical header)
         Rectangle {
             id: cornerItem
             anchors.left: parent.left
             anchors.top: parent.top
-            width: 60  // Match the vertical header width from model
+            width: 60
             height: 40
-            color: "#1b2838"
-            radius: 8
+            color: AppTheme.colors.surfaceElevated
+            radius: AppTheme.radius.medium
             z: 2
         }
 
@@ -32,7 +34,7 @@ Rectangle {
             anchors.left: cornerItem.right
             anchors.top: parent.top
             anchors.right: parent.right
-            anchors.leftMargin: 8
+            anchors.leftMargin: AppTheme.spacing.small
             syncView: tableView
             clip: true
 
@@ -44,20 +46,21 @@ Rectangle {
                 readonly property size headerSize: root.appDataModel.signalDataModel.headerData(horizontalHeaderDelegate.index, Qt.Horizontal, Qt.SizeHintRole)
                 implicitWidth: headerSize.width
                 implicitHeight: 40
-                color: "#1b2838"
-                radius: 8
+                color: AppTheme.colors.surfaceElevated
+                radius: AppTheme.radius.medium
 
                 Text {
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
+                    anchors.leftMargin: AppTheme.spacing.small
+                    anchors.rightMargin: AppTheme.spacing.small
                     text: horizontalHeaderDelegate.display
-                    font.pixelSize: 12
+                    font.pixelSize: AppTheme.typography.size.small
                     font.weight: Font.Bold
-                    font.family: "SF Pro Text, Segoe UI, sans-serif"
-                    color: "#8ba3be"
+                    font.family: AppTheme.typography.fontFamily
+                    color: AppTheme.colors.textSecondary
                     verticalAlignment: Text.AlignVCenter
                     horizontalAlignment: Text.AlignLeft
+                    elide: Text.ElideRight
                 }
             }
         }
@@ -68,7 +71,7 @@ Rectangle {
             anchors.left: parent.left
             anchors.top: headerView.bottom
             anchors.bottom: parent.bottom
-            anchors.topMargin: 8
+            anchors.topMargin: AppTheme.spacing.small
             syncView: tableView
             clip: true
 
@@ -80,20 +83,21 @@ Rectangle {
                 readonly property size headerSize: root.appDataModel.signalDataModel.headerData(verticalHeaderDelegate.index, Qt.Vertical, Qt.SizeHintRole)
                 implicitHeight: headerSize.height
                 implicitWidth: headerSize.width
-                color: "#1b2838"
-                radius: 8
+                color: AppTheme.colors.surfaceElevated
+                radius: AppTheme.radius.medium
 
                 Text {
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
+                    anchors.leftMargin: AppTheme.spacing.small
+                    anchors.rightMargin: AppTheme.spacing.small
                     text: verticalHeaderDelegate.display
-                    font.pixelSize: 13
+                    font.pixelSize: AppTheme.typography.size.medium
                     font.weight: Font.Bold
-                    font.family: "SF Pro Text, Segoe UI, sans-serif"
-                    color: "#8ba3be"
+                    font.family: AppTheme.typography.fontFamily
+                    color: AppTheme.colors.textSecondary
                     verticalAlignment: Text.AlignVCenter
                     horizontalAlignment: Text.AlignLeft
+                    elide: Text.ElideRight
                 }
             }
         }
@@ -105,8 +109,8 @@ Rectangle {
             anchors.top: headerView.bottom
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            anchors.leftMargin: 8
-            anchors.topMargin: 8
+            anchors.leftMargin: AppTheme.spacing.small
+            anchors.topMargin: AppTheme.spacing.small
             clip: true
 
             rowSpacing: 4
@@ -134,21 +138,22 @@ Rectangle {
                 readonly property color decorationColor: cellDelegate.model.decoration || "transparent"
 
                 color: backgroundColor
-                radius: 6
+                radius: AppTheme.radius.small
                 border.color: Qt.rgba(backgroundColor.r, backgroundColor.g, backgroundColor.b, 3.33)
-                border.width: 1.5
+                border.width: AppTheme.border.thin
 
                 Text {
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
+                    anchors.leftMargin: AppTheme.spacing.small
+                    anchors.rightMargin: AppTheme.spacing.small
                     text: cellDelegate.model.display
-                    font.pixelSize: 15
+                    font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.Medium
-                    font.family: "SF Mono, Consolas, monospace"
-                    color: cellDelegate.model.foreground || "#ffffff"
+                    font.family: AppTheme.typography.fontFamilyMonospace
+                    color: cellDelegate.model.foreground || AppTheme.colors.textInverse
                     verticalAlignment: Text.AlignVCenter
                     horizontalAlignment: Text.AlignRight
+                    elide: Text.ElideRight
                 }
             }
         }

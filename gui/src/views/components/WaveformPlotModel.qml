@@ -1,27 +1,57 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import qpmu
 
 // "Dumb" waveform plot view - knows nothing about signal count or types
 // Just iterates over the provided model and renders each signal
 Rectangle {
     id: root
-    color: "#0a0e14"
+
+    color: AppTheme.colors.surface
 
     required property ApplicationDataModel appDataModel
 
+    property bool showPeakValues: false  // Default to RMS (false)
+
     readonly property int pointsPerCycle: 40
-    readonly property int cycleCount: 2
-    readonly property real chartWidth: width - 140
-    readonly property real chartHeight: height - 155
-    readonly property real chartX: 80
-    readonly property real chartY: 75
+    readonly property int cycleCount: 1
+
+    // Proportional layout - use percentages of width/height
+    readonly property real chartWidth: width * 0.78   // was: width - 200
+    readonly property real chartHeight: height * 0.73 // was: height - 155
+    readonly property real chartX: width * 0.08       // was: 80
+    readonly property real chartY: height * 0.11      // was: 75
+
+    // Spacing constants for uniform layout
+    readonly property real tickLabelGap: AppTheme.spacing.small
+    readonly property real axisLabelOffset: 60
+    readonly property real axisPadding: AppTheme.spacing.small
+
+    readonly property real peakScaleFactor: showPeakValues ? Math.SQRT2 : 1.0
+    readonly property real maxVoltage: getMaxMagnitude("Voltage") * peakScaleFactor
+    readonly property real maxCurrent: getMaxMagnitude("Current") * peakScaleFactor
+
+    function getMaxMagnitude(signalType) {
+        let max = 0.0;
+        let signalCount = appDataModel.signalDataModel.rowCount();
+        for (let i = 0; i < signalCount; i++) {
+            let signal = appDataModel.signalDataModel.data(appDataModel.signalDataModel.index(i, 0), SignalDataModel.SignalDataRole);
+            if (signal && signal.signalType === signalType) {
+                max = Math.max(max, signal.magnitude);
+            }
+        }
+        return max || 1.0; // Fallback to 1.0 to avoid division by zero
+    }
 
     function dataToScreenX(t) {
         return chartX + (t / cycleCount) * chartWidth;
     }
 
-    function dataToScreenY(y) {
-        return chartY + chartHeight / 2 - (y / 1.2) * (chartHeight / 2);
+    function dataToScreenY(y, signalType) {
+        let maxValue = (signalType === "Voltage") ? maxVoltage : maxCurrent;
+        // Scale by 0.5 to occupy 50% of vertical space
+        let normalizedY = (y / maxValue) * 0.5;
+        return chartY + chartHeight / 2 - normalizedY * chartHeight;
     }
 
     // Grid - horizontal lines
@@ -29,12 +59,13 @@ Rectangle {
         model: 9
         delegate: Rectangle {
             required property int index
-            property real yValue: -1.0 + index * 0.25
-            x: root.chartX
-            y: root.dataToScreenY(yValue)
-            width: root.chartWidth
-            height: (index === 4) ? 2.5 : 1
-            color: (index === 4) ? "#3d5a80" : "#1b2838"
+            // Use voltage range for grid (since it's the reference)
+            property real yValue: -root.maxVoltage + index * (root.maxVoltage * 2.0 / 8.0)
+            x: root.chartX - root.axisPadding
+            y: root.dataToScreenY(yValue, "Voltage")
+            width: root.chartWidth + 2 * root.axisPadding
+            height: (index === 4) ? AppTheme.border.thick : AppTheme.border.thin
+            color: (index === 4) ? AppTheme.colors.borderEmphasized : AppTheme.colors.borderSubtle
         }
     }
 
@@ -45,10 +76,10 @@ Rectangle {
             required property int index
             property real xValue: index * 0.25
             x: root.dataToScreenX(xValue)
-            y: root.chartY
-            width: (index % 4 === 0) ? 1.5 : 0.8
-            height: root.chartHeight
-            color: (index % 4 === 0) ? "#2a3f5f" : "#1b2838"
+            y: root.chartY - root.axisPadding
+            width: (index % 4 === 0) ? 1.5 : AppTheme.border.thin
+            height: root.chartHeight + 2 * root.axisPadding
+            color: (index % 4 === 0) ? AppTheme.colors.border : AppTheme.colors.borderSubtle
         }
     }
 
@@ -88,19 +119,18 @@ Rectangle {
             // Draw all waveforms from signal model
             let signalCount = root.appDataModel.signalDataModel.rowCount();
             for (let signalIndex = 0; signalIndex < signalCount; signalIndex++) {
-                let signal = root.appDataModel.signalDataModel.data(
-                    root.appDataModel.signalDataModel.index(signalIndex, 0),
-                    SignalDataModel.SignalDataRole
-                );
+                let signal = root.appDataModel.signalDataModel.data(root.appDataModel.signalDataModel.index(signalIndex, 0), SignalDataModel.SignalDataRole);
 
-                if (!signal) continue;
+                if (!signal)
+                    continue;
 
                 let magnitude = signal.magnitude;
                 let phase = signal.phase;
                 let color = signal.color;
-                let normalizedMag = signal.normalizedMagnitude;
+                let signalType = signal.signalType;
 
                 let phaseRad = phase * Math.PI / 180.0;
+                let scaledMagnitude = magnitude * root.peakScaleFactor;
 
                 ctx.strokeStyle = color;
                 ctx.lineWidth = 2.5;
@@ -110,14 +140,14 @@ Rectangle {
                 ctx.beginPath();
 
                 let startX = 0;
-                let startY = root.dataToScreenY(normalizedMag * Math.sin(phaseRad)) - root.chartY;
+                let startY = root.dataToScreenY(scaledMagnitude * Math.sin(phaseRad), signalType) - root.chartY;
                 ctx.moveTo(startX, startY);
 
                 for (let i = 1; i <= root.pointsPerCycle * root.cycleCount; i++) {
                     let t = i / root.pointsPerCycle;
-                    let y = normalizedMag * Math.sin(2.0 * Math.PI * t + phaseRad);
+                    let y = scaledMagnitude * Math.sin(2.0 * Math.PI * t + phaseRad);
                     let canvasX = root.dataToScreenX(t) - root.chartX;
-                    let canvasY = root.dataToScreenY(y) - root.chartY;
+                    let canvasY = root.dataToScreenY(y, signalType) - root.chartY;
                     ctx.lineTo(canvasX, canvasY);
                 }
 
@@ -126,67 +156,117 @@ Rectangle {
         }
     }
 
-    // Y-axis labels
+    // Y-axis labels - Voltage (left)
     Repeater {
-        model: [1.0, 0.75, 0.5, 0.25, 0, -0.25, -0.5, -0.75, -1.0]
+        model: 9
         delegate: Text {
-            required property var modelData
-            x: 15
-            y: root.dataToScreenY(modelData) - height / 2
-            text: modelData.toFixed(2)
-            font.pixelSize: 11
+            required property int index
+            property real voltageValue: -root.maxVoltage + index * (root.maxVoltage * 2.0 / 8.0)
+            x: root.chartX - root.axisPadding - width - root.tickLabelGap
+            y: root.dataToScreenY(voltageValue, "Voltage") - height / 2
+            text: voltageValue.toFixed(1)
+            font.pixelSize: AppTheme.typography.size.small
             font.weight: Font.Medium
-            font.family: "monospace"
-            color: "#6b8cae"
+            font.family: AppTheme.typography.fontFamilyMonospace
+            color: AppTheme.colors.textTertiary
             horizontalAlignment: Text.AlignRight
-            width: 50
+        }
+    }
+
+    // Y-axis labels - Current (right)
+    Repeater {
+        model: 9
+        delegate: Text {
+            required property int index
+            property real currentValue: -root.maxCurrent + index * (root.maxCurrent * 2.0 / 8.0)
+            x: root.chartX + root.chartWidth + root.axisPadding + root.tickLabelGap
+            y: root.dataToScreenY(currentValue, "Current") - height / 2
+            text: currentValue.toFixed(2)
+            font.pixelSize: AppTheme.typography.size.small
+            font.weight: Font.Medium
+            font.family: AppTheme.typography.fontFamilyMonospace
+            color: AppTheme.colors.textTertiary
+            horizontalAlignment: Text.AlignLeft
         }
     }
 
     // X-axis labels
-    Row {
-        anchors.top: parent.bottom
-        anchors.topMargin: -50
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.horizontalCenterOffset: 10
-        spacing: root.chartWidth / (root.cycleCount * 4)
-
-        Repeater {
-            model: root.cycleCount * 4 + 1
-            delegate: Text {
-                required property int index
-                text: (index * 0.25).toFixed(2)
-                font.pixelSize: 11
-                font.weight: Font.Medium
-                font.family: "monospace"
-                color: "#6b8cae"
-            }
+    Repeater {
+        model: root.cycleCount * 4 + 1
+        delegate: Text {
+            required property int index
+            property real xValue: index * 0.25
+            x: root.dataToScreenX(xValue) - width / 2
+            y: root.chartY + root.chartHeight + root.axisPadding + root.tickLabelGap
+            text: xValue.toFixed(2)
+            font.pixelSize: AppTheme.typography.size.small
+            font.weight: Font.Medium
+            font.family: AppTheme.typography.fontFamilyMonospace
+            color: AppTheme.colors.textTertiary
         }
     }
 
-    // Y-axis label
+    // Y-axis label - Voltage (left)
     Text {
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 15
-        text: "Normalized Amplitude"
-        font.pixelSize: 13
+        x: root.chartX - root.axisLabelOffset
+        y: root.chartY + root.chartHeight / 2
+        text: "Voltage (V)"
+        font.pixelSize: AppTheme.typography.size.small
         font.weight: Font.DemiBold
-        color: "#8ba3be"
-        font.family: "sans-serif"
+        color: AppTheme.colors.textSecondary
+        font.family: AppTheme.typography.fontFamily
         rotation: -90
+        transformOrigin: Item.Center
+    }
+
+    // Y-axis label - Current (right)
+    Text {
+        x: root.chartX + root.chartWidth + root.axisLabelOffset
+        y: root.chartY + root.chartHeight / 2
+        text: "Current (A)"
+        font.pixelSize: AppTheme.typography.size.small
+        font.weight: Font.DemiBold
+        color: AppTheme.colors.textSecondary
+        font.family: AppTheme.typography.fontFamily
+        rotation: 90
         transformOrigin: Item.Center
     }
 
     // X-axis label
     Text {
-        anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: 15
+        x: root.chartX + root.chartWidth / 2 - width / 2
+        y: root.chartY + root.chartHeight + root.axisPadding + 35
         text: "Cycles"
-        font.pixelSize: 13
+        font.pixelSize: AppTheme.typography.size.small
         font.weight: Font.DemiBold
-        color: "#8ba3be"
-        font.family: "sans-serif"
+        color: AppTheme.colors.textSecondary
+        font.family: AppTheme.typography.fontFamily
+    }
+
+    // RMS/Peak toggle button
+    Rectangle {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: AppTheme.spacing.small
+        width: 120
+        height: 30
+        color: AppTheme.colors.surfaceElevated
+        border.color: AppTheme.colors.borderEmphasized
+        border.width: AppTheme.border.thin
+        radius: AppTheme.radius.small
+
+        Text {
+            anchors.centerIn: parent
+            text: root.showPeakValues ? "Peak" : "RMS"
+            font.pixelSize: AppTheme.typography.size.small
+            font.weight: Font.Medium
+            color: AppTheme.colors.textSecondary
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.showPeakValues = !root.showPeakValues
+            cursorShape: Qt.PointingHandCursor
+        }
     }
 }
