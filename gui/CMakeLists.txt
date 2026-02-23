@@ -11,10 +11,10 @@ qt_standard_project_setup(REQUIRES 6.10)
 
 qt_add_executable(appqpmu
     src/main.cpp
-    src/signaldatamodel.h
-    src/signaldatamodel.cpp
-    src/applicationdatamodel.h
-    src/applicationdatamodel.cpp
+    src/models/signaldatamodel.h
+    src/models/signaldatamodel.cpp
+    src/models/applicationdatamodel.h
+    src/models/applicationdatamodel.cpp
 )
 
 # Mark AppTheme.qml as a singleton so qt_add_qml_module generates correct qmldir
@@ -36,10 +36,10 @@ qt_add_qml_module(appqpmu
         src/views/components/GraphViewSwitcher.qml
         src/AppTheme.qml
     SOURCES
-        src/signaldatamodel.h
-        src/signaldatamodel.cpp
-        src/applicationdatamodel.h
-        src/applicationdatamodel.cpp
+        src/models/signaldatamodel.h
+        src/models/signaldatamodel.cpp
+        src/models/applicationdatamodel.h
+        src/models/applicationdatamodel.cpp
 )
 
 set_target_properties(appqpmu PROPERTIES
@@ -51,6 +51,7 @@ set_target_properties(appqpmu PROPERTIES
 
 target_include_directories(appqpmu PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/models
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/include
 )
 
