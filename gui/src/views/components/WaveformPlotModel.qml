@@ -10,8 +10,7 @@ Rectangle {
     color: AppTheme.colors.surface
 
     required property ApplicationDataModel appDataModel
-
-    property bool showPeakValues: false  // Default to RMS (false)
+    required property ViewStateModel viewStateModel
 
     readonly property int pointsPerCycle: 40
     readonly property int cycleCount: 1
@@ -27,21 +26,9 @@ Rectangle {
     readonly property real axisLabelOffset: 60
     readonly property real axisPadding: AppTheme.spacing.small
 
-    readonly property real peakScaleFactor: showPeakValues ? Math.SQRT2 : 1.0
-    readonly property real maxVoltage: getMaxMagnitude("Voltage") * peakScaleFactor
-    readonly property real maxCurrent: getMaxMagnitude("Current") * peakScaleFactor
-
-    function getMaxMagnitude(signalType) {
-        let max = 0.0;
-        let signalCount = appDataModel.signalDataModel.rowCount();
-        for (let i = 0; i < signalCount; i++) {
-            let signal = appDataModel.signalDataModel.data(appDataModel.signalDataModel.index(i, 0), SignalDataModel.SignalDataRole);
-            if (signal && signal.signalType === signalType) {
-                max = Math.max(max, signal.magnitude);
-            }
-        }
-        return max || 1.0; // Fallback to 1.0 to avoid division by zero
-    }
+    // Use ViewStateModel cutoff values for scaling
+    readonly property real maxVoltage: root.viewStateModel.voltageCutoff
+    readonly property real maxCurrent: root.viewStateModel.currentCutoff
 
     function dataToScreenX(t) {
         return chartX + (t / cycleCount) * chartWidth;
@@ -96,8 +83,19 @@ Rectangle {
         Connections {
             target: root.appDataModel
             function onDataUpdated() {
-                waveformCanvas.needsRepaint = true;
+                if (!root.viewStateModel.isPausedLocal) {
+                    waveformCanvas.needsRepaint = true;
+                }
             }
+        }
+
+        Connections {
+            target: root.viewStateModel
+            function onMagnitudeModeChanged() { waveformCanvas.needsRepaint = true; }
+            function onPhaseReferenceChanged() { waveformCanvas.needsRepaint = true; }
+            function onSignalVisibilityChanged() { waveformCanvas.needsRepaint = true; }
+            function onVoltageScalingChanged() { waveformCanvas.needsRepaint = true; }
+            function onCurrentScalingChanged() { waveformCanvas.needsRepaint = true; }
         }
 
         Timer {
@@ -119,18 +117,24 @@ Rectangle {
             // Draw all waveforms from signal model
             let signalCount = root.appDataModel.signalDataModel.rowCount();
             for (let signalIndex = 0; signalIndex < signalCount; signalIndex++) {
+                // Check visibility
+                if (!root.viewStateModel.isSignalVisible(signalIndex)) {
+                    continue;
+                }
+
                 let signal = root.appDataModel.signalDataModel.data(root.appDataModel.signalDataModel.index(signalIndex, 0), SignalDataModel.SignalDataRole);
 
                 if (!signal)
                     continue;
 
-                let magnitude = signal.magnitude;
-                let phase = signal.phase;
+                // Get effective magnitude and phase from ViewStateModel
+                let magnitude = root.viewStateModel.getEffectiveMagnitude(signal);
+                let phase = root.viewStateModel.getEffectivePhase(signal, signalIndex);
                 let color = signal.color;
                 let signalType = signal.signalType;
 
                 let phaseRad = phase * Math.PI / 180.0;
-                let scaledMagnitude = magnitude * root.peakScaleFactor;
+                let scaledMagnitude = magnitude;
 
                 ctx.strokeStyle = color;
                 ctx.lineWidth = 2.5;
@@ -243,30 +247,4 @@ Rectangle {
         font.family: AppTheme.typography.fontFamily
     }
 
-    // RMS/Peak toggle button
-    Rectangle {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.margins: AppTheme.spacing.small
-        width: 120
-        height: 30
-        color: AppTheme.colors.surfaceElevated
-        border.color: AppTheme.colors.borderEmphasized
-        border.width: AppTheme.border.thin
-        radius: AppTheme.radius.small
-
-        Text {
-            anchors.centerIn: parent
-            text: root.showPeakValues ? "Peak" : "RMS"
-            font.pixelSize: AppTheme.typography.size.small
-            font.weight: Font.Medium
-            color: AppTheme.colors.textSecondary
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: root.showPeakValues = !root.showPeakValues
-            cursorShape: Qt.PointingHandCursor
-        }
-    }
 }

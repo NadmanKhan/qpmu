@@ -112,7 +112,7 @@ QtObject {
         readonly property int touchTarget: 44
 
         // Layout components
-        readonly property int statusBar: 72
+        readonly property int statusBarHeight: 72
         readonly property int toolbarHeight: 55
     }
 

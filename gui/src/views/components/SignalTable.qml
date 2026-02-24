@@ -10,6 +10,7 @@ Rectangle {
     color: AppTheme.colors.surface
 
     required property ApplicationDataModel appDataModel
+    required property ViewStateModel viewStateModel
 
     Item {
         id: tableContainer
@@ -21,7 +22,7 @@ Rectangle {
             id: cornerItem
             anchors.left: parent.left
             anchors.top: parent.top
-            width: 60
+            width: verticalHeaderView.width > 0 ? verticalHeaderView.width : 90  // Match vertical header width
             height: 40
             color: AppTheme.colors.surfaceElevated
             radius: AppTheme.radius.medium
@@ -65,7 +66,7 @@ Rectangle {
             }
         }
 
-        // Vertical header view
+        // Vertical header view with checkboxes
         VerticalHeaderView {
             id: verticalHeaderView
             anchors.left: parent.left
@@ -81,23 +82,71 @@ Rectangle {
                 required property int index
 
                 readonly property size headerSize: root.appDataModel.signalDataModel.headerData(verticalHeaderDelegate.index, Qt.Vertical, Qt.SizeHintRole)
+                readonly property var signalData: root.appDataModel.signalDataModel.data(root.appDataModel.signalDataModel.index(verticalHeaderDelegate.index, 0), SignalDataModel.SignalDataRole)
+                readonly property color signalColor: signalData ? signalData.color : "transparent"
+
                 implicitHeight: headerSize.height
-                implicitWidth: headerSize.width
+                implicitWidth: headerSize.width + 30  // Extra space for checkbox
                 color: AppTheme.colors.surfaceElevated
                 radius: AppTheme.radius.medium
 
-                Text {
+                Row {
                     anchors.fill: parent
                     anchors.leftMargin: AppTheme.spacing.small
                     anchors.rightMargin: AppTheme.spacing.small
-                    text: verticalHeaderDelegate.display
-                    font.pixelSize: AppTheme.typography.size.medium
-                    font.weight: Font.Bold
-                    font.family: AppTheme.typography.fontFamily
-                    color: AppTheme.colors.textSecondary
-                    verticalAlignment: Text.AlignVCenter
-                    horizontalAlignment: Text.AlignLeft
-                    elide: Text.ElideRight
+                    spacing: AppTheme.spacing.small
+
+                    // Checkbox for visibility toggle
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 20
+                        height: 20
+                        radius: 4
+                        color: root.viewStateModel.isSignalVisible(verticalHeaderDelegate.index) ? verticalHeaderDelegate.signalColor : AppTheme.colors.surfacePressed
+                        border.color: verticalHeaderDelegate.signalColor
+                        border.width: 2
+
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: AppTheme.motion.fast
+                            }
+                        }
+
+                        // Checkmark icon when visible
+                        Text {
+                            anchors.centerIn: parent
+                            text: "✓"
+                            font.pixelSize: 14
+                            font.weight: Font.Bold
+                            color: root.viewStateModel.isSignalVisible(verticalHeaderDelegate.index) ? AppTheme.colors.textInverse : AppTheme.colors.textTertiary
+                            visible: true
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: AppTheme.motion.fast
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.viewStateModel.toggleSignalVisibility(verticalHeaderDelegate.index)
+                        }
+                    }
+
+                    // Signal name
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: verticalHeaderDelegate.display
+                        font.pixelSize: AppTheme.typography.size.medium
+                        font.weight: Font.Bold
+                        font.family: AppTheme.typography.fontFamily
+                        color: AppTheme.colors.textSecondary
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignLeft
+                        elide: Text.ElideRight
+                    }
                 }
             }
         }
@@ -134,8 +183,29 @@ Rectangle {
                 required property int column
                 required property var model
 
+                readonly property var signalData: root.appDataModel.signalDataModel.data(root.appDataModel.signalDataModel.index(cellDelegate.row, 0), SignalDataModel.SignalDataRole)
                 readonly property color backgroundColor: cellDelegate.model.background || "transparent"
                 readonly property color decorationColor: cellDelegate.model.decoration || "transparent"
+
+                // Compute effective display text based on column
+                readonly property string effectiveDisplay: {
+                    if (!signalData) return cellDelegate.model.display;
+
+                    // Column 0: Magnitude
+                    if (cellDelegate.column === 0) {
+                        let mag = root.viewStateModel.getEffectiveMagnitude(signalData);
+                        return mag.toFixed(2) + " " + signalData.unit;
+                    }
+                    // Column 1: Phase
+                    else if (cellDelegate.column === 1) {
+                        let phase = root.viewStateModel.getEffectivePhase(signalData, cellDelegate.row);
+                        return phase.toFixed(1) + "°";
+                    }
+                    // Other columns: use original display
+                    else {
+                        return cellDelegate.model.display;
+                    }
+                }
 
                 color: backgroundColor
                 radius: AppTheme.radius.small
@@ -146,7 +216,7 @@ Rectangle {
                     anchors.fill: parent
                     anchors.leftMargin: AppTheme.spacing.small
                     anchors.rightMargin: AppTheme.spacing.small
-                    text: cellDelegate.model.display
+                    text: cellDelegate.effectiveDisplay
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.Medium
                     font.family: AppTheme.typography.fontFamilyMonospace

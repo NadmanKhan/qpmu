@@ -15,6 +15,14 @@ qt_add_executable(appqpmu
     src/models/signaldatamodel.cpp
     src/models/applicationdatamodel.h
     src/models/applicationdatamodel.cpp
+    src/models/viewstatemodel.h
+    src/models/viewstatemodel.cpp
+)
+
+# Add qtquickcontrols2.conf as a resource at the root level
+qt_add_resources(appqpmu "config"
+    PREFIX "/"
+    FILES qtquickcontrols2.conf
 )
 
 # Mark AppTheme.qml as a singleton so qt_add_qml_module generates correct qmldir
@@ -29,17 +37,27 @@ qt_add_qml_module(appqpmu
     QML_FILES
         src/views/Main.qml
         src/views/LiveMonitor.qml
-        src/views/components/StatusBar.qml
+        src/views/components/AppStatusBar.qml
         src/views/components/PhasorPlotModel.qml
         src/views/components/WaveformPlotModel.qml
         src/views/components/SignalTable.qml
         src/views/components/GraphViewSwitcher.qml
+        src/views/components/Screen.qml
+        src/views/components/AppToolBar.qml
+        src/views/components/LiveMonitorContextMenu.qml
+        src/views/components/controls/Button.qml
+        src/views/components/controls/ToggleButton.qml
+        src/views/components/controls/Dropdown.qml
+        src/views/components/controls/SliderWithValue.qml
+        src/views/components/controls/SectionHeader.qml
         src/AppTheme.qml
     SOURCES
         src/models/signaldatamodel.h
         src/models/signaldatamodel.cpp
         src/models/applicationdatamodel.h
         src/models/applicationdatamodel.cpp
+        src/models/viewstatemodel.h
+        src/models/viewstatemodel.cpp
 )
 
 set_target_properties(appqpmu PROPERTIES

@@ -6,31 +6,52 @@ import QtQuick.Layouts
 import qpmu
 import "components"
 
-Rectangle {
+/**
+ * LiveMonitor - Main screen for live PMU data monitoring
+ *
+ * Displays:
+ * - Phasor and waveform plots
+ * - Signal data table
+ * - Status bar
+ *
+ * Provides context menu for data/plot controls
+ */
+Screen {
     id: root
+
+    title: "Live Monitor"
 
     color: AppTheme.colors.background
 
     // Detect narrow screens (portrait or narrow landscape)
     property bool isNarrow: width < height * 1.5
 
-    // Application model - manages all signal data
-    ApplicationDataModel {
-        id: appDataModel
+    // Application data model - manages signal data and simulation
+    appDataModel: ApplicationDataModel {
+        id: liveMonitorAppDataModel
         Component.onCompleted: {
             startSimulation();
         }
     }
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 0
+    // View state model - manages UI state for LiveMonitor
+    property ViewStateModel viewStateModel: ViewStateModel {
+        Component.onCompleted: {
+            setSignalDataModel(root.appDataModel.signalDataModel);
+        }
+    }
 
-        // Main content area - graph view on left/top, data table on right/bottom
-        SplitView {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            orientation: root.isNarrow ? Qt.Vertical : Qt.Horizontal
+    // Context menu for this screen
+    contextMenu: Component {
+        LiveMonitorContextMenu {
+            viewStateModel: root.viewStateModel
+        }
+    }
+
+    // Main content area - graph view and data table
+    SplitView {
+        anchors.fill: parent
+        orientation: root.isNarrow ? Qt.Vertical : Qt.Horizontal
 
             handle: Rectangle {
                 implicitWidth: root.isNarrow ? parent.width : 6
@@ -66,7 +87,8 @@ Rectangle {
                 SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
                 SplitView.fillHeight: !root.isNarrow
                 SplitView.fillWidth: root.isNarrow
-                appDataModel: appDataModel
+                appDataModel: root.appDataModel
+                viewStateModel: root.viewStateModel
             }
 
             // Data table (Right in horizontal, Bottom in vertical)
@@ -75,14 +97,8 @@ Rectangle {
                 SplitView.fillHeight: true
                 SplitView.minimumWidth: root.isNarrow ? 100 : parent.width * 0.3
                 SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
-                appDataModel: appDataModel
+                appDataModel: root.appDataModel
+                viewStateModel: root.viewStateModel
             }
         }
-
-        // Summary bar at bottom
-        StatusBar {
-            Layout.fillWidth: true
-            appDataModel: appDataModel
-        }
-    }
 }

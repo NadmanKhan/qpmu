@@ -11,6 +11,7 @@ Rectangle {
     color: AppTheme.colors.surface
 
     required property ApplicationDataModel appDataModel
+    required property ViewStateModel viewStateModel
 
     readonly property real plotRadius: Math.min(width, height) * 0.38
     readonly property real centerX: width / 2
@@ -24,8 +25,19 @@ Rectangle {
     Connections {
         target: root.appDataModel
         function onDataUpdated() {
-            root.needsRepaint = true;
+            if (!root.viewStateModel.isPausedLocal) {
+                root.needsRepaint = true;
+            }
         }
+    }
+
+    Connections {
+        target: root.viewStateModel
+        function onMagnitudeModeChanged() { root.needsRepaint = true; }
+        function onPhaseReferenceChanged() { root.needsRepaint = true; }
+        function onSignalVisibilityChanged() { root.needsRepaint = true; }
+        function onVoltageScalingChanged() { root.needsRepaint = true; }
+        function onCurrentScalingChanged() { root.needsRepaint = true; }
     }
 
     // Throttle to 30 fps
@@ -77,11 +89,22 @@ Rectangle {
             // Draw phasor arrows - iterate over signals from model
             let signalCount = root.appDataModel.signalDataModel.rowCount();
             for (let i = 0; i < signalCount; i++) {
+                // Check visibility
+                if (!root.viewStateModel.isSignalVisible(i)) {
+                    continue;
+                }
+
                 let signal = root.appDataModel.signalDataModel.data(root.appDataModel.signalDataModel.index(i, 0), SignalDataModel.SignalDataRole);
-                let magnitude = signal.magnitude;
-                let phase = signal.phase;
+
+                // Get effective magnitude and phase from ViewStateModel
+                let magnitude = root.viewStateModel.getEffectiveMagnitude(signal);
+                let phase = root.viewStateModel.getEffectivePhase(signal, i);
                 let color = signal.color;
-                let normalizedMag = signal.normalizedMagnitude;
+                let signalType = signal.signalType;
+
+                // Calculate normalized magnitude based on cutoff
+                let cutoff = signalType === "Voltage" ? root.viewStateModel.voltageCutoff : root.viewStateModel.currentCutoff;
+                let normalizedMag = magnitude / cutoff;
 
                 let phaseRad = phase * Math.PI / 180.0;
                 let tipX = root.centerX + normalizedMag * root.plotRadius * Math.cos(phaseRad);
@@ -148,17 +171,21 @@ Rectangle {
             required property int index
 
             property var signalData: root.appDataModel.signalDataModel.data(root.appDataModel.signalDataModel.index(index, 0), SignalDataModel.SignalDataRole)
-            property real magnitude: signalData ? signalData.magnitude : 0
-            property real phase: signalData ? signalData.phase : 0
+            property real magnitude: signalData ? root.viewStateModel.getEffectiveMagnitude(signalData) : 0
+            property real phase: signalData ? root.viewStateModel.getEffectivePhase(signalData, index) : 0
             property string name: signalData ? signalData.name : ""
             property string unit: signalData ? signalData.unit : ""
-            property real normalizedMagnitude: signalData ? signalData.normalizedMagnitude : 0
+            property string signalType: signalData ? signalData.signalType : ""
             property color signalColor: signalData ? signalData.color : "transparent"
+            property bool isVisible: root.viewStateModel.isSignalVisible(index)
 
+            property real cutoff: signalType === "Voltage" ? root.viewStateModel.voltageCutoff : root.viewStateModel.currentCutoff
+            property real normalizedMagnitude: magnitude / cutoff
             property real phaseRad: phase * Math.PI / 180.0
             property real tipX: root.centerX + normalizedMagnitude * root.plotRadius * Math.cos(phaseRad)
             property real tipY: root.centerY - normalizedMagnitude * root.plotRadius * Math.sin(phaseRad)
 
+            visible: isVisible
             x: tipX + AppTheme.typography.size.large
             y: tipY - height / 2
             width: labelText.width + AppTheme.spacing.medium

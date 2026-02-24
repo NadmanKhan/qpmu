@@ -5,11 +5,13 @@ import qpmu
 
 Rectangle {
     id: root
-    required property ApplicationDataModel appDataModel
+    readonly property ApplicationDataModel appDataModel: ApplicationDataModel {}
 
-    height: AppTheme.sizing.statusBar
+    visible: appDataModel !== null
+
+    height: AppTheme.sizing.statusBarHeight
     color: AppTheme.colors.surface
-    border.color: appDataModel.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+    border.color: appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
     border.width: 0
 
     // Top border only
@@ -18,7 +20,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         height: AppTheme.border.thick
-        color: root.appDataModel.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+        color: root.appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
 
         Behavior on color {
             ColorAnimation {
@@ -32,46 +34,13 @@ Rectangle {
         anchors.margins: AppTheme.spacing.medium
         spacing: AppTheme.spacing.large
 
-        // Play/Pause button
-        Rectangle {
-            id: playPauseButton
-
-            Layout.preferredWidth: 54
-            Layout.preferredHeight: AppTheme.sizing.buttonMedium
-            color: playPauseButtonMouseArea.pressed ? AppTheme.state.surfacePressed : (playPauseButtonMouseArea.containsMouse ? AppTheme.state.surfaceHover : AppTheme.state.surfaceDefault)
-            radius: AppTheme.radius.large
-            border.color: root.appDataModel.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
-            border.width: AppTheme.border.thick
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: AppTheme.motion.fast
-                }
-            }
-
-            Text {
-                anchors.centerIn: parent
-                text: root.appDataModel.isPaused ? "▶" : "⏸"
-                font.pixelSize: AppTheme.typography.size.huge
-                color: root.appDataModel.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
-            }
-
-            MouseArea {
-                id: playPauseButtonMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.appDataModel.togglePause()
-            }
-        }
-
         // Status indicator
         Rectangle {
             Layout.preferredWidth: 110
             Layout.preferredHeight: AppTheme.sizing.buttonMedium
-            color: root.appDataModel.isPaused ? AppTheme.withAlpha(AppTheme.colors.error, AppTheme.opacity.overlayLight) : AppTheme.withAlpha(AppTheme.colors.primary, AppTheme.opacity.overlayLight)
+            color: root.appDataModel?.isPaused ? AppTheme.withAlpha(AppTheme.colors.error, AppTheme.opacity.overlayLight) : AppTheme.withAlpha(AppTheme.colors.primary, AppTheme.opacity.overlayLight)
             radius: AppTheme.radius.large
-            border.color: root.appDataModel.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+            border.color: root.appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
             border.width: AppTheme.border.medium
 
             Behavior on color {
@@ -93,10 +62,10 @@ Rectangle {
                     width: AppTheme.spacing.small
                     height: AppTheme.spacing.small
                     radius: AppTheme.spacing.small / 2
-                    color: root.appDataModel.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+                    color: root.appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
 
                     SequentialAnimation on opacity {
-                        running: !root.appDataModel.isPaused
+                        running: root.appDataModel ? !root.appDataModel.isPaused : false
                         loops: Animation.Infinite
                         NumberAnimation {
                             from: 1.0
@@ -112,11 +81,11 @@ Rectangle {
                 }
 
                 Text {
-                    text: root.appDataModel.isPaused ? "PAUSED" : "LIVE"
+                    text: root.appDataModel?.isPaused ? "PAUSED" : "LIVE"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.Bold
                     font.family: AppTheme.typography.fontFamilyMonospace
-                    color: root.appDataModel.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+                    color: root.appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
                 }
             }
         }
@@ -142,7 +111,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: root.appDataModel.lastSampleTime
+                    text: root.appDataModel?.lastSampleTime ?? "--:--:--"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace
@@ -169,7 +138,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: root.appDataModel.samplingRate.toFixed(1) + " Hz"
+                    text: root.appDataModel ? (root.appDataModel.samplingRate.toFixed(1) + " Hz") : "-- Hz"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace
@@ -196,7 +165,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: root.appDataModel.systemFrequency.toFixed(3) + " Hz"
+                    text: root.appDataModel ? (root.appDataModel.systemFrequency.toFixed(3) + " Hz") : "-- Hz"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace
