@@ -5,13 +5,10 @@ import qpmu
 
 Rectangle {
     id: root
-    readonly property ApplicationDataModel appDataModel: ApplicationDataModel {}
-
-    visible: appDataModel !== null
 
     height: AppTheme.sizing.statusBarHeight
     color: AppTheme.colors.surface
-    border.color: appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+    border.color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
     border.width: 0
 
     // Top border only
@@ -20,7 +17,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         height: AppTheme.border.thick
-        color: root.appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+        color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
 
         Behavior on color {
             ColorAnimation {
@@ -38,9 +35,9 @@ Rectangle {
         Rectangle {
             Layout.preferredWidth: 110
             Layout.preferredHeight: AppTheme.sizing.buttonMedium
-            color: root.appDataModel?.isPaused ? AppTheme.withAlpha(AppTheme.colors.error, AppTheme.opacity.overlayLight) : AppTheme.withAlpha(AppTheme.colors.primary, AppTheme.opacity.overlayLight)
+            color: AppData.isPaused ? AppTheme.withAlpha(AppTheme.colors.error, AppTheme.opacity.overlayLight) : AppTheme.withAlpha(AppTheme.colors.primary, AppTheme.opacity.overlayLight)
             radius: AppTheme.radius.large
-            border.color: root.appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+            border.color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
             border.width: AppTheme.border.medium
 
             Behavior on color {
@@ -62,10 +59,10 @@ Rectangle {
                     width: AppTheme.spacing.small
                     height: AppTheme.spacing.small
                     radius: AppTheme.spacing.small / 2
-                    color: root.appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+                    color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
 
                     SequentialAnimation on opacity {
-                        running: root.appDataModel ? !root.appDataModel.isPaused : false
+                        running: !AppData.isPaused
                         loops: Animation.Infinite
                         NumberAnimation {
                             from: 1.0
@@ -81,11 +78,11 @@ Rectangle {
                 }
 
                 Text {
-                    text: root.appDataModel?.isPaused ? "PAUSED" : "LIVE"
+                    text: AppData.isPaused ? "PAUSED" : "LIVE"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.Bold
                     font.family: AppTheme.typography.fontFamilyMonospace
-                    color: root.appDataModel?.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+                    color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
                 }
             }
         }
@@ -111,7 +108,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: root.appDataModel?.lastSampleTime ?? "--:--:--"
+                    text: AppData.lastSampleTime ?? "--:--:--"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace
@@ -138,7 +135,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: root.appDataModel ? (root.appDataModel.samplingRate.toFixed(1) + " Hz") : "-- Hz"
+                    text: AppData.samplingRate.toFixed(1) + " Hz"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace
@@ -165,7 +162,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: root.appDataModel ? (root.appDataModel.systemFrequency.toFixed(3) + " Hz") : "-- Hz"
+                    text: AppData.systemFrequency.toFixed(3) + " Hz"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace

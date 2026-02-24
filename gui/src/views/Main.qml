@@ -41,9 +41,7 @@ ApplicationWindow {
     }
 
     // Status bar footer
-    footer: AppStatusBar {
-        appDataModel: mainStackView.currentItem?.appDataModel ?? null
-    }
+    footer: AppStatusBar {}
 
     // Context menu drawer (right edge)
     Drawer {

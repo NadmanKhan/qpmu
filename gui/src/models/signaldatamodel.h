@@ -1,5 +1,5 @@
-#ifndef SIGNAL_LIST_MODEL_H
-#define SIGNAL_LIST_MODEL_H
+#ifndef SIGNAL_DATA_MODEL_H
+#define SIGNAL_DATA_MODEL_H
 
 #include <QAbstractItemModel>
 #include <QColor>
@@ -193,4 +193,4 @@ private:
     static const QList<TableColumnConfig> s_tableColumnConfigs;
 };
 
-#endif // SIGNAL_LIST_MODEL_H
+#endif // SIGNAL_DATA_MODEL_H

@@ -1,7 +1,7 @@
-#include "applicationdatamodel.h"
+#include "appdata.h"
 #include <QtMath>
 
-ApplicationDataModel::ApplicationDataModel(QObject *parent)
+AppData::AppData(QObject *parent)
     : QObject(parent)
 {
     // Create signal list model
@@ -9,17 +9,17 @@ ApplicationDataModel::ApplicationDataModel(QObject *parent)
 
     // Connect signals from signal model to propagate data updates
     connect(m_signalDataModel, &QAbstractListModel::dataChanged,
-            this, &ApplicationDataModel::dataUpdated);
+            this, &AppData::dataUpdated);
 
     m_lastSampleTime = QDateTime::currentDateTime().toString("hh:mm:ss.zzz");
 
     // Setup simulation timer for testing
     m_simulationTimer = new QTimer(this);
     m_simulationTimer->setInterval(100); // 10 Hz update rate
-    connect(m_simulationTimer, &QTimer::timeout, this, &ApplicationDataModel::updateSimulatedData);
+    connect(m_simulationTimer, &QTimer::timeout, this, &AppData::updateSimulatedData);
 }
 
-qreal ApplicationDataModel::systemFrequency() const
+qreal AppData::systemFrequency() const
 {
     if (m_signalDataModel->rowCount() > 0) {
         // Get the first SignalData object and access its frequency property
@@ -33,18 +33,18 @@ qreal ApplicationDataModel::systemFrequency() const
     return 60.0;
 }
 
-void ApplicationDataModel::togglePause()
+void AppData::togglePause()
 {
     m_isPaused = !m_isPaused;
     emit pauseStateChanged();
 }
 
-void ApplicationDataModel::startSimulation()
+void AppData::startSimulation()
 {
     m_simulationTimer->start();
 }
 
-void ApplicationDataModel::updateSimulatedData()
+void AppData::updateSimulatedData()
 {
     m_simulationTime += 0.1; // Advance time
 
@@ -57,7 +57,7 @@ void ApplicationDataModel::updateSimulatedData()
     }
 }
 
-void ApplicationDataModel::processFrame(const qpmu::Measurement_Frame &frame)
+void AppData::processFrame(const qpmu::Measurement_Frame &frame)
 {
     // Delegate to signal model
     m_signalDataModel->updateFromFrame(frame, m_isPaused);

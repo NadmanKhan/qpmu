@@ -26,19 +26,16 @@ Screen {
     // Detect narrow screens (portrait or narrow landscape)
     property bool isNarrow: width < height * 1.5
 
-    // Application data model - manages signal data and simulation
-    appDataModel: ApplicationDataModel {
-        id: liveMonitorAppDataModel
-        Component.onCompleted: {
-            startSimulation();
-        }
-    }
-
     // View state model - manages UI state for LiveMonitor
     property ViewStateModel viewStateModel: ViewStateModel {
         Component.onCompleted: {
-            setSignalDataModel(root.appDataModel.signalDataModel);
+            setSignalDataModel(AppData.signalDataModel);
         }
+    }
+
+    // Start simulation when LiveMonitor is created
+    Component.onCompleted: {
+        AppData.startSimulation();
     }
 
     // Context menu for this screen
@@ -87,7 +84,6 @@ Screen {
                 SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
                 SplitView.fillHeight: !root.isNarrow
                 SplitView.fillWidth: root.isNarrow
-                appDataModel: root.appDataModel
                 viewStateModel: root.viewStateModel
             }
 
@@ -97,7 +93,6 @@ Screen {
                 SplitView.fillHeight: true
                 SplitView.minimumWidth: root.isNarrow ? 100 : parent.width * 0.3
                 SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
-                appDataModel: root.appDataModel
                 viewStateModel: root.viewStateModel
             }
         }

@@ -10,7 +10,6 @@ Rectangle {
 
     color: AppTheme.colors.surface
 
-    required property ApplicationDataModel appDataModel
     required property ViewStateModel viewStateModel
 
     readonly property real plotRadius: Math.min(width, height) * 0.38
@@ -23,7 +22,7 @@ Rectangle {
     property bool needsRepaint: false
 
     Connections {
-        target: root.appDataModel
+        target: AppData
         function onDataUpdated() {
             if (!root.viewStateModel.isPausedLocal) {
                 root.needsRepaint = true;
@@ -87,14 +86,14 @@ Rectangle {
             }
 
             // Draw phasor arrows - iterate over signals from model
-            let signalCount = root.appDataModel.signalDataModel.rowCount();
+            let signalCount = AppData.signalDataModel.rowCount();
             for (let i = 0; i < signalCount; i++) {
                 // Check visibility
                 if (!root.viewStateModel.isSignalVisible(i)) {
                     continue;
                 }
 
-                let signal = root.appDataModel.signalDataModel.data(root.appDataModel.signalDataModel.index(i, 0), SignalDataModel.SignalDataRole);
+                let signal = AppData.signalDataModel.data(AppData.signalDataModel.index(i, 0), SignalDataModel.SignalDataRole);
 
                 // Get effective magnitude and phase from ViewStateModel
                 let magnitude = root.viewStateModel.getEffectiveMagnitude(signal);
@@ -164,13 +163,13 @@ Rectangle {
 
     // Phasor labels - Repeater iterates over the signal model rows
     Repeater {
-        model: root.appDataModel.signalDataModel.rowCount()
+        model: AppData.signalDataModel.rowCount()
 
         delegate: Rectangle {
             id: labelRect
             required property int index
 
-            property var signalData: root.appDataModel.signalDataModel.data(root.appDataModel.signalDataModel.index(index, 0), SignalDataModel.SignalDataRole)
+            property var signalData: AppData.signalDataModel.data(AppData.signalDataModel.index(index, 0), SignalDataModel.SignalDataRole)
             property real magnitude: signalData ? root.viewStateModel.getEffectiveMagnitude(signalData) : 0
             property real phase: signalData ? root.viewStateModel.getEffectivePhase(signalData, index) : 0
             property string name: signalData ? signalData.name : ""

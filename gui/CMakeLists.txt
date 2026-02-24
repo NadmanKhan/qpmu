@@ -13,8 +13,8 @@ qt_add_executable(appqpmu
     src/main.cpp
     src/models/signaldatamodel.h
     src/models/signaldatamodel.cpp
-    src/models/applicationdatamodel.h
-    src/models/applicationdatamodel.cpp
+    src/models/AppData.h
+    src/models/AppData.cpp
     src/models/viewstatemodel.h
     src/models/viewstatemodel.cpp
 )
@@ -54,8 +54,8 @@ qt_add_qml_module(appqpmu
     SOURCES
         src/models/signaldatamodel.h
         src/models/signaldatamodel.cpp
-        src/models/applicationdatamodel.h
-        src/models/applicationdatamodel.cpp
+        src/models/appdata.h
+        src/models/appdata.cpp
         src/models/viewstatemodel.h
         src/models/viewstatemodel.cpp
 )

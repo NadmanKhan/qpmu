@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import qpmu
 
 /**
  * Screen - Base component for all application screens
@@ -23,11 +22,10 @@ Rectangle {
     property string title: "Screen"
     property bool canGoBack: false
     property Component contextMenu: null
-    property var appDataModel: null  // Can be set by screens that have data models
 
     // Navigation signals
     signal navigateTo(Component screen)
-    signal navigateBack()
+    signal navigateBack
 
     // Lifecycle hooks (subclasses can override)
     signal activated    // When pushed onto stack

@@ -1,5 +1,5 @@
-#ifndef APPLICATION_MODEL_H
-#define APPLICATION_MODEL_H
+#ifndef APP_DATA_H
+#define APP_DATA_H
 
 #include <QObject>
 #include <QTimer>
@@ -11,22 +11,20 @@
 
 // Application-level model managing application metadata
 // Contains a SignalDataModel for signal data
-class ApplicationDataModel : public QObject
+class AppData : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_SINGLETON
 
-    // Signal list model
-    Q_PROPERTY(SignalDataModel* signalDataModel READ signalDataModel CONSTANT)
-
-    // Application metadata properties
+    Q_PROPERTY(SignalDataModel *signalDataModel READ signalDataModel CONSTANT)
     Q_PROPERTY(qreal samplingRate READ samplingRate NOTIFY dataUpdated)
     Q_PROPERTY(QString lastSampleTime READ lastSampleTime NOTIFY dataUpdated)
     Q_PROPERTY(bool isPaused READ isPaused NOTIFY pauseStateChanged)
     Q_PROPERTY(qreal systemFrequency READ systemFrequency NOTIFY dataUpdated)
 
 public:
-    explicit ApplicationDataModel(QObject *parent = nullptr);
+    explicit AppData(QObject *parent = nullptr);
 
     // Property getters
     inline SignalDataModel *signalDataModel() const { return m_signalDataModel; }
@@ -62,4 +60,4 @@ private:
     qreal m_simulationTime = 0.0;
 };
 
-#endif // APPLICATION_MODEL_H
+#endif // APP_DATA_H

@@ -9,7 +9,6 @@ Rectangle {
 
     color: AppTheme.colors.surface
 
-    required property ApplicationDataModel appDataModel
     required property ViewStateModel viewStateModel
 
     readonly property int pointsPerCycle: 40
@@ -81,7 +80,7 @@ Rectangle {
         property bool needsRepaint: false
 
         Connections {
-            target: root.appDataModel
+            target: AppData
             function onDataUpdated() {
                 if (!root.viewStateModel.isPausedLocal) {
                     waveformCanvas.needsRepaint = true;
@@ -115,14 +114,14 @@ Rectangle {
             ctx.clearRect(0, 0, width, height);
 
             // Draw all waveforms from signal model
-            let signalCount = root.appDataModel.signalDataModel.rowCount();
+            let signalCount = AppData.signalDataModel.rowCount();
             for (let signalIndex = 0; signalIndex < signalCount; signalIndex++) {
                 // Check visibility
                 if (!root.viewStateModel.isSignalVisible(signalIndex)) {
                     continue;
                 }
 
-                let signal = root.appDataModel.signalDataModel.data(root.appDataModel.signalDataModel.index(signalIndex, 0), SignalDataModel.SignalDataRole);
+                let signal = AppData.signalDataModel.data(AppData.signalDataModel.index(signalIndex, 0), SignalDataModel.SignalDataRole);
 
                 if (!signal)
                     continue;

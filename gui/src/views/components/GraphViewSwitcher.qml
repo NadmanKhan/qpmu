@@ -11,7 +11,6 @@ Rectangle {
 
     color: AppTheme.colors.surface
 
-    required property ApplicationDataModel appDataModel
     required property ViewStateModel viewStateModel
 
     property int currentView: 0  // 0 = Phasor, 1 = Waveform
@@ -173,7 +172,6 @@ Rectangle {
             PhasorPlotModel {
                 id: phasorView
                 anchors.fill: parent
-                appDataModel: root.appDataModel
                 viewStateModel: root.viewStateModel
                 opacity: root.currentView === 0 ? 1.0 : 0.0
                 visible: opacity > 0
@@ -189,7 +187,6 @@ Rectangle {
             WaveformPlotModel {
                 id: waveformView
                 anchors.fill: parent
-                appDataModel: root.appDataModel
                 viewStateModel: root.viewStateModel
                 opacity: root.currentView === 1 ? 1.0 : 0.0
                 visible: opacity > 0
