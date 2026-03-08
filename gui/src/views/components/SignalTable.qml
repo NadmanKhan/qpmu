@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
+import QtCore
 import qpmu
 
 // Signal data table using TableView with QAbstractItemModel
@@ -8,8 +9,6 @@ Rectangle {
     id: root
 
     color: AppTheme.colors.surface
-
-    required property ViewStateModel viewStateModel
 
     Item {
         id: tableContainer
@@ -81,8 +80,8 @@ Rectangle {
                 required property int index
 
                 readonly property size headerSize: AppData.signalDataModel.headerData(verticalHeaderDelegate.index, Qt.Vertical, Qt.SizeHintRole)
-                readonly property var signalData: AppData.signalDataModel.data(AppData.signalDataModel.index(verticalHeaderDelegate.index, 0), SignalDataModel.SignalDataRole)
-                readonly property color signalColor: signalData ? signalData.color : "transparent"
+                readonly property color signalColor: AppData.signalDataModel.data(AppData.signalDataModel.index(verticalHeaderDelegate.index, 0), Qt.DecorationRole)
+                readonly property bool isSelected: AppData.signalDataModel.selectionModel.isRowSelected(verticalHeaderDelegate.index)
 
                 implicitHeight: headerSize.height
                 implicitWidth: headerSize.width + 30  // Extra space for checkbox
@@ -95,13 +94,13 @@ Rectangle {
                     anchors.rightMargin: AppTheme.spacing.small
                     spacing: AppTheme.spacing.small
 
-                    // Checkbox for visibility toggle
+                    // Checkbox for selection toggle
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 20
                         height: 20
                         radius: 4
-                        color: root.viewStateModel.isSignalVisible(verticalHeaderDelegate.index) ? verticalHeaderDelegate.signalColor : AppTheme.colors.surfacePressed
+                        color: verticalHeaderDelegate.isSelected ? verticalHeaderDelegate.signalColor : AppTheme.colors.surfacePressed
                         border.color: verticalHeaderDelegate.signalColor
                         border.width: 2
 
@@ -111,13 +110,13 @@ Rectangle {
                             }
                         }
 
-                        // Checkmark icon when visible
+                        // Checkmark icon when selected
                         Text {
                             anchors.centerIn: parent
                             text: "✓"
                             font.pixelSize: 14
                             font.weight: Font.Bold
-                            color: root.viewStateModel.isSignalVisible(verticalHeaderDelegate.index) ? AppTheme.colors.textInverse : AppTheme.colors.textTertiary
+                            color: verticalHeaderDelegate.isSelected ? AppTheme.colors.textInverse : AppTheme.colors.textTertiary
                             visible: true
 
                             Behavior on color {
@@ -130,7 +129,15 @@ Rectangle {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: root.viewStateModel.toggleSignalVisibility(verticalHeaderDelegate.index)
+                            onClicked: {
+                                // Toggle selection in selection model
+                                let modelIndex = AppData.signalDataModel.index(verticalHeaderDelegate.index, 0);
+                                if (verticalHeaderDelegate.isSelected) {
+                                    AppData.signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.Deselect | ItemSelectionModel.Rows);
+                                } else {
+                                    AppData.signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.Select | ItemSelectionModel.Rows);
+                                }
+                            }
                         }
                     }
 
@@ -182,30 +189,11 @@ Rectangle {
                 required property int column
                 required property var model
 
-                readonly property var signalData: AppData.signalDataModel.data(AppData.signalDataModel.index(cellDelegate.row, 0), SignalDataModel.SignalDataRole)
+                readonly property var signalData: AppData.signalDataModel.data(AppData.signalDataModel.index(cellDelegate.row, 0), Qt.UserRole)
                 readonly property color backgroundColor: cellDelegate.model.background || "transparent"
                 readonly property color decorationColor: cellDelegate.model.decoration || "transparent"
 
-                // Compute effective display text based on column
-                readonly property string effectiveDisplay: {
-                    if (!signalData) return cellDelegate.model.display;
-
-                    // Column 0: Magnitude
-                    if (cellDelegate.column === 0) {
-                        let mag = root.viewStateModel.getEffectiveMagnitude(signalData);
-                        return mag.toFixed(2) + " " + signalData.unit;
-                    }
-                    // Column 1: Phase
-                    else if (cellDelegate.column === 1) {
-                        let phase = root.viewStateModel.getEffectivePhase(signalData, cellDelegate.row);
-                        return phase.toFixed(1) + "°";
-                    }
-                    // Other columns: use original display
-                    else {
-                        return cellDelegate.model.display;
-                    }
-                }
-
+                // Display text comes directly from model (already computed with effective values)
                 color: backgroundColor
                 radius: AppTheme.radius.small
                 border.color: Qt.rgba(backgroundColor.r, backgroundColor.g, backgroundColor.b, 3.33)
@@ -215,7 +203,7 @@ Rectangle {
                     anchors.fill: parent
                     anchors.leftMargin: AppTheme.spacing.small
                     anchors.rightMargin: AppTheme.spacing.small
-                    text: cellDelegate.effectiveDisplay
+                    text: cellDelegate.model.display
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.Medium
                     font.family: AppTheme.typography.fontFamilyMonospace
