@@ -50,7 +50,7 @@ public:
         const auto &head_sf = _sample_frames_circbuf[_head];
         const auto &tail_sf = _sample_frames_circbuf[_tail];
 
-        for (std::size_t ci = 0; ci < N_Channels; ++ci) {
+        for (std::size_t ci = 0; ci < Signal_Infos.size(); ++ci) {
             Channel_State &channel = _channels[ci];
             Estimate &estimate = channel.estimates_circbuf[_head];
 
@@ -89,7 +89,7 @@ public:
         }
 
         // Copy current estimates to output vector
-        for (std::size_t ci = 0; ci < N_Channels; ++ci) {
+        for (std::size_t ci = 0; ci < Signal_Infos.size(); ++ci) {
             _estimate_vector[ci] = _channels[ci].estimates_circbuf[_head];
         }
 
@@ -122,7 +122,7 @@ private:
         Float prev_phase = 0.0;
         Float running_total_phase_displacement = 0.0;
     };
-    std::array<Channel_State, N_Channels> _channels = {};
+    std::array<Channel_State, Signal_Infos.size()> _channels = {};
 };
 
 } // namespace qpmu

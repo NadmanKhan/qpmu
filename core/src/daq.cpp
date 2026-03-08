@@ -54,7 +54,7 @@ public:
 
         // Copy input buffer to reading
         _sample_frame.timestamp = buffer.timestamp;
-        for (std::size_t i = 0; i < N_Channels; ++i) {
+        for (std::size_t i = 0; i < Signal_Infos.size(); ++i) {
             _sample_frame.sample_vector[i] = buffer.samples[i];
         }
 
@@ -68,7 +68,7 @@ private:
     struct Input_Buffer
     {
         Timestamp timestamp;
-        std::array<Sample, N_Channels * 30> samples; // 30 samples per channel
+        std::array<Sample, Signal_Infos.size() * 30> samples; // 30 samples per channel
     };
 
     int _fd = -1;

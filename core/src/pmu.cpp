@@ -98,10 +98,10 @@ public:
                                _config.use_polar); // COORD_TYPE (true = polar)
 
         // Add phasor channels based on signal configuration
-        for (std::size_t i = 0; i < N_Channels; ++i) {
-            const auto &signal = Signals[i];
+        for (std::size_t i = 0; i < Signal_Infos.size(); ++i) {
+            const auto &signal = Signal_Infos[i];
             _pmu->PHASOR_add(signal.name, 1,
-                             signal.type == Signal_Info::Voltage ? VOLTAGE : CURRENT);
+                             signal.type_id == Signal_Info::Type_Voltage ? VOLTAGE : CURRENT);
         }
 
         // Set nominal frequency
@@ -110,7 +110,7 @@ public:
         _pmu->STAT_set(0);
 
         // Initialize phasor values
-        for (std::size_t i = 0; i < N_Channels; ++i) {
+        for (std::size_t i = 0; i < Signal_Infos.size(); ++i) {
             _pmu->PHASOR_VALUE_set(Complex(0.0f, 0.0f), i);
         }
         _pmu->FREQ_set(_config.nominal_freq == FN_50HZ ? 50.0f : 60.0f);
@@ -217,21 +217,21 @@ public:
         // Compute average frequency and ROCOF across all channels
         float freq = 0.0f;
         float dfreq = 0.0f;
-        for (std::size_t i = 0; i < N_Channels; ++i) {
+        for (std::size_t i = 0; i < Signal_Infos.size(); ++i) {
             freq += measurement.estimate_vector[i].frequency;
             dfreq += measurement.estimate_vector[i].rocof;
         }
-        freq /= N_Channels;
-        dfreq /= N_Channels;
+        freq /= Signal_Infos.size();
+        dfreq /= Signal_Infos.size();
 
         {
             // Acquire write lock to safely update shared PMU data
             const auto lock = std::lock_guard(_frame_mutex);
-            _data_frame->SOC_set(
-                    static_cast<unsigned long>(measurement.timestamp / Time_Resolution));
-            _data_frame->FRACSEC_set(
-                    static_cast<unsigned long>(measurement.timestamp % Time_Resolution));
-            for (std::size_t i = 0; i < N_Channels; ++i) {
+            _data_frame->SOC_set(static_cast<unsigned long>(measurement.sample_frame.timestamp
+                                                            / Time_Resolution));
+            _data_frame->FRACSEC_set(static_cast<unsigned long>(measurement.sample_frame.timestamp
+                                                                % Time_Resolution));
+            for (std::size_t i = 0; i < Signal_Infos.size(); ++i) {
                 _pmu->PHASOR_VALUE_set(measurement.estimate_vector[i].phasor, i);
             }
             _pmu->FREQ_set(freq);

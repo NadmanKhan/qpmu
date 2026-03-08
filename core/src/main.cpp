@@ -18,7 +18,7 @@ int main()
     DSP_Engine<F_Nominal, F_Sampling> dsp_engine;
     RPMsg_Reader sample_reader(RPMsg_Device_Path);
 
-    Float prev_phase[N_Channels] = {};
+    Float prev_phase[Signal_Infos.size()] = {};
 
     // Service loop
     while (true) {
@@ -30,7 +30,7 @@ int main()
         auto sample_frame = sample_reader.sample_frame();
         std::printf("\n\n");
         // std::printf("Samples: ");
-        // for (std::size_t channel = 0; channel < N_Channels; ++channel) {
+        // for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
         //     std::printf("%d  ", sample_frame.sample_vector[channel]);
 
         // }
@@ -44,25 +44,25 @@ int main()
         auto estimate_vector = dsp_engine.estimate_vector();
 
         //     std::printf("Phasor estimates: ");
-        for (std::size_t channel = 0; channel < N_Channels; ++channel) {
+        for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
             auto phasor = estimate_vector[channel].phasor;
             Float phase = std::arg(phasor) * (180.0 / M_PI);
             Float phase_diff =
                     wrapping_add(phase, -prev_phase[channel], -Float(180.0), Float(180.0));
-            std::printf("%c%c: (%.3f, %.3f°)  %.3f", Signals[channel].name[0],
-                        Signals[channel].name[1], std::abs(phasor), phase, phase_diff);
+            std::printf("%c%c: (%.3f, %.3f°)  %.3f", Signal_Infos[channel].name[0],
+                        Signal_Infos[channel].name[1], std::abs(phasor), phase, phase_diff);
             prev_phase[channel] = phase;
         }
         std::printf("\n");
         std::printf("\nFrequency estimates (Hz): ");
-        for (std::size_t channel = 0; channel < N_Channels; ++channel) {
-            std::printf("%c%c: %.3f  ", Signals[channel].name[0], Signals[channel].name[1],
+        for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
+            std::printf("%c%c: %.3f  ", Signal_Infos[channel].name[0], Signal_Infos[channel].name[1],
                         estimate_vector[channel].frequency);
         }
         std::printf("\n");
         std::printf("ROCOF estimates (Hz/s): ");
-        for (std::size_t channel = 0; channel < N_Channels; ++channel) {
-            std::printf("%c%c: %.3f  ", Signals[channel].name[0], Signals[channel].name[1],
+        for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
+            std::printf("%c%c: %.3f  ", Signal_Infos[channel].name[0], Signal_Infos[channel].name[1],
                         estimate_vector[channel].rocof);
         }
     }
