@@ -11,8 +11,6 @@ Rectangle {
 
     color: AppTheme.colors.surface
 
-    required property ViewStateModel viewStateModel
-
     property int currentView: 0  // 0 = Phasor, 1 = Waveform
 
     ColumnLayout {
@@ -22,7 +20,7 @@ Rectangle {
         // Toggle control
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 55
+            Layout.preferredHeight: AppTheme.sizing.medium
             color: AppTheme.colors.surface
             z: 10
 
@@ -32,8 +30,8 @@ Rectangle {
 
                 // Phasor button
                 Rectangle {
-                    width: 140
-                    height: 42
+                    width: AppTheme.sizing.large * 2
+                    height: AppTheme.sizing.small
                     color: root.currentView === 0 ? AppTheme.colors.borderEmphasized : AppTheme.colors.surfaceElevated
                     radius: AppTheme.radius.medium
 
@@ -59,7 +57,7 @@ Rectangle {
 
                         Text {
                             text: "◉"
-                            font.pixelSize: AppTheme.typography.size.large
+                            font.pointSize: AppTheme.typography.size.medium
                             color: root.currentView === 0 ? AppTheme.colors.primary : AppTheme.colors.textTertiary
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -72,7 +70,7 @@ Rectangle {
 
                         Text {
                             text: "Phasor"
-                            font.pixelSize: AppTheme.typography.size.normal
+                            font.pointSize: AppTheme.typography.size.normal
                             font.weight: Font.DemiBold
                             font.family: AppTheme.typography.fontFamily
                             color: root.currentView === 0 ? AppTheme.colors.textPrimary : AppTheme.colors.textTertiary
@@ -101,8 +99,8 @@ Rectangle {
 
                 // Waveform button
                 Rectangle {
-                    width: 140
-                    height: 42
+                    width: AppTheme.sizing.large * 2
+                    height: AppTheme.sizing.small
                     color: root.currentView === 1 ? AppTheme.colors.borderEmphasized : AppTheme.colors.surfaceElevated
                     radius: AppTheme.radius.medium
 
@@ -128,7 +126,7 @@ Rectangle {
 
                         Text {
                             text: "∿"
-                            font.pixelSize: AppTheme.typography.size.large
+                            font.pointSize: AppTheme.typography.size.medium
                             color: root.currentView === 1 ? AppTheme.colors.primary : AppTheme.colors.textTertiary
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -141,7 +139,7 @@ Rectangle {
 
                         Text {
                             text: "Waveform"
-                            font.pixelSize: AppTheme.typography.size.normal
+                            font.pointSize: AppTheme.typography.size.normal
                             font.weight: Font.DemiBold
                             font.family: AppTheme.typography.fontFamily
                             color: root.currentView === 1 ? AppTheme.colors.textPrimary : AppTheme.colors.textTertiary
@@ -172,7 +170,6 @@ Rectangle {
             PhasorPlotModel {
                 id: phasorView
                 anchors.fill: parent
-                viewStateModel: root.viewStateModel
                 opacity: root.currentView === 0 ? 1.0 : 0.0
                 visible: opacity > 0
 
@@ -187,7 +184,6 @@ Rectangle {
             WaveformPlotModel {
                 id: waveformView
                 anchors.fill: parent
-                viewStateModel: root.viewStateModel
                 opacity: root.currentView === 1 ? 1.0 : 0.0
                 visible: opacity > 0
 
