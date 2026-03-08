@@ -104,16 +104,16 @@ QtObject {
 
     readonly property var sizing: QtObject {
         // Common component heights
-        readonly property int buttonSmall: 30
-        readonly property int buttonMedium: 44
-        readonly property int buttonLarge: 54
+        readonly property int small: 30
+        readonly property int medium: 44
+        readonly property int large: 54
 
         // Interactive minimums (for touch targets)
         readonly property int touchTarget: 44
 
         // Layout components
-        readonly property int statusBarHeight: 72
         readonly property int toolbarHeight: 55
+        readonly property int statusBarHeight: 72
     }
 
     // ============================================================================
