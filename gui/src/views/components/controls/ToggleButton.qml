@@ -10,10 +10,10 @@ Rectangle {
     property string rightLabel: ""
     property bool isRightActive: false  // false = left active, true = right active
 
-    signal toggled()
+    signal toggled
 
     implicitWidth: 200
-    implicitHeight: AppTheme.sizing.buttonMedium
+    implicitHeight: AppTheme.sizing.medium
 
     color: AppTheme.colors.surfaceElevated
     radius: AppTheme.radius.large

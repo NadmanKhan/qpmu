@@ -20,7 +20,7 @@ RowLayout {
     Slider {
         id: slider
         Layout.fillWidth: true
-        Layout.preferredHeight: AppTheme.sizing.buttonMedium
+        Layout.preferredHeight: AppTheme.sizing.medium
 
         from: 0
         to: 500
@@ -65,7 +65,7 @@ RowLayout {
 
     Rectangle {
         Layout.preferredWidth: 70
-        Layout.preferredHeight: AppTheme.sizing.buttonSmall
+        Layout.preferredHeight: AppTheme.sizing.small
         color: AppTheme.colors.surfaceElevated
         radius: AppTheme.radius.small
         border.color: AppTheme.colors.borderEmphasized

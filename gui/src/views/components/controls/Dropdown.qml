@@ -7,7 +7,7 @@ import qpmu
 ComboBox {
     id: root
 
-    implicitHeight: AppTheme.sizing.buttonMedium
+    implicitHeight: AppTheme.sizing.medium
     font.pixelSize: AppTheme.typography.size.normal
     font.family: AppTheme.typography.fontFamily
 
@@ -77,7 +77,7 @@ ComboBox {
         required property int index
 
         width: root.width - 8
-        height: AppTheme.sizing.buttonMedium
+        height: AppTheme.sizing.medium
 
         highlighted: root.highlightedIndex === index
 

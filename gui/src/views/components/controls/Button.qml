@@ -11,10 +11,10 @@ Rectangle {
     property bool active: false
     property alias cursorShape: mouseArea.cursorShape
 
-    signal clicked()
+    signal clicked
 
-    implicitWidth: label.length > 0 ? labelText.width + AppTheme.spacing.large * 2 : AppTheme.sizing.buttonMedium
-    implicitHeight: AppTheme.sizing.buttonMedium
+    implicitWidth: label.length > 0 ? labelText.width + AppTheme.spacing.large * 2 : AppTheme.sizing.medium
+    implicitHeight: AppTheme.sizing.medium
 
     color: mouseArea.pressed ? AppTheme.state.surfacePressed : (mouseArea.containsMouse ? AppTheme.state.surfaceHover : AppTheme.state.surfaceDefault)
     radius: AppTheme.radius.large
