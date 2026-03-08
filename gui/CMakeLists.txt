@@ -13,10 +13,8 @@ qt_add_executable(appqpmu
     src/main.cpp
     src/models/signaldatamodel.h
     src/models/signaldatamodel.cpp
-    src/models/AppData.h
-    src/models/AppData.cpp
-    src/models/viewstatemodel.h
-    src/models/viewstatemodel.cpp
+    src/models/appdata.h
+    src/models/appdata.cpp
 )
 
 # Add qtquickcontrols2.conf as a resource at the root level
@@ -41,6 +39,7 @@ qt_add_qml_module(appqpmu
         src/views/components/PhasorPlotModel.qml
         src/views/components/WaveformPlotModel.qml
         src/views/components/SignalTable.qml
+        src/views/components/DataTable.qml
         src/views/components/GraphViewSwitcher.qml
         src/views/components/Screen.qml
         src/views/components/AppToolBar.qml
@@ -56,8 +55,6 @@ qt_add_qml_module(appqpmu
         src/models/signaldatamodel.cpp
         src/models/appdata.h
         src/models/appdata.cpp
-        src/models/viewstatemodel.h
-        src/models/viewstatemodel.cpp
 )
 
 set_target_properties(appqpmu PROPERTIES
