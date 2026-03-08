@@ -26,13 +26,6 @@ Screen {
     // Detect narrow screens (portrait or narrow landscape)
     property bool isNarrow: width < height * 1.5
 
-    // View state model - manages UI state for LiveMonitor
-    property ViewStateModel viewStateModel: ViewStateModel {
-        Component.onCompleted: {
-            setSignalDataModel(AppData.signalDataModel);
-        }
-    }
-
     // Start simulation when LiveMonitor is created
     Component.onCompleted: {
         AppData.startSimulation();
@@ -40,9 +33,7 @@ Screen {
 
     // Context menu for this screen
     contextMenu: Component {
-        LiveMonitorContextMenu {
-            viewStateModel: root.viewStateModel
-        }
+        LiveMonitorContextMenu {}
     }
 
     // Main content area - graph view and data table
@@ -50,50 +41,48 @@ Screen {
         anchors.fill: parent
         orientation: root.isNarrow ? Qt.Vertical : Qt.Horizontal
 
-            handle: Rectangle {
-                implicitWidth: root.isNarrow ? parent.width : 6
-                implicitHeight: root.isNarrow ? 6 : parent.height
-                color: SplitHandle.hovered ? AppTheme.colors.borderEmphasized : AppTheme.colors.surfaceElevated
+        handle: Rectangle {
+            implicitWidth: root.isNarrow ? parent.width : 6
+            implicitHeight: root.isNarrow ? 6 : parent.height
+            color: SplitHandle.hovered ? AppTheme.colors.borderEmphasized : AppTheme.colors.surfaceElevated
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.motion.normal
+                }
+            }
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: root.isNarrow ? parent.width * 0.3 : 2
+                height: root.isNarrow ? 2 : parent.height * 0.3
+                radius: 1
+                color: SplitHandle.hovered ? AppTheme.colors.textTertiary : AppTheme.colors.border
 
                 Behavior on color {
                     ColorAnimation {
                         duration: AppTheme.motion.normal
                     }
                 }
-
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: root.isNarrow ? parent.width * 0.3 : 2
-                    height: root.isNarrow ? 2 : parent.height * 0.3
-                    radius: 1
-                    color: SplitHandle.hovered ? AppTheme.colors.textTertiary : AppTheme.colors.border
-
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: AppTheme.motion.normal
-                        }
-                    }
-                }
-            }
-
-            // Graph view (Left in horizontal, Top in vertical)
-            GraphViewSwitcher {
-                SplitView.preferredWidth: root.isNarrow ? parent.width : parent.width * 0.5
-                SplitView.preferredHeight: root.isNarrow ? parent.height * 0.5 : parent.height
-                SplitView.minimumWidth: root.isNarrow ? 100 : parent.width * 0.3
-                SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
-                SplitView.fillHeight: !root.isNarrow
-                SplitView.fillWidth: root.isNarrow
-                viewStateModel: root.viewStateModel
-            }
-
-            // Data table (Right in horizontal, Bottom in vertical)
-            SignalTable {
-                SplitView.fillWidth: true
-                SplitView.fillHeight: true
-                SplitView.minimumWidth: root.isNarrow ? 100 : parent.width * 0.3
-                SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
-                viewStateModel: root.viewStateModel
             }
         }
+
+        // Graph view (Left in horizontal, Top in vertical)
+        GraphViewSwitcher {
+            SplitView.preferredWidth: root.isNarrow ? parent.width : parent.width * 0.5
+            SplitView.preferredHeight: root.isNarrow ? parent.height * 0.5 : parent.height
+            SplitView.minimumWidth: root.isNarrow ? 100 : parent.width * 0.3
+            SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
+            SplitView.fillHeight: !root.isNarrow
+            SplitView.fillWidth: root.isNarrow
+        }
+
+        // Data table (Right in horizontal, Bottom in vertical)
+        DataTable {
+            SplitView.fillWidth: true
+            SplitView.fillHeight: true
+            SplitView.minimumWidth: root.isNarrow ? 100 : parent.width * 0.3
+            SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
+        }
+    }
 }
