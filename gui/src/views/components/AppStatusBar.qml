@@ -34,7 +34,7 @@ Rectangle {
         // Status indicator
         Rectangle {
             Layout.preferredWidth: 110
-            Layout.preferredHeight: AppTheme.sizing.buttonMedium
+            Layout.preferredHeight: AppTheme.sizing.medium
             color: AppData.isPaused ? AppTheme.withAlpha(AppTheme.colors.error, AppTheme.opacity.overlayLight) : AppTheme.withAlpha(AppTheme.colors.primary, AppTheme.opacity.overlayLight)
             radius: AppTheme.radius.large
             border.color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary

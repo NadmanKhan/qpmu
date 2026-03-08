@@ -1,21 +1,12 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Layouts
 import QtQuick.Controls
-import qpmu
+import QtQuick.Layouts
 import "controls"
+import qpmu
 
-/**
- * LiveMonitorContextMenu - Explicit context menu for LiveMonitor screen
- *
- * Contains all controls from the original ControlPanel:
- * - DATA CONTROLS: Magnitude, Phase Reference, Playback
- * - PLOT CONTROLS: Voltage/Current Scaling
- */
 ScrollView {
     id: root
-
-    required property ViewStateModel viewStateModel
 
     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
     ScrollBar.vertical.policy: ScrollBar.AsNeeded
@@ -50,9 +41,9 @@ ScrollView {
                 Layout.fillWidth: true
                 leftLabel: "RMS"
                 rightLabel: "Peak"
-                isRightActive: root.viewStateModel.magnitudeMode === ViewStateModel.Peak
+                isRightActive: AppData.signalDataModel.magnitudeMode === SignalDataModel.Peak
                 onToggled: {
-                    root.viewStateModel.magnitudeMode = isRightActive ? ViewStateModel.Peak : ViewStateModel.RMS;
+                    AppData.signalDataModel.magnitudeMode = isRightActive ? SignalDataModel.Peak : SignalDataModel.RMS;
                 }
             }
         }
@@ -75,9 +66,9 @@ ScrollView {
             Dropdown {
                 Layout.fillWidth: true
                 model: ["Absolute", "VA", "VB", "VC", "IA", "IB", "IC"]
-                currentIndex: root.viewStateModel.phaseReferenceSignalIndex + 1  // +1 because Absolute is index 0 in dropdown
-                onActivated: (index) => {
-                    root.viewStateModel.phaseReferenceSignalIndex = index - 1;  // -1 because Absolute is -1 in model
+                currentIndex: AppData.signalDataModel.phaseReferenceIndex + 1  // +1 because Absolute is index 0 in dropdown
+                onActivated: index => {
+                    AppData.signalDataModel.phaseReferenceIndex = index - 1;  // -1 because Absolute is -1 in model
                 }
             }
         }
@@ -99,14 +90,16 @@ ScrollView {
 
             Button {
                 Layout.fillWidth: true
-                label: root.viewStateModel.isPausedLocal ? "Resume" : "Pause"
-                icon: root.viewStateModel.isPausedLocal ? "▶" : "⏸"
-                active: root.viewStateModel.isPausedLocal
-                onClicked: root.viewStateModel.isPausedLocal = !root.viewStateModel.isPausedLocal
+                label: AppData.signalDataModel.isPaused ? "Resume" : "Pause"
+                icon: AppData.signalDataModel.isPaused ? "▶" : "⏸"
+                active: AppData.signalDataModel.isPaused
+                onClicked: AppData.signalDataModel.isPaused = !AppData.signalDataModel.isPaused
             }
         }
 
-        Item { Layout.preferredHeight: AppTheme.spacing.medium }
+        Item {
+            Layout.preferredHeight: AppTheme.spacing.medium
+        }
 
         // PLOT CONTROLS Section
         SectionHeader {
@@ -133,24 +126,24 @@ ScrollView {
                 Layout.fillWidth: true
                 leftLabel: "Dynamic"
                 rightLabel: "Manual"
-                isRightActive: root.viewStateModel.voltageScalingMode === ViewStateModel.Manual
+                isRightActive: AppData.signalDataModel.voltageScalingMode === SignalDataModel.Manual
                 onToggled: {
-                    root.viewStateModel.voltageScalingMode = isRightActive ? ViewStateModel.Manual : ViewStateModel.Dynamic;
+                    AppData.signalDataModel.voltageScalingMode = isRightActive ? SignalDataModel.Manual : SignalDataModel.Dynamic;
                 }
             }
 
             SliderWithValue {
                 Layout.fillWidth: true
-                visible: root.viewStateModel.voltageScalingMode === ViewStateModel.Manual
+                visible: AppData.signalDataModel.voltageScalingMode === SignalDataModel.Manual
                 from: 10
                 to: 500
-                value: root.viewStateModel.voltageCutoff
+                value: AppData.signalDataModel.voltageCutoff
                 stepSize: 5
                 unit: "V"
                 decimals: 0
                 onValueChanged: {
-                    if (root.viewStateModel.voltageScalingMode === ViewStateModel.Manual) {
-                        root.viewStateModel.voltageCutoff = value;
+                    if (AppData.signalDataModel.voltageScalingMode === SignalDataModel.Manual) {
+                        AppData.signalDataModel.voltageCutoff = value;
                     }
                 }
             }
@@ -175,30 +168,32 @@ ScrollView {
                 Layout.fillWidth: true
                 leftLabel: "Dynamic"
                 rightLabel: "Manual"
-                isRightActive: root.viewStateModel.currentScalingMode === ViewStateModel.Manual
+                isRightActive: AppData.signalDataModel.currentScalingMode === SignalDataModel.Manual
                 onToggled: {
-                    root.viewStateModel.currentScalingMode = isRightActive ? ViewStateModel.Manual : ViewStateModel.Dynamic;
+                    AppData.signalDataModel.currentScalingMode = isRightActive ? SignalDataModel.Manual : SignalDataModel.Dynamic;
                 }
             }
 
             SliderWithValue {
                 Layout.fillWidth: true
-                visible: root.viewStateModel.currentScalingMode === ViewStateModel.Manual
+                visible: AppData.signalDataModel.currentScalingMode === SignalDataModel.Manual
                 from: 1
                 to: 50
-                value: root.viewStateModel.currentCutoff
+                value: AppData.signalDataModel.currentCutoff
                 stepSize: 0.5
                 unit: "A"
                 decimals: 1
                 onValueChanged: {
-                    if (root.viewStateModel.currentScalingMode === ViewStateModel.Manual) {
-                        root.viewStateModel.currentCutoff = value;
+                    if (AppData.signalDataModel.currentScalingMode === SignalDataModel.Manual) {
+                        AppData.signalDataModel.currentCutoff = value;
                     }
                 }
             }
         }
 
         // Spacer at bottom
-        Item { Layout.fillHeight: true }
+        Item {
+            Layout.fillHeight: true
+        }
     }
 }

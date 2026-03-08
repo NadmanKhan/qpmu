@@ -36,8 +36,8 @@ ToolBar {
         // Left: Back button (only when stacked)
         ToolButton {
             id: leftButton
-            Layout.preferredWidth: AppTheme.sizing.buttonMedium
-            Layout.preferredHeight: AppTheme.sizing.buttonMedium
+            Layout.preferredWidth: AppTheme.sizing.medium
+            Layout.preferredHeight: AppTheme.sizing.medium
             visible: root.stackView.depth > 1
 
             background: Rectangle {
@@ -45,7 +45,9 @@ ToolBar {
                 radius: AppTheme.radius.medium
 
                 Behavior on color {
-                    ColorAnimation { duration: AppTheme.motion.fast }
+                    ColorAnimation {
+                        duration: AppTheme.motion.fast
+                    }
                 }
             }
 
@@ -81,8 +83,8 @@ ToolBar {
         // Right: Context menu button
         ToolButton {
             id: rightButton
-            Layout.preferredWidth: AppTheme.sizing.buttonMedium
-            Layout.preferredHeight: AppTheme.sizing.buttonMedium
+            Layout.preferredWidth: AppTheme.sizing.medium
+            Layout.preferredHeight: AppTheme.sizing.medium
             visible: root.hasContextMenu
 
             background: Rectangle {
@@ -90,7 +92,9 @@ ToolBar {
                 radius: AppTheme.radius.medium
 
                 Behavior on color {
-                    ColorAnimation { duration: AppTheme.motion.fast }
+                    ColorAnimation {
+                        duration: AppTheme.motion.fast
+                    }
                 }
             }
 
