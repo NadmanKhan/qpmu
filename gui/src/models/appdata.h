@@ -4,10 +4,11 @@
 #include <QObject>
 #include <QTimer>
 #include <QDateTime>
+#include <QItemSelectionModel>
 #include <QtQmlIntegration>
 
-#include "signaldatamodel.h"
 #include "qpmu/core.h"
+#include "signaldatamodel.h"
 
 // Application-level model managing application metadata
 // Contains a SignalDataModel for signal data
