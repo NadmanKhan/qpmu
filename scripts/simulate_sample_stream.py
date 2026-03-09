@@ -11,6 +11,7 @@ import time
 import struct
 import sys
 from dataclasses import dataclass
+from types import TracebackType
 from typing import TextIO, BinaryIO
 
 
@@ -130,57 +131,64 @@ class SampleFrameWriter:
             print(sf, file=sys.stderr)
 
     def __enter__(self):
-        if self.format == Config.Format.CSV:
-            csv_file = self.file = (
-                open(self.path, "w", newline="") if self.path else sys.stdout
-            )
+        match self.format:
+            case Config.Format.CSV:
+                csv_file = self.file = (
+                    open(self.path, "w", newline="") if self.path else sys.stdout
+                )
 
-            csv_writer = csv.DictWriter(csv_file, fieldnames=SAMPLE_FRAME_FIELDNAMES)
-            csv_writer.writeheader()
+                csv_writer = csv.DictWriter(csv_file, fieldnames=SAMPLE_FRAME_FIELDNAMES)
+                csv_writer.writeheader()
 
-            def write_csv(sf: SampleFrame):
-                csv_writer.writerow(sf.__dict__)
-                csv_file.flush()
+                def write_csv(sf: SampleFrame):
+                    csv_writer.writerow(sf.__dict__)
+                    csv_file.flush()
 
-            self._write = write_csv
+                self._write = write_csv
 
-        elif self.format == Config.Format.JSON:
-            json_file = self.file = open(self.path, "w") if self.path else sys.stdout
+            case Config.Format.JSON:
+                json_file = self.file = open(self.path, "w") if self.path else sys.stdout
 
-            def write_json(sf: SampleFrame):
-                json_file.write(json.dumps(sf.__dict__) + "\n")
-                json_file.flush()
+                def write_json(sf: SampleFrame):
+                    json_file.write(json.dumps(sf.__dict__) + "\n")
+                    json_file.flush()
 
-            self._write = write_json
+                self._write = write_json
 
-        elif self.format == Config.Format.BINARY:
-            # C++ Read_Buffer expects: 1 int64 timestamp + 180 uint16 samples (30 per channel)
-            struct_format = "@q180H"
-            binary_file = self.file = (
-                open(self.path, "wb") if self.path else sys.stdout.buffer
-            )
+            case Config.Format.BINARY:
+                # C++ Read_Buffer expects: 1 int64 timestamp + 180 uint16 samples (30 per channel)
+                struct_format = "@q180H"
+                binary_file = self.file = (
+                    open(self.path, "wb") if self.path else sys.stdout.buffer
+                )
 
-            def write_binary(sf: SampleFrame):
-                # Repeat each channel's sample 30 times to match C++ Read_Buffer layout
-                sample_vector = [
-                    sf.channel_0,
-                    sf.channel_1,
-                    sf.channel_2,
-                    sf.channel_3,
-                    sf.channel_4,
-                    sf.channel_5,
-                ]
-                b = struct.pack(struct_format, sf.timestamp_nsec, *(sample_vector * 30))
-                binary_file.write(b)
-                binary_file.flush()
+                def write_binary(sf: SampleFrame):
+                    # Repeat each channel's sample 30 times to match C++ Read_Buffer layout
+                    sample_vector = [
+                        sf.channel_0,
+                        sf.channel_1,
+                        sf.channel_2,
+                        sf.channel_3,
+                        sf.channel_4,
+                        sf.channel_5,
+                    ]
+                    b = struct.pack(struct_format, sf.timestamp_nsec, *(sample_vector * 30))
+                    binary_file.write(b)
+                    binary_file.flush()
 
-            self._write = write_binary
+                self._write = write_binary
 
-        else:
-            raise NotImplementedError(f"Format {self.format} not implemented")
+            case _:
+                raise NotImplementedError(f"Format {self.format} not implemented")
+
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_value: BaseException | None,
+            traceback: TracebackType | None,
+        ):
         if self.logging:
             print("Closing SampleFrameWriter", file=sys.stderr)
         try:
@@ -190,7 +198,8 @@ class SampleFrameWriter:
                 self.file.close()
         except BrokenPipeError:
             pass
-        return True  # Suppress exceptions
+        # Only suppress BrokenPipeError, allow KeyboardInterrupt and other exceptions to propagate
+        return exc_type is BrokenPipeError
 
 
 def stream_sample_frames(input_path: Path):
@@ -246,11 +255,16 @@ def stream_sample_frames(input_path: Path):
 
 if __name__ == "__main__":
     config = Config()
-    while True:
-        with SampleFrameWriter(
-            format=config.output_format,
-            path=config.output_path,
-            logging=config.enable_logging,
-        ) as writer:
-            for reading in stream_sample_frames(config.input_path):
-                writer.write(reading)
+    try:
+        while True:
+            with SampleFrameWriter(
+                format=config.output_format,
+                path=config.output_path,
+                logging=config.enable_logging,
+            ) as writer:
+                for reading in stream_sample_frames(config.input_path):
+                    writer.write(reading)
+    except (KeyboardInterrupt, EOFError):
+        if config.enable_logging:
+            print("\nAborted by user", file=sys.stderr)
+        sys.exit(0)
