@@ -1,8 +1,7 @@
-pragma ComponentBehavior: Bound
-import QtQuick
-import QtQuick.Controls
+import QtQuick 2.12
+import QtQuick.Controls 2.12
 import QtCore
-import qpmu
+import qpmu 1.0
 
 // Signal data table using TableView with QAbstractItemModel
 Rectangle {
@@ -42,7 +41,7 @@ Rectangle {
                 required property string display
                 required property int index
 
-                readonly property size headerSize: AppData.signalDataModel.headerData(horizontalHeaderDelegate.index, Qt.Horizontal, Qt.SizeHintRole)
+                readonly property size headerSize: signalDataModel.headerData(horizontalHeaderDelegate.index, Qt.Horizontal, Qt.SizeHintRole)
                 implicitWidth: headerSize.width
                 implicitHeight: 40
                 color: AppTheme.colors.surfaceElevated
@@ -79,9 +78,9 @@ Rectangle {
                 required property string display
                 required property int index
 
-                readonly property size headerSize: AppData.signalDataModel.headerData(verticalHeaderDelegate.index, Qt.Vertical, Qt.SizeHintRole)
-                readonly property color signalColor: AppData.signalDataModel.data(AppData.signalDataModel.index(verticalHeaderDelegate.index, 0), Qt.DecorationRole)
-                readonly property bool isSelected: AppData.signalDataModel.selectionModel.isRowSelected(verticalHeaderDelegate.index)
+                readonly property size headerSize: signalDataModel.headerData(verticalHeaderDelegate.index, Qt.Vertical, Qt.SizeHintRole)
+                readonly property color signalColor: signalDataModel.data(signalDataModel.index(verticalHeaderDelegate.index, 0), Qt.DecorationRole)
+                readonly property bool isSelected: signalDataModel.selectionModel.isRowSelected(verticalHeaderDelegate.index)
 
                 implicitHeight: headerSize.height
                 implicitWidth: headerSize.width + 30  // Extra space for checkbox
@@ -131,11 +130,11 @@ Rectangle {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 // Toggle selection in selection model
-                                let modelIndex = AppData.signalDataModel.index(verticalHeaderDelegate.index, 0);
+                                let modelIndex = signalDataModel.index(verticalHeaderDelegate.index, 0);
                                 if (verticalHeaderDelegate.isSelected) {
-                                    AppData.signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.Deselect | ItemSelectionModel.Rows);
+                                    signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.Deselect | ItemSelectionModel.Rows);
                                 } else {
-                                    AppData.signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.Select | ItemSelectionModel.Rows);
+                                    signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.Select | ItemSelectionModel.Rows);
                                 }
                             }
                         }
@@ -171,15 +170,15 @@ Rectangle {
             rowSpacing: 4
             columnSpacing: 4
 
-            model: AppData.signalDataModel
+            model: signalDataModel
 
             columnWidthProvider: function (column) {
-                var size = AppData.signalDataModel.headerData(column, Qt.Horizontal, Qt.SizeHintRole);
+                var size = signalDataModel.headerData(column, Qt.Horizontal, Qt.SizeHintRole);
                 return size.width;
             }
 
             rowHeightProvider: function (row) {
-                var size = AppData.signalDataModel.headerData(row, Qt.Vertical, Qt.SizeHintRole);
+                var size = signalDataModel.headerData(row, Qt.Vertical, Qt.SizeHintRole);
                 return size.height;
             }
 
@@ -189,7 +188,7 @@ Rectangle {
                 required property int column
                 required property var model
 
-                readonly property var signalData: AppData.signalDataModel.data(AppData.signalDataModel.index(cellDelegate.row, 0), Qt.UserRole)
+                readonly property var signalData: signalDataModel.data(signalDataModel.index(cellDelegate.row, 0), Qt.UserRole)
                 readonly property color backgroundColor: cellDelegate.model.background || "transparent"
                 readonly property color decorationColor: cellDelegate.model.decoration || "transparent"
 

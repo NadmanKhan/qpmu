@@ -1,7 +1,6 @@
-pragma ComponentBehavior: Bound
-import QtQuick
-import QtQuick.Layouts
-import qpmu
+import QtQuick 2.12
+import QtQuick.Layouts 1.12
+import qpmu 1.0
 
 // Graph view switcher - toggles between phasor and waveform views
 Rectangle {

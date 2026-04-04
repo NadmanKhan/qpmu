@@ -1,66 +1,113 @@
-pragma ComponentBehavior: Bound
-import QtQuick
-import QtQuick.Controls
-import qpmu
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import qpmu 1.0
 
 Rectangle {
     id: root
     color: AppTheme.colors.surface
 
-    HorizontalHeaderView {
+    // Custom horizontal header (Qt 5.12 compatible - HorizontalHeaderView is Qt 5.15+)
+    Row {
         id: horizontalHeader
-        anchors.left: tableView.left
+        anchors.left: parent.left
         anchors.top: parent.top
-        syncView: tableView
+        anchors.leftMargin: verticalHeader.width
+        height: 30
+        z: 2
         clip: true
+
+        Repeater {
+            model: signalDataModel ? signalDataModel.columnCount() : 0
+            delegate: Rectangle {
+                required property int index
+                width: 150  // Fixed width for Qt 5.12 compatibility
+                height: 30
+                color: AppTheme.colors.surfaceElevated
+                border.width: AppTheme.border.thin
+                border.color: AppTheme.colors.border
+
+                Text {
+                    anchors.centerIn: parent
+                    text: signalDataModel ? signalDataModel.headerData(index, Qt.Horizontal, Qt.DisplayRole) : ""
+                    color: AppTheme.colors.textPrimary
+                    font.pixelSize: AppTheme.typography.size.small
+                    font.weight: Font.DemiBold
+                    font.family: AppTheme.typography.fontFamily
+                }
+            }
+        }
     }
 
-    VerticalHeaderView {
+    // Custom vertical header (Qt 5.12 compatible - VerticalHeaderView is Qt 5.15+)
+    Column {
         id: verticalHeader
-        anchors.top: tableView.top
+        anchors.top: parent.top
         anchors.left: parent.left
-        syncView: tableView
+        anchors.topMargin: horizontalHeader.height
+        width: 60
+        z: 2
         clip: true
+
+        Repeater {
+            model: signalDataModel ? signalDataModel.rowCount() : 0
+            delegate: Rectangle {
+                required property int index
+                width: 60
+                height: 35  // Fixed height for Qt 5.12 compatibility
+                color: AppTheme.colors.surfaceElevated
+                border.width: AppTheme.border.thin
+                border.color: AppTheme.colors.border
+
+                Text {
+                    anchors.centerIn: parent
+                    text: signalDataModel ? signalDataModel.headerData(index, Qt.Vertical, Qt.DisplayRole) : ""
+                    color: AppTheme.colors.textPrimary
+                    font.pixelSize: AppTheme.typography.size.small
+                    font.weight: Font.Medium
+                    font.family: AppTheme.typography.fontFamily
+                }
+            }
+        }
     }
 
     TableView {
         id: tableView
-        anchors.left: verticalHeader.right
-        anchors.top: horizontalHeader.bottom
+        anchors.left: parent.left
+        anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: parent.bottom
+        anchors.leftMargin: verticalHeader.width
+        anchors.topMargin: horizontalHeader.height
         clip: true
 
         columnSpacing: 1
         rowSpacing: 1
 
-        model: AppData.signalDataModel
+        model: signalDataModel
 
-        selectionModel: AppData.signalDataModel.selectionModel
-
-        // Widths can grow but never shrink, so we cache the max width for each column
-        property var maxWidthPerColumn: []
-        columnWidthProvider: function (column) {
-            let cellWidth = implicitColumnWidth(column);
-            let headerWidth = horizontalHeader.implicitColumnWidth(column);
-            let width = Math.max(cellWidth, headerWidth) + AppTheme.spacing.small * 2;
-            return maxWidthPerColumn[column] = Math.max(maxWidthPerColumn[column] || 0, width);
+        // Note: selectionModel is Qt 6 only - Qt 5.12/5.15 TableView doesn't support it
+        // In Qt 5, selection still works via the model's selection model,
+        // but TableView doesn't visually indicate selection
+        Component.onCompleted: {
+            if (tableView.selectionModel !== undefined) {
+                tableView.selectionModel = signalDataModel.selectionModel;
+            }
         }
 
-        // Similar to columnMaxWidth, but we need to track the max height across all rows for consistent row heights
-        property real maxHeightAllRows: 0
+        // Qt 5.12 compatible: use fixed sizes
+        columnWidthProvider: function (column) {
+            return 150;  // Fixed width
+        }
+
         rowHeightProvider: function (row) {
-            let cellHeight = implicitRowHeight(row);
-            let headerHeight = verticalHeader.implicitRowHeight(row);
-            let height = Math.max(cellHeight, headerHeight) + AppTheme.spacing.small * 2;
-            return maxHeightAllRows = Math.max(maxHeightAllRows, height);
+            return 35;  // Fixed height
         }
 
         delegate: Item {
             id: delegateItem
             required property string display
             required property color decoration
-            required property bool selected
+            property bool selected: false  // Qt 5: not provided by TableView, defaults to false
             required property int row
             required property int column
 
@@ -105,7 +152,7 @@ Rectangle {
                 hoverEnabled: true
                 onClicked: {
                     const modelIndex = tableView.model.index(delegateItem.row, delegateItem.column);
-                    tableView.selectionModel.select(modelIndex, ItemSelectionModel.ToggleCurrent | ItemSelectionModel.Rows);
+                    tableView.model.selectionModel.select(modelIndex, ItemSelectionModel.ToggleCurrent | ItemSelectionModel.Rows);
                 }
             }
         }

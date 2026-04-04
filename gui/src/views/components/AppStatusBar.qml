@@ -1,14 +1,13 @@
-pragma ComponentBehavior: Bound
-import QtQuick
-import QtQuick.Layouts
-import qpmu
+import QtQuick 2.12
+import QtQuick.Layouts 1.12
+import qpmu 1.0
 
 Rectangle {
     id: root
 
     height: AppTheme.sizing.statusBarHeight
     color: AppTheme.colors.surface
-    border.color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+    border.color: appInstance.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
     border.width: 0
 
     // Top border only
@@ -17,7 +16,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         height: AppTheme.border.thick
-        color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+        color: appInstance.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
 
         Behavior on color {
             ColorAnimation {
@@ -35,9 +34,9 @@ Rectangle {
         Rectangle {
             Layout.preferredWidth: 110
             Layout.preferredHeight: AppTheme.sizing.medium
-            color: AppData.isPaused ? AppTheme.withAlpha(AppTheme.colors.error, AppTheme.opacity.overlayLight) : AppTheme.withAlpha(AppTheme.colors.primary, AppTheme.opacity.overlayLight)
+            color: appInstance.isPaused ? AppTheme.withAlpha(AppTheme.colors.error, AppTheme.opacity.overlayLight) : AppTheme.withAlpha(AppTheme.colors.primary, AppTheme.opacity.overlayLight)
             radius: AppTheme.radius.large
-            border.color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+            border.color: appInstance.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
             border.width: AppTheme.border.medium
 
             Behavior on color {
@@ -59,10 +58,10 @@ Rectangle {
                     width: AppTheme.spacing.small
                     height: AppTheme.spacing.small
                     radius: AppTheme.spacing.small / 2
-                    color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+                    color: appInstance.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
 
                     SequentialAnimation on opacity {
-                        running: !AppData.isPaused
+                        running: !appInstance.isPaused
                         loops: Animation.Infinite
                         NumberAnimation {
                             from: 1.0
@@ -78,11 +77,11 @@ Rectangle {
                 }
 
                 Text {
-                    text: AppData.isPaused ? "PAUSED" : "LIVE"
+                    text: appInstance.isPaused ? "PAUSED" : "LIVE"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.Bold
                     font.family: AppTheme.typography.fontFamilyMonospace
-                    color: AppData.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
+                    color: appInstance.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
                 }
             }
         }
@@ -108,7 +107,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: AppData.lastSampleTime ?? "--:--:--"
+                    text: appInstance.lastSampleTime ?? "--:--:--"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace
@@ -135,7 +134,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: AppData.samplingRate.toFixed(1) + " Hz"
+                    text: appInstance.samplingRate.toFixed(1) + " Hz"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace
@@ -162,7 +161,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: AppData.systemFrequency.toFixed(3) + " Hz"
+                    text: appInstance.systemFrequency.toFixed(3) + " Hz"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace

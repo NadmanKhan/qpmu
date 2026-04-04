@@ -1,6 +1,5 @@
-pragma ComponentBehavior: Bound
-import QtQuick
-import qpmu
+import QtQuick 2.12
+import qpmu 1.0
 
 Rectangle {
     id: root
@@ -36,8 +35,8 @@ Rectangle {
     readonly property real degreesToRadians: Math.PI / 180.0
 
     // Use SignalDataModel cutoff values for scaling
-    readonly property real maxVoltage: AppData.signalDataModel.voltageCutoff
-    readonly property real maxCurrent: AppData.signalDataModel.currentCutoff
+    readonly property real maxVoltage: signalDataModel.voltageCutoff
+    readonly property real maxCurrent: signalDataModel.currentCutoff
 
     // Chart dimensions - referenced by other elements
     readonly property real chartWidth: chartArea.width
@@ -98,7 +97,7 @@ Rectangle {
 
     MouseArea {
         anchors.fill: parent
-        onClicked: AppData.signalDataModel.selectionModel.clearSelection()
+        onClicked: signalDataModel.selectionModel.clearSelection()
     }
 
     // Single canvas for all waveforms
@@ -112,16 +111,16 @@ Rectangle {
         property bool needsRepaint: false
 
         Connections {
-            target: AppData
+            target: appInstance
             function onDataUpdated() {
-                if (!AppData.signalDataModel.isPaused) {
+                if (!signalDataModel.isPaused) {
                     waveformCanvas.needsRepaint = true;
                 }
             }
         }
 
         Connections {
-            target: AppData.signalDataModel
+            target: signalDataModel
             function onMagnitudeModeChanged() {
                 waveformCanvas.needsRepaint = true;
             }
@@ -140,7 +139,7 @@ Rectangle {
         }
 
         Connections {
-            target: AppData.signalDataModel.selectionModel
+            target: signalDataModel.selectionModel
             function onSelectionChanged() {
                 waveformCanvas.needsRepaint = true;
             }
@@ -163,13 +162,13 @@ Rectangle {
             ctx.clearRect(0, 0, width, height);
 
             // Draw all waveforms from signal model (always visible)
-            let signalCount = AppData.signalDataModel.rowCount();
+            let signalCount = signalDataModel.rowCount();
             for (let signalIndex = 0; signalIndex < signalCount; signalIndex++) {
                 // Get effective magnitude and phase from SignalDataModel (already computed)
-                let magnitude = AppData.signalDataModel.data(AppData.signalDataModel.index(signalIndex, 0), SignalDataModel.MagnitudeRole);
-                let phase = AppData.signalDataModel.data(AppData.signalDataModel.index(signalIndex, 0), SignalDataModel.PhaseAngleRole);
-                let color = AppData.signalDataModel.data(AppData.signalDataModel.index(signalIndex, 0), Qt.DecorationRole);
-                let typeSymbol = AppData.signalDataModel.data(AppData.signalDataModel.index(signalIndex, 0), SignalDataModel.TypeSymbolRole);
+                let magnitude = signalDataModel.data(signalDataModel.index(signalIndex, 0), SignalDataModel.MagnitudeRole);
+                let phase = signalDataModel.data(signalDataModel.index(signalIndex, 0), SignalDataModel.PhaseAngleRole);
+                let color = signalDataModel.data(signalDataModel.index(signalIndex, 0), Qt.DecorationRole);
+                let typeSymbol = signalDataModel.data(signalDataModel.index(signalIndex, 0), SignalDataModel.TypeSymbolRole);
                 let signalType = typeSymbol === "V" ? "Voltage" : "Current";
 
                 let phaseRad = phase * root.degreesToRadians;
@@ -291,7 +290,7 @@ Rectangle {
 
     // Invisible tap areas for waveform lines
     Repeater {
-        model: AppData.signalDataModel
+        model: signalDataModel
 
         delegate: Item {
             id: waveformTapArea
@@ -329,8 +328,8 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            const modelIndex = AppData.signalDataModel.index(waveformTapArea.index, 0);
-                            AppData.signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
+                            const modelIndex = signalDataModel.index(waveformTapArea.index, 0);
+                            signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
                         }
                     }
                 }
@@ -340,7 +339,7 @@ Rectangle {
 
     // Waveform tooltips - show when signal is selected (also clickable for selection)
     Repeater {
-        model: AppData.signalDataModel
+        model: signalDataModel
 
         delegate: Rectangle {
             id: labelDelegate
@@ -354,7 +353,7 @@ Rectangle {
 
             // Calculate position at the start of the waveform (t=0)
             property string signalType: typeSymbol === "V" ? "Voltage" : "Current"
-            property real cutoff: typeSymbol === "V" ? AppData.signalDataModel.voltageCutoff : AppData.signalDataModel.currentCutoff
+            property real cutoff: typeSymbol === "V" ? signalDataModel.voltageCutoff : signalDataModel.currentCutoff
             property real normalizedMagnitude: magnitude / cutoff
             property real phaseRad: phaseAngle * root.degreesToRadians
             property real startY: magnitude * Math.sin(phaseRad)

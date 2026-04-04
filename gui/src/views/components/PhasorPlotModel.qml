@@ -1,7 +1,6 @@
-pragma ComponentBehavior: Bound
-import QtQml
-import QtQuick
-import qpmu
+import QtQml 2.12
+import QtQuick 2.12
+import qpmu 1.0
 
 // "Dumb" phasor plot view - knows nothing about signal count or types
 // Just iterates over the provided model and renders each signal
@@ -44,16 +43,16 @@ Rectangle {
     property bool needsRepaint: false
 
     Connections {
-        target: AppData
+        target: appInstance
         function onDataUpdated() {
-            if (!AppData.signalDataModel.isPaused) {
+            if (!signalDataModel.isPaused) {
                 root.needsRepaint = true;
             }
         }
     }
 
     Connections {
-        target: AppData.signalDataModel
+        target: signalDataModel
         function onMagnitudeModeChanged() {
             root.needsRepaint = true;
         }
@@ -72,7 +71,7 @@ Rectangle {
     }
 
     Connections {
-        target: AppData.signalDataModel.selectionModel
+        target: signalDataModel.selectionModel
         function onSelectionChanged() {
             root.needsRepaint = true;
         }
@@ -93,7 +92,7 @@ Rectangle {
 
     MouseArea {
         anchors.fill: parent
-        onClicked: AppData.signalDataModel.selectionModel.clearSelection()
+        onClicked: signalDataModel.selectionModel.clearSelection()
     }
 
     // Single canvas for grid + phasors
@@ -130,17 +129,17 @@ Rectangle {
             }
 
             // Draw phasor arrows - iterate over all signals (always visible)
-            let signalCount = AppData.signalDataModel.rowCount();
+            let signalCount = signalDataModel.rowCount();
             for (let i = 0; i < signalCount; i++) {
                 // Get effective magnitude and phase from SignalDataModel (already computed)
-                let magnitude = AppData.signalDataModel.data(AppData.signalDataModel.index(i, 0), SignalDataModel.MagnitudeRole);
-                let phase = AppData.signalDataModel.data(AppData.signalDataModel.index(i, 0), SignalDataModel.PhaseAngleRole);
-                let color = AppData.signalDataModel.data(AppData.signalDataModel.index(i, 0), Qt.DecorationRole);
-                let typeSymbol = AppData.signalDataModel.data(AppData.signalDataModel.index(i, 0), SignalDataModel.TypeSymbolRole);
+                let magnitude = signalDataModel.data(signalDataModel.index(i, 0), SignalDataModel.MagnitudeRole);
+                let phase = signalDataModel.data(signalDataModel.index(i, 0), SignalDataModel.PhaseAngleRole);
+                let color = signalDataModel.data(signalDataModel.index(i, 0), Qt.DecorationRole);
+                let typeSymbol = signalDataModel.data(signalDataModel.index(i, 0), SignalDataModel.TypeSymbolRole);
                 let signalType = typeSymbol === "V" ? "Voltage" : "Current";
 
                 // Calculate normalized magnitude based on cutoff
-                let cutoff = signalType === "Voltage" ? AppData.signalDataModel.voltageCutoff : AppData.signalDataModel.currentCutoff;
+                let cutoff = signalType === "Voltage" ? signalDataModel.voltageCutoff : signalDataModel.currentCutoff;
                 let normalizedMag = magnitude / cutoff;
 
                 let phaseRad = phase * root.degreesToRadians;
@@ -199,7 +198,7 @@ Rectangle {
 
     // Invisible tap areas for phasor arrows
     Repeater {
-        model: AppData.signalDataModel
+        model: signalDataModel
 
         delegate: Item {
             id: phasorTapArea
@@ -209,7 +208,7 @@ Rectangle {
             required property string typeSymbol
 
             property string signalType: typeSymbol === "V" ? "Voltage" : "Current"
-            property real cutoff: phasorTapArea.signalType === "Voltage" ? AppData.signalDataModel.voltageCutoff : AppData.signalDataModel.currentCutoff
+            property real cutoff: phasorTapArea.signalType === "Voltage" ? signalDataModel.voltageCutoff : signalDataModel.currentCutoff
             property real normalizedMagnitude: phasorTapArea.magnitude / phasorTapArea.cutoff
             property real phaseRad: phasorTapArea.phaseAngle * root.degreesToRadians
             property real tipX: root.centerX + phasorTapArea.normalizedMagnitude * root.plotRadius * Math.cos(phasorTapArea.phaseRad)
@@ -237,8 +236,8 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            const modelIndex = AppData.signalDataModel.index(phasorTapArea.index, 0);
-                            AppData.signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
+                            const modelIndex = signalDataModel.index(phasorTapArea.index, 0);
+                            signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
                         }
                     }
                 }
@@ -248,7 +247,7 @@ Rectangle {
 
     // Phasor labels - Repeater iterates over the signal model rows
     Repeater {
-        model: AppData.signalDataModel
+        model: signalDataModel
 
         delegate: Rectangle {
             id: labelDelegate
@@ -261,7 +260,7 @@ Rectangle {
             required property string toolTip
 
             // Calculate phasor tip position for label placement
-            property real cutoff: typeSymbol === "V" ? AppData.signalDataModel.voltageCutoff : AppData.signalDataModel.currentCutoff
+            property real cutoff: typeSymbol === "V" ? signalDataModel.voltageCutoff : signalDataModel.currentCutoff
             property real normalizedMagnitude: magnitude / cutoff
             property real phaseRad: phaseAngle * root.degreesToRadians
             property real tipX: root.centerX + normalizedMagnitude * root.plotRadius * Math.cos(phaseRad)

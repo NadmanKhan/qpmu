@@ -1,9 +1,8 @@
-pragma ComponentBehavior: Bound
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
 import "controls"
-import qpmu
+import qpmu 1.0
 
 ScrollView {
     id: root
@@ -41,9 +40,9 @@ ScrollView {
                 Layout.fillWidth: true
                 leftLabel: "RMS"
                 rightLabel: "Peak"
-                isRightActive: AppData.signalDataModel.magnitudeMode === SignalDataModel.Peak
+                isRightActive: signalDataModel.magnitudeMode === SignalDataModel.Peak
                 onToggled: {
-                    AppData.signalDataModel.magnitudeMode = isRightActive ? SignalDataModel.Peak : SignalDataModel.RMS;
+                    signalDataModel.magnitudeMode = isRightActive ? SignalDataModel.Peak : SignalDataModel.RMS;
                 }
             }
         }
@@ -66,9 +65,9 @@ ScrollView {
             Dropdown {
                 Layout.fillWidth: true
                 model: ["Absolute", "VA", "VB", "VC", "IA", "IB", "IC"]
-                currentIndex: AppData.signalDataModel.phaseReferenceIndex + 1  // +1 because Absolute is index 0 in dropdown
+                currentIndex: signalDataModel.phaseReferenceIndex + 1  // +1 because Absolute is index 0 in dropdown
                 onActivated: index => {
-                    AppData.signalDataModel.phaseReferenceIndex = index - 1;  // -1 because Absolute is -1 in model
+                    signalDataModel.phaseReferenceIndex = index - 1;  // -1 because Absolute is -1 in model
                 }
             }
         }
@@ -90,10 +89,10 @@ ScrollView {
 
             Button {
                 Layout.fillWidth: true
-                label: AppData.signalDataModel.isPaused ? "Resume" : "Pause"
-                icon: AppData.signalDataModel.isPaused ? "▶" : "⏸"
-                active: AppData.signalDataModel.isPaused
-                onClicked: AppData.signalDataModel.isPaused = !AppData.signalDataModel.isPaused
+                label: signalDataModel.isPaused ? "Resume" : "Pause"
+                icon: signalDataModel.isPaused ? "▶" : "⏸"
+                active: signalDataModel.isPaused
+                onClicked: signalDataModel.isPaused = !signalDataModel.isPaused
             }
         }
 
@@ -126,24 +125,24 @@ ScrollView {
                 Layout.fillWidth: true
                 leftLabel: "Dynamic"
                 rightLabel: "Manual"
-                isRightActive: AppData.signalDataModel.voltageScalingMode === SignalDataModel.Manual
+                isRightActive: signalDataModel.voltageScalingMode === SignalDataModel.Manual
                 onToggled: {
-                    AppData.signalDataModel.voltageScalingMode = isRightActive ? SignalDataModel.Manual : SignalDataModel.Dynamic;
+                    signalDataModel.voltageScalingMode = isRightActive ? SignalDataModel.Manual : SignalDataModel.Dynamic;
                 }
             }
 
             SliderWithValue {
                 Layout.fillWidth: true
-                visible: AppData.signalDataModel.voltageScalingMode === SignalDataModel.Manual
+                visible: signalDataModel.voltageScalingMode === SignalDataModel.Manual
                 from: 10
                 to: 500
-                value: AppData.signalDataModel.voltageCutoff
+                value: signalDataModel.voltageCutoff
                 stepSize: 5
                 unit: "V"
                 decimals: 0
                 onValueChanged: {
-                    if (AppData.signalDataModel.voltageScalingMode === SignalDataModel.Manual) {
-                        AppData.signalDataModel.voltageCutoff = value;
+                    if (signalDataModel.voltageScalingMode === SignalDataModel.Manual) {
+                        signalDataModel.voltageCutoff = value;
                     }
                 }
             }
@@ -168,24 +167,24 @@ ScrollView {
                 Layout.fillWidth: true
                 leftLabel: "Dynamic"
                 rightLabel: "Manual"
-                isRightActive: AppData.signalDataModel.currentScalingMode === SignalDataModel.Manual
+                isRightActive: signalDataModel.currentScalingMode === SignalDataModel.Manual
                 onToggled: {
-                    AppData.signalDataModel.currentScalingMode = isRightActive ? SignalDataModel.Manual : SignalDataModel.Dynamic;
+                    signalDataModel.currentScalingMode = isRightActive ? SignalDataModel.Manual : SignalDataModel.Dynamic;
                 }
             }
 
             SliderWithValue {
                 Layout.fillWidth: true
-                visible: AppData.signalDataModel.currentScalingMode === SignalDataModel.Manual
+                visible: signalDataModel.currentScalingMode === SignalDataModel.Manual
                 from: 1
                 to: 50
-                value: AppData.signalDataModel.currentCutoff
+                value: signalDataModel.currentCutoff
                 stepSize: 0.5
                 unit: "A"
                 decimals: 1
                 onValueChanged: {
-                    if (AppData.signalDataModel.currentScalingMode === SignalDataModel.Manual) {
-                        AppData.signalDataModel.currentCutoff = value;
+                    if (signalDataModel.currentScalingMode === SignalDataModel.Manual) {
+                        signalDataModel.currentCutoff = value;
                     }
                 }
             }

@@ -1,5 +1,5 @@
 pragma Singleton
-import QtQuick
+import QtQuick 2.12
 
 // AppTheme - Comprehensive design system singleton
 // Single source of truth for all UI constants

@@ -1,8 +1,7 @@
-pragma ComponentBehavior: Bound
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
-import qpmu
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import qpmu 1.0
 
 /**
  * AppToolBar - Application-wide toolbar component
@@ -19,7 +18,7 @@ ToolBar {
     required property Drawer contextDrawer
 
     readonly property var currentScreen: stackView.currentItem
-    readonly property bool hasContextMenu: currentScreen?.contextMenu !== null
+    readonly property bool hasContextMenu: currentScreen ? currentScreen.contextMenu !== null : false
 
     background: Rectangle {
         color: AppTheme.colors.surface
@@ -62,15 +61,14 @@ ToolBar {
 
             onClicked: root.stackView.pop()
 
-            HoverHandler {
-                cursorShape: Qt.PointingHandCursor
-            }
+            // Note: HoverHandler.cursorShape removed for Qt 5.12 compatibility
+            // Cursor shape on hover is a nice-to-have, not critical functionality
         }
 
         // Center: Title
         Label {
             Layout.fillWidth: true
-            text: root.currentScreen?.title ?? ""
+            text: root.currentScreen ? root.currentScreen.title : ""
             font.pixelSize: AppTheme.typography.size.large
             font.weight: Font.Bold
             font.family: AppTheme.typography.fontFamily
@@ -109,9 +107,8 @@ ToolBar {
 
             onClicked: root.contextDrawer.open()
 
-            HoverHandler {
-                cursorShape: Qt.PointingHandCursor
-            }
+            // Note: HoverHandler.cursorShape removed for Qt 5.12 compatibility
+            // Cursor shape on hover is a nice-to-have, not critical functionality
         }
     }
 }

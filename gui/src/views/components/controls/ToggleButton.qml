@@ -1,6 +1,5 @@
-pragma ComponentBehavior: Bound
-import QtQuick
-import qpmu
+import QtQuick 2.12
+import qpmu 1.0
 
 // Toggle button for two-state controls (RMS/Peak, Dynamic/Manual)
 Rectangle {

@@ -1,8 +1,7 @@
-pragma ComponentBehavior: Bound
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
-import qpmu
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import qpmu 1.0
 
 // Slider with numeric value display for manual cutoff values
 RowLayout {

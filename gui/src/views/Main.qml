@@ -1,8 +1,7 @@
-pragma ComponentBehavior: Bound
-
-import QtQuick
-import QtQuick.Controls
-import qpmu
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Window 2.12
+import qpmu 1.0
 import "components"
 
 /**
@@ -60,7 +59,9 @@ ApplicationWindow {
 
         Loader {
             anchors.fill: parent
-            sourceComponent: mainStackView.currentItem?.contextMenu ?? null
+            sourceComponent: mainStackView.currentItem && mainStackView.currentItem.contextMenu
+                             ? mainStackView.currentItem.contextMenu
+                             : null
         }
     }
 }
