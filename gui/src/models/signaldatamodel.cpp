@@ -1,5 +1,6 @@
 #include <QtMath>
 #include <QSize>
+#include <QDebug>
 
 #include "signaldatamodel.h"
 
@@ -383,7 +384,7 @@ void SignalDataModel::updateFromFrame(const qpmu::Measurement_Frame &frame)
 
     // Update each signal from the measurement frame
     for (std::size_t i = 0; i < qpmu::Signal_Infos.size(); ++i) {
-        const auto &estimate = frame.estimate_vector[i];
+        const auto &estimate = frame.estimate_array[i];
         m_signals[i].payload.magnitude = std::abs(estimate.phasor);
         m_signals[i].payload.phaseAngle =
                 std::arg(estimate.phasor) * 180.0 / M_PI; // Convert to degrees
