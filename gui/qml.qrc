@@ -1,0 +1,25 @@
+<RCC>
+    <qresource prefix="/qpmu">
+        <file alias="qmldir">src/qmldir</file>
+        <file alias="AppTheme.qml">src/AppTheme.qml</file>
+    </qresource>
+    <qresource prefix="/">
+        <file>qtquickcontrols2.conf</file>
+        <file>src/views/Main.qml</file>
+        <file>src/views/LiveMonitor.qml</file>
+        <file>src/views/components/AppStatusBar.qml</file>
+        <file>src/views/components/PhasorPlotModel.qml</file>
+        <file>src/views/components/WaveformPlotModel.qml</file>
+        <file>src/views/components/SignalTable.qml</file>
+        <file>src/views/components/DataTable.qml</file>
+        <file>src/views/components/GraphViewSwitcher.qml</file>
+        <file>src/views/components/Screen.qml</file>
+        <file>src/views/components/AppToolBar.qml</file>
+        <file>src/views/components/LiveMonitorContextMenu.qml</file>
+        <file>src/views/components/controls/Button.qml</file>
+        <file>src/views/components/controls/ToggleButton.qml</file>
+        <file>src/views/components/controls/Dropdown.qml</file>
+        <file>src/views/components/controls/SliderWithValue.qml</file>
+        <file>src/views/components/controls/SectionHeader.qml</file>
+    </qresource>
+</RCC>

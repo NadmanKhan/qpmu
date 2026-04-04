@@ -1,61 +1,64 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 
 project(qpmu-gui VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.10 REQUIRED COMPONENTS Quick Graphs)
+# Support both Qt 5 and Qt 6
+set(QT_DEFAULT_MAJOR_VERSION 5 CACHE STRING "Qt major version (5 or 6)")
 
-qt_standard_project_setup(REQUIRES 6.10)
+if(QT_DEFAULT_MAJOR_VERSION EQUAL 6)
+    find_package(Qt6 6.2 COMPONENTS Quick REQUIRED)
+    set(QT_VERSION_MAJOR 6)
+    qt_standard_project_setup()
+else()
+    find_package(Qt5 5.12 COMPONENTS Quick REQUIRED)
+    set(QT_VERSION_MAJOR 5)
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTORCC ON)
+    set(CMAKE_AUTOUIC ON)
+endif()
 
-qt_add_executable(appqpmu
+set(SOURCES
     src/main.cpp
+    src/application.h
+    src/application.cpp
     src/models/signaldatamodel.h
     src/models/signaldatamodel.cpp
-    src/models/appdata.h
-    src/models/appdata.cpp
+    src/ipc/guiclient.h
+    src/ipc/guiclient.cpp
 )
 
-# Add qtquickcontrols2.conf as a resource at the root level
-qt_add_resources(appqpmu "config"
-    PREFIX "/"
-    FILES qtquickcontrols2.conf
+set(QML_FILES
+    src/views/Main.qml
+    src/views/LiveMonitor.qml
+    src/views/components/AppStatusBar.qml
+    src/views/components/PhasorPlotModel.qml
+    src/views/components/WaveformPlotModel.qml
+    src/views/components/SignalTable.qml
+    src/views/components/DataTable.qml
+    src/views/components/GraphViewSwitcher.qml
+    src/views/components/Screen.qml
+    src/views/components/AppToolBar.qml
+    src/views/components/LiveMonitorContextMenu.qml
+    src/views/components/controls/Button.qml
+    src/views/components/controls/ToggleButton.qml
+    src/views/components/controls/Dropdown.qml
+    src/views/components/controls/SliderWithValue.qml
+    src/views/components/controls/SectionHeader.qml
+    src/AppTheme.qml
 )
 
-# Mark AppTheme.qml as a singleton so qt_add_qml_module generates correct qmldir
-set_source_files_properties(src/AppTheme.qml
-    PROPERTIES
-        QT_QML_SINGLETON_TYPE TRUE
-)
-
-qt_add_qml_module(appqpmu
-    URI qpmu
-    VERSION 1.0
-    QML_FILES
-        src/views/Main.qml
-        src/views/LiveMonitor.qml
-        src/views/components/AppStatusBar.qml
-        src/views/components/PhasorPlotModel.qml
-        src/views/components/WaveformPlotModel.qml
-        src/views/components/SignalTable.qml
-        src/views/components/DataTable.qml
-        src/views/components/GraphViewSwitcher.qml
-        src/views/components/Screen.qml
-        src/views/components/AppToolBar.qml
-        src/views/components/LiveMonitorContextMenu.qml
-        src/views/components/controls/Button.qml
-        src/views/components/controls/ToggleButton.qml
-        src/views/components/controls/Dropdown.qml
-        src/views/components/controls/SliderWithValue.qml
-        src/views/components/controls/SectionHeader.qml
-        src/AppTheme.qml
-    SOURCES
-        src/models/signaldatamodel.h
-        src/models/signaldatamodel.cpp
-        src/models/appdata.h
-        src/models/appdata.cpp
-)
+if(QT_VERSION_MAJOR EQUAL 6)
+    # Qt 6: Use simple resource system like Qt 5 for consistency
+    qt_add_resources(QML_RESOURCES qml.qrc)
+    qt_add_executable(appqpmu ${SOURCES} ${QML_RESOURCES})
+else()
+    # Qt 5: Use add_executable and qrc file
+    qt5_add_resources(QML_RESOURCES qml.qrc)
+    add_executable(appqpmu ${SOURCES} ${QML_RESOURCES})
+endif()
 
 set_target_properties(appqpmu PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
@@ -67,14 +70,15 @@ set_target_properties(appqpmu PROPERTIES
 target_include_directories(appqpmu PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/models
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ipc
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/include
 )
 
-target_link_libraries(appqpmu
-    PRIVATE
-        Qt6::Quick
-        Qt6::Graphs
-)
+if(QT_VERSION_MAJOR EQUAL 6)
+    target_link_libraries(appqpmu PRIVATE Qt6::Quick)
+else()
+    target_link_libraries(appqpmu PRIVATE Qt5::Quick)
+endif()
 
 include(GNUInstallDirs)
 install(TARGETS appqpmu
