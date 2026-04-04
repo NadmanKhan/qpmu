@@ -5,12 +5,13 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 import time
 import struct
 import sys
 from dataclasses import dataclass
+from itertools import cycle, pairwise
 from types import TracebackType
 from typing import TextIO, BinaryIO
 
@@ -38,7 +39,7 @@ SAMPLE_FRAME_FIELDNAMES = [
 
 
 class Config:
-    class Format(Enum):
+    class Format(StrEnum):
         JSON = "json"
         CSV = "csv"
         BINARY = "binary"
@@ -96,13 +97,17 @@ class Config:
                     "Sample frames file must have the following columns: "
                     + ", ".join(SAMPLE_FRAME_FIELDNAMES)
                 )
+            row_count = 0
             for row in reader:
-                if not all(row[name].isdigit() for name in SAMPLE_FRAME_FIELDNAMES):
-                    raise ValueError("All sample frame values must be integers")
+                row_count += 1
+                for name in SAMPLE_FRAME_FIELDNAMES:
+                    try:
+                        int(row[name])
+                    except ValueError:
+                        raise ValueError(f"All sample frame values must be integers, found invalid value in column '{name}': {row[name]}")
 
             # Validate: At least one sample frame
-            f.seek(0)
-            if not any(True for _ in reader):
+            if row_count == 0:
                 raise ValueError(
                     "Sample frames file must contain at least one sample frame"
                 )
@@ -131,55 +136,54 @@ class SampleFrameWriter:
             print(sf, file=sys.stderr)
 
     def __enter__(self):
-        match self.format:
-            case Config.Format.CSV:
-                csv_file = self.file = (
-                    open(self.path, "w", newline="") if self.path else sys.stdout
-                )
+        if self.format == Config.Format.CSV:
+            csv_file = self.file = (
+                open(self.path, "w", newline="") if self.path else sys.stdout
+            )
 
-                csv_writer = csv.DictWriter(csv_file, fieldnames=SAMPLE_FRAME_FIELDNAMES)
-                csv_writer.writeheader()
+            csv_writer = csv.DictWriter(csv_file, fieldnames=SAMPLE_FRAME_FIELDNAMES)
+            csv_writer.writeheader()
 
-                def write_csv(sf: SampleFrame):
-                    csv_writer.writerow(sf.__dict__)
-                    csv_file.flush()
+            def write_csv(sf: SampleFrame):
+                csv_writer.writerow(sf.__dict__)
+                csv_file.flush()
 
-                self._write = write_csv
+            self._write = write_csv
 
-            case Config.Format.JSON:
-                json_file = self.file = open(self.path, "w") if self.path else sys.stdout
+        elif self.format == Config.Format.JSON:
+            json_file = self.file = open(self.path, "w") if self.path else sys.stdout
 
-                def write_json(sf: SampleFrame):
-                    json_file.write(json.dumps(sf.__dict__) + "\n")
-                    json_file.flush()
+            def write_json(sf: SampleFrame):
+                json_file.write(json.dumps(sf.__dict__) + "\n")
+                json_file.flush()
 
-                self._write = write_json
+            self._write = write_json
 
-            case Config.Format.BINARY:
-                # C++ Read_Buffer expects: 1 int64 timestamp + 180 uint16 samples (30 per channel)
-                struct_format = "@q180H"
-                binary_file = self.file = (
-                    open(self.path, "wb") if self.path else sys.stdout.buffer
-                )
+        elif self.format == Config.Format.BINARY:
+            # C++ Read_Buffer expects: 1 int64 timestamp + 180 uint16 samples (30 per channel)
+            struct_format = "@q180H"
+            binary_file = self.file = (
+                open(self.path, "wb") if self.path else sys.stdout.buffer
+            )
 
-                def write_binary(sf: SampleFrame):
-                    # Repeat each channel's sample 30 times to match C++ Read_Buffer layout
-                    sample_vector = [
-                        sf.channel_0,
-                        sf.channel_1,
-                        sf.channel_2,
-                        sf.channel_3,
-                        sf.channel_4,
-                        sf.channel_5,
-                    ]
-                    b = struct.pack(struct_format, sf.timestamp_nsec, *(sample_vector * 30))
-                    binary_file.write(b)
-                    binary_file.flush()
+            def write_binary(sf: SampleFrame):
+                # Repeat each channel's sample 30 times to match C++ Read_Buffer layout
+                sample_array = [
+                    sf.channel_0,
+                    sf.channel_1,
+                    sf.channel_2,
+                    sf.channel_3,
+                    sf.channel_4,
+                    sf.channel_5,
+                ]
+                b = struct.pack(struct_format, sf.timestamp_nsec, *(sample_array * 30))
+                binary_file.write(b)
+                binary_file.flush()
 
-                self._write = write_binary
+            self._write = write_binary
 
-            case _:
-                raise NotImplementedError(f"Format {self.format} not implemented")
+        else:
+            raise NotImplementedError(f"Format {self.format} not implemented")
 
         return self
 
@@ -206,7 +210,7 @@ def stream_sample_frames(input_path: Path):
     sample_frames: list[SampleFrame] = []
     with open(input_path, "r") as f:
         for row in csv.DictReader(f):
-            sf = SampleFrame(
+            frame = SampleFrame(
                 timestamp_nsec=int(row["timestamp_nsec"]),
                 channel_0=int(row["channel_0"]),
                 channel_1=int(row["channel_1"]),
@@ -215,42 +219,38 @@ def stream_sample_frames(input_path: Path):
                 channel_4=int(row["channel_4"]),
                 channel_5=int(row["channel_5"]),
             )
-            sample_frames.append(sf)
+            sample_frames.append(frame)
 
     # Timestamps should be monotonically increasing
     if sample_frames != sorted(sample_frames, key=lambda r: r.timestamp_nsec):
-        raise ValueError("Readings timestamps must be monotonically increasing")
+        raise ValueError("Sample-frame timestamps must be monotonically increasing")
 
+    # Calculate the interval between last and first frame (for wrapping)
+    # Assume same interval as average interval in the data
     average_interval_nsec = (
         sample_frames[-1].timestamp_nsec - sample_frames[0].timestamp_nsec
     ) // (len(sample_frames) - 1)
 
-    while True:
-        prev_frame_timestamp_nsec = (
-            sample_frames[0].timestamp_nsec - average_interval_nsec
-        )
-        prev_output_time_nsec = time.time_ns()
 
-        for sf in sample_frames:
-            # Calculate output time based on previous timestamps
-            output_time_nsec = prev_output_time_nsec + (
-                sf.timestamp_nsec - prev_frame_timestamp_nsec
-            )
+    sample_frames_with_interval = [
+        (sf1, sf2.timestamp_nsec - sf1.timestamp_nsec) for (sf1, sf2) in pairwise(sample_frames)
+    ] + [(sample_frames[-1], average_interval_nsec)]  # Add last frame with average interval for wrapping
 
-            # Update previous timestamps
-            prev_frame_timestamp_nsec = sf.timestamp_nsec
-            prev_output_time_nsec = output_time_nsec
+    # Start 0.1 second in the future
+    next_output_time_nsec = time.time_ns() + 10**8
 
-            # Sleep if necessary
-            sleep_duration_nsec = output_time_nsec - time.time_ns()
-            if sleep_duration_nsec > 0:
-                time.sleep(
-                    (sleep_duration_nsec / 1e9) * 0.999
-                )  # Convert nsec to sec, adjust for accuracy
+    for frame, interval in cycle(sample_frames_with_interval):
+        # Sleep until it's time to output this frame
+        sleep_duration_nsec = next_output_time_nsec - time.time_ns()
+        if sleep_duration_nsec > 0:
+            time.sleep(
+                (sleep_duration_nsec / 1e9) * 0.999
+            )  # Convert nsec to sec, adjust for accuracy
 
-            time_adjusted_reading = SampleFrame(**sf.__dict__)
-            time_adjusted_reading.timestamp_nsec = output_time_nsec
-            yield time_adjusted_reading
+        # Output frame with the scheduled timestamp
+        yield SampleFrame(**(frame.__dict__ | dict(timestamp_nsec=next_output_time_nsec)))
+
+        next_output_time_nsec += interval
 
 
 if __name__ == "__main__":
@@ -262,8 +262,8 @@ if __name__ == "__main__":
                 path=config.output_path,
                 logging=config.enable_logging,
             ) as writer:
-                for reading in stream_sample_frames(config.input_path):
-                    writer.write(reading)
+                for sf in stream_sample_frames(config.input_path):
+                    writer.write(sf)
     except (KeyboardInterrupt, EOFError):
         if config.enable_logging:
             print("\nAborted by user", file=sys.stderr)
