@@ -50,20 +50,22 @@ struct Estimate
     Float rocof;
 };
 
-using Sample_Vector = std::array<Sample, Signal_Infos.size()>;
-using Estimate_Vector = std::array<Estimate, Signal_Infos.size()>;
+using Sample_Array = std::array<Sample, Signal_Infos.size()>;
+using Estimate_Array = std::array<Estimate, Signal_Infos.size()>;
 
 struct Sample_Frame
 {
     std::size_t seq_num;
     Timestamp timestamp;
-    Sample_Vector sample_vector;
+    Sample_Array sample_array;
 };
 
 struct Measurement_Frame
 {
-    Sample_Frame sample_frame;
-    Estimate_Vector estimate_vector;
+    std::size_t seq_num;
+    Timestamp timestamp;
+    Sample_Array sample_array;
+    Estimate_Array estimate_array;
 };
 
 } // namespace qpmu

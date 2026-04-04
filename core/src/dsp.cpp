@@ -57,8 +57,8 @@ public:
             // Phasor estimation via Sliding DFT
             estimate.phasor = _twiddle_factor // Rotate previous phasor
                     * (channel.estimates_circbuf[prev1].phasor
-                       - Float(tail_sf.sample_vector[ci]) // - Outgoing sample
-                       + Float(head_sf.sample_vector[ci]) // + Incoming sample
+                       - Float(tail_sf.sample_array[ci]) // - Outgoing sample
+                       + Float(head_sf.sample_array[ci]) // + Incoming sample
                     );
 
             // Frequency estimation via discrete differentiation over sliding window
@@ -90,7 +90,7 @@ public:
 
         // Copy current estimates to output vector
         for (std::size_t ci = 0; ci < Signal_Infos.size(); ++ci) {
-            _estimate_vector[ci] = _channels[ci].estimates_circbuf[_head];
+            _measurement_frame.estimate_array[ci] = _channels[ci].estimates_circbuf[_head];
         }
 
         // Advance circular buffer indices
@@ -100,7 +100,10 @@ public:
         return true;
     }
 
-    inline const Estimate_Vector &estimate_vector() const noexcept { return _estimate_vector; }
+    inline const Measurement_Frame &measurement_frame() const noexcept
+    {
+        return _measurement_frame;
+    }
     inline const char *error() const noexcept { return _error; }
 
 private:
@@ -108,7 +111,7 @@ private:
     Complex _twiddle_factor; // Rotates phasor by 2pi/N per sample
 
     // Output variables
-    Estimate_Vector _estimate_vector = {};
+    Measurement_Frame _measurement_frame = {};
     char _error[256] = {};
 
     // State variables

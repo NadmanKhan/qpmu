@@ -218,8 +218,8 @@ public:
         float freq = 0.0f;
         float dfreq = 0.0f;
         for (std::size_t i = 0; i < Signal_Infos.size(); ++i) {
-            freq += measurement.estimate_vector[i].frequency;
-            dfreq += measurement.estimate_vector[i].rocof;
+            freq += measurement.estimate_array[i].frequency;
+            dfreq += measurement.estimate_array[i].rocof;
         }
         freq /= Signal_Infos.size();
         dfreq /= Signal_Infos.size();
@@ -227,12 +227,12 @@ public:
         {
             // Acquire write lock to safely update shared PMU data
             const auto lock = std::lock_guard(_frame_mutex);
-            _data_frame->SOC_set(static_cast<unsigned long>(measurement.sample_frame.timestamp
-                                                            / Time_Resolution));
-            _data_frame->FRACSEC_set(static_cast<unsigned long>(measurement.sample_frame.timestamp
-                                                                % Time_Resolution));
+            _data_frame->SOC_set(
+                    static_cast<unsigned long>(measurement.timestamp / Time_Resolution));
+            _data_frame->FRACSEC_set(
+                    static_cast<unsigned long>(measurement.timestamp % Time_Resolution));
             for (std::size_t i = 0; i < Signal_Infos.size(); ++i) {
-                _pmu->PHASOR_VALUE_set(measurement.estimate_vector[i].phasor, i);
+                _pmu->PHASOR_VALUE_set(measurement.estimate_array[i].phasor, i);
             }
             _pmu->FREQ_set(freq);
             _pmu->DFREQ_set(dfreq);
