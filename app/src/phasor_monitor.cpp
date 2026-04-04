@@ -108,9 +108,11 @@ void PhasorMonitor::updateView()
         for (uint64_t i = 0; i < CountSignals; ++i) {
             const auto &color = visualSettings.signalColors[i];
             for (auto colorLabel : m_colorLabels[i]) {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                // Qt 6: pixmap() returns QPixmap by value
                 auto pixmap = colorLabel->pixmap();
 #else
+                // Qt 5: pixmap() returns const QPixmap* (pointer)
                 auto pixmap = *colorLabel->pixmap();
 #endif
                 colorLabel->setPixmap(rectPixmap(color, pixmap.width(), pixmap.height()));
