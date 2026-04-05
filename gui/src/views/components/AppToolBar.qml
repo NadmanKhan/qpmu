@@ -14,10 +14,10 @@ import qpmu 1.0
 ToolBar {
     id: root
 
-    required property StackView stackView
-    required property Drawer contextDrawer
+    property StackView stackView
+    property Drawer contextDrawer
 
-    readonly property var currentScreen: stackView.currentItem
+    readonly property var currentScreen: stackView ? stackView.currentItem : null
     readonly property bool hasContextMenu: currentScreen ? currentScreen.contextMenu !== null : false
 
     background: Rectangle {

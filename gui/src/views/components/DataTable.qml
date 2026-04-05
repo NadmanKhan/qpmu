@@ -19,7 +19,7 @@ Rectangle {
         Repeater {
             model: signalDataModel ? signalDataModel.columnCount() : 0
             delegate: Rectangle {
-                required property int index
+                property int index
                 width: 150  // Fixed width for Qt 5.12 compatibility
                 height: 30
                 color: AppTheme.colors.surfaceElevated
@@ -51,7 +51,7 @@ Rectangle {
         Repeater {
             model: signalDataModel ? signalDataModel.rowCount() : 0
             delegate: Rectangle {
-                required property int index
+                property int index
                 width: 60
                 height: 35  // Fixed height for Qt 5.12 compatibility
                 color: AppTheme.colors.surfaceElevated
@@ -105,11 +105,11 @@ Rectangle {
 
         delegate: Item {
             id: delegateItem
-            required property string display
-            required property color decoration
+            property string display
+            property color decoration
             property bool selected: false  // Qt 5: not provided by TableView, defaults to false
-            required property int row
-            required property int column
+            property int row
+            property int column
 
             implicitWidth: cellRect.implicitWidth
             implicitHeight: cellRect.implicitHeight

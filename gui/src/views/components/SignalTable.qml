@@ -38,8 +38,8 @@ Rectangle {
 
             delegate: Rectangle {
                 id: horizontalHeaderDelegate
-                required property string display
-                required property int index
+                property string display
+                property int index
 
                 readonly property size headerSize: signalDataModel.headerData(horizontalHeaderDelegate.index, Qt.Horizontal, Qt.SizeHintRole)
                 implicitWidth: headerSize.width
@@ -75,8 +75,8 @@ Rectangle {
 
             delegate: Rectangle {
                 id: verticalHeaderDelegate
-                required property string display
-                required property int index
+                property string display
+                property int index
 
                 readonly property size headerSize: signalDataModel.headerData(verticalHeaderDelegate.index, Qt.Vertical, Qt.SizeHintRole)
                 readonly property color signalColor: signalDataModel.data(signalDataModel.index(verticalHeaderDelegate.index, 0), Qt.DecorationRole)
@@ -184,9 +184,9 @@ Rectangle {
 
             delegate: Rectangle {
                 id: cellDelegate
-                required property int row
-                required property int column
-                required property var model
+                property int row
+                property int column
+                property var model
 
                 readonly property var signalData: signalDataModel.data(signalDataModel.index(cellDelegate.row, 0), Qt.UserRole)
                 readonly property color backgroundColor: cellDelegate.model.background || "transparent"

@@ -72,8 +72,8 @@ ComboBox {
 
     delegate: ItemDelegate {
         id: delegateItem
-        required property var model
-        required property int index
+        property var model
+        property int index
 
         width: root.width - 8
         height: AppTheme.sizing.medium

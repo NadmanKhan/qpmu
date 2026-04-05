@@ -183,7 +183,7 @@ Rectangle {
     Repeater {
         model: [0, 90, 180, 270]
         delegate: Text {
-            required property var modelData
+            property var modelData
             property real angleRad: modelData * root.degreesToRadians
             property real labelDist: root.plotRadius * root.angleLabelDistanceRatio
             x: root.centerX + labelDist * Math.cos(angleRad) - width / 2
@@ -202,10 +202,10 @@ Rectangle {
 
         delegate: Item {
             id: phasorTapArea
-            required property int index
-            required property real magnitude
-            required property real phaseAngle
-            required property string typeSymbol
+            property int index
+            property real magnitude
+            property real phaseAngle
+            property string typeSymbol
 
             property string signalType: typeSymbol === "V" ? "Voltage" : "Current"
             property real cutoff: phasorTapArea.signalType === "Voltage" ? signalDataModel.voltageCutoff : signalDataModel.currentCutoff
@@ -220,7 +220,7 @@ Rectangle {
                 model: Math.max(10, Math.floor(phasorTapArea.arrowLength / root.tapTargetSpacing))
 
                 delegate: Item {
-                    required property int index
+                    property int index
 
                     property int totalCount: Math.max(10, Math.floor(phasorTapArea.arrowLength / root.tapTargetSpacing))
                     property real t: totalCount > 1 ? index / (totalCount - 1) : 0
@@ -252,12 +252,12 @@ Rectangle {
         delegate: Rectangle {
             id: labelDelegate
 
-            required property int index
-            required property color decoration
-            required property real magnitude
-            required property real phaseAngle
-            required property string typeSymbol
-            required property string toolTip
+            property int index
+            property color decoration
+            property real magnitude
+            property real phaseAngle
+            property string typeSymbol
+            property string toolTip
 
             // Calculate phasor tip position for label placement
             property real cutoff: typeSymbol === "V" ? signalDataModel.voltageCutoff : signalDataModel.currentCutoff
