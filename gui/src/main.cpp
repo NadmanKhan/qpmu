@@ -9,12 +9,6 @@
 
 int main(int argc, char *argv[])
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
-    // Enable High-DPI support - Qt will automatically scale UI based on display DPI
-    QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
-            Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
-#endif
-
     Application app(argc, argv);
 
     // Set application metadata
