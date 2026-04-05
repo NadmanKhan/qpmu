@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from enum import StrEnum
+from enum import Enum
 from pathlib import Path
 import time
 import struct
@@ -39,7 +39,7 @@ SAMPLE_FRAME_FIELDNAMES = [
 
 
 class Config:
-    class Format(StrEnum):
+    class Format(str, Enum):
         JSON = "json"
         CSV = "csv"
         BINARY = "binary"
