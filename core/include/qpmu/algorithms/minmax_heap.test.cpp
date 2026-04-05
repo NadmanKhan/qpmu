@@ -40,7 +40,9 @@ protected:
             auto mark_it = first + mark_index;
             std::size_t offset_len = std::string("Heap: [").length();
             for (auto it = first; it != mark_it; ++it) {
-                offset_len += (std::ostringstream() << *it << ", ").str().length();
+                std::ostringstream value_ss;
+                value_ss << *it << ", ";
+                offset_len += value_ss.str().length();
             }
             std::string offset_str(offset_len, ' ');
             ss << offset_str << "^\n";
