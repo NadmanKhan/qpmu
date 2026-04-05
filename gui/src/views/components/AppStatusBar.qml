@@ -107,7 +107,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: appInstance.lastSampleTime ?? "--:--:--"
+                    text: appInstance.lastSampleTime || "--:--:--"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace
