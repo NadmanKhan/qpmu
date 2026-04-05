@@ -238,7 +238,7 @@ def stream_sample_frames(input_path: Path):
         sf2 = sample_frames[(i + 1) % len(sample_frames)]  # Wrap to first frame after last
         interval = sf2.timestamp_nsec - sf1.timestamp_nsec
         if interval <= 0:
-            raise ValueError("Sample-frame timestamps must be strictly increasing")
+            interval = average_interval_nsec
         sample_frames_with_interval.append((sf1, interval))
         
     # Start 0.1 second in the future
