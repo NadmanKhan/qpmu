@@ -10,7 +10,7 @@ from pathlib import Path
 import time
 import struct
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import cycle
 from types import TracebackType
 from typing import TextIO, BinaryIO
@@ -253,7 +253,7 @@ def stream_sample_frames(input_path: Path):
             )  # Convert nsec to sec, adjust for accuracy
 
         # Output frame with the scheduled timestamp
-        yield SampleFrame(**(frame.__dict__ | dict(timestamp_nsec=next_output_time_nsec)))
+        yield replace(frame, timestamp_nsec=next_output_time_nsec)
 
         next_output_time_nsec += interval
 
