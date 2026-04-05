@@ -30,4 +30,7 @@ add_executable(qpmu_service
         ${CMAKE_CURRENT_SOURCE_DIR}/src/pmu.cpp
 )
 
-target_link_libraries(qpmu_service PRIVATE qpmu open-c37118)
+# Find and link pthread library (required for std::thread)
+find_package(Threads REQUIRED)
+
+target_link_libraries(qpmu_service PRIVATE qpmu open-c37118 Threads::Threads)
