@@ -14,7 +14,7 @@ export PKG_CONFIG_PATH="/opt/homebrew/opt/qt@5/lib/pkgconfig"
 cd "$(dirname "$0")"
 
 # Create build directory
-BUILD_DIR="build"
+BUILD_DIR="../build"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
@@ -27,11 +27,3 @@ cmake .. \
 
 # Build
 cmake --build . -j"$(sysctl -n hw.ncpu)"
-
-echo ""
-echo "✅ Build complete! Qt 5 binaries (5.12+):"
-echo "   Core:    $BUILD_DIR/app/qpmu-app"
-echo "   GUI:     $BUILD_DIR/gui/appqpmu"
-echo ""
-echo "Run core: ./$BUILD_DIR/app/qpmu-app.app/Contents/MacOS/qpmu-app"
-echo "Run GUI:  ./$BUILD_DIR/gui/appqpmu.app/Contents/MacOS/appqpmu"

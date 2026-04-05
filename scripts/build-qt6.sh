@@ -11,7 +11,7 @@ export PATH="/opt/homebrew/bin:$PATH"
 cd "$(dirname "$0")"
 
 # Create build directory
-BUILD_DIR="build"
+BUILD_DIR="../build"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
@@ -23,11 +23,3 @@ cmake .. \
 
 # Build
 cmake --build . -j"$(sysctl -n hw.ncpu)"
-
-echo ""
-echo "✅ Build complete! Qt 6.10 binaries:"
-echo "   Core:    $BUILD_DIR/app/qpmu"
-echo "   GUI:     $BUILD_DIR/gui/appqpmu"
-echo ""
-echo "Run core: ./$BUILD_DIR/app/qpmu"
-echo "Run GUI:  ./$BUILD_DIR/gui/appqpmu"
