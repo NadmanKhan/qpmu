@@ -11,7 +11,7 @@ import time
 import struct
 import sys
 from dataclasses import dataclass
-from itertools import cycle, pairwise
+from itertools import cycle
 from types import TracebackType
 from typing import TextIO, BinaryIO
 
@@ -232,10 +232,15 @@ def stream_sample_frames(input_path: Path):
     ) // (len(sample_frames) - 1)
 
 
-    sample_frames_with_interval = [
-        (sf1, sf2.timestamp_nsec - sf1.timestamp_nsec) for (sf1, sf2) in pairwise(sample_frames)
-    ] + [(sample_frames[-1], average_interval_nsec)]  # Add last frame with average interval for wrapping
-
+    sample_frames_with_interval: list[tuple[SampleFrame, int]] = []
+    for i in range(len(sample_frames)):
+        sf1 = sample_frames[i]
+        sf2 = sample_frames[(i + 1) % len(sample_frames)]  # Wrap to first frame after last
+        interval = sf2.timestamp_nsec - sf1.timestamp_nsec
+        if interval <= 0:
+            raise ValueError("Sample-frame timestamps must be strictly increasing")
+        sample_frames_with_interval.append((sf1, interval))
+        
     # Start 0.1 second in the future
     next_output_time_nsec = time.time_ns() + 10**8
 
