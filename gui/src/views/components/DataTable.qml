@@ -19,7 +19,6 @@ Rectangle {
         Repeater {
             model: signalDataModel ? signalDataModel.columnCount() : 0
             delegate: Rectangle {
-                property int index
                 width: 150  // Fixed width for Qt 5.12 compatibility
                 height: 30
                 color: AppTheme.colors.surfaceElevated
@@ -51,7 +50,6 @@ Rectangle {
         Repeater {
             model: signalDataModel ? signalDataModel.rowCount() : 0
             delegate: Rectangle {
-                property int index
                 width: 60
                 height: 35  // Fixed height for Qt 5.12 compatibility
                 color: AppTheme.colors.surfaceElevated

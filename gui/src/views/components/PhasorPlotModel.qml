@@ -183,7 +183,6 @@ Rectangle {
     Repeater {
         model: [0, 90, 180, 270]
         delegate: Text {
-            property var modelData
             property real angleRad: modelData * root.degreesToRadians
             property real labelDist: root.plotRadius * root.angleLabelDistanceRatio
             x: root.centerX + labelDist * Math.cos(angleRad) - width / 2
