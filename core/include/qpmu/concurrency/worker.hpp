@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <stdexcept>
 #include <thread>
 
 struct Worker
