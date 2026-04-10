@@ -161,37 +161,24 @@ Rectangle {
             }
         }
 
-        // View container with cross-fade transition
+        // View container - only the active view is instantiated
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            PhasorPlotModel {
-                id: phasorView
+            Loader {
                 anchors.fill: parent
-                opacity: root.currentView === 0 ? 1.0 : 0.0
-                visible: opacity > 0
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: AppTheme.motion.slow
-                        easing.type: AppTheme.motion.easeInOut
-                    }
-                }
+                sourceComponent: root.currentView === 0 ? phasorComponent : waveformComponent
             }
 
-            WaveformPlotModel {
-                id: waveformView
-                anchors.fill: parent
-                opacity: root.currentView === 1 ? 1.0 : 0.0
-                visible: opacity > 0
+            Component {
+                id: phasorComponent
+                PhasorPlotModel {}
+            }
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: AppTheme.motion.slow
-                        easing.type: AppTheme.motion.easeInOut
-                    }
-                }
+            Component {
+                id: waveformComponent
+                WaveformPlotModel {}
             }
         }
     }

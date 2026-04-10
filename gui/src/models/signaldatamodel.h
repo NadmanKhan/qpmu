@@ -176,7 +176,7 @@ private:
     qreal getEffectivePhase(const SignalData &signal, int signalIndex) const;
     qreal calculateMaxMagnitude(const QString &signalType) const;
     void computePower();
-    void updateComputedDisplayValues();
+    void updateComputedDisplayValues(bool emitSignal = true);
 
     // Signal data array
     QList<SignalData> m_signals;

@@ -79,7 +79,7 @@ Rectangle {
 
     // Throttle to 30 fps
     Timer {
-        interval: 33
+        interval: 100
         running: true
         repeat: true
         onTriggered: {
@@ -90,9 +90,53 @@ Rectangle {
         }
     }
 
+    // Single hit-test MouseArea replaces ~60-120 individual tap target items
     MouseArea {
         anchors.fill: parent
-        onClicked: signalDataModel.selectionModel.clearSelection()
+
+        onClicked: function(mouse) {
+            let bestDist = root.tapTargetSize * 1.5;
+            let bestIndex = -1;
+            let signalCount = signalDataModel.rowCount();
+
+            for (let i = 0; i < signalCount; i++) {
+                let magnitude = signalDataModel.data(signalDataModel.index(i, 0), SignalDataModel.MagnitudeRole);
+                let phase = signalDataModel.data(signalDataModel.index(i, 0), SignalDataModel.PhaseAngleRole);
+                let typeSymbol = signalDataModel.data(signalDataModel.index(i, 0), SignalDataModel.TypeSymbolRole);
+                let cutoff = typeSymbol === "V" ? signalDataModel.voltageCutoff : signalDataModel.currentCutoff;
+                let normalizedMag = magnitude / cutoff;
+                let phaseRad = phase * root.degreesToRadians;
+
+                let tipX = root.centerX + normalizedMag * root.plotRadius * Math.cos(phaseRad);
+                let tipY = root.centerY - normalizedMag * root.plotRadius * Math.sin(phaseRad);
+
+                // Point-to-segment distance from click to phasor line
+                let dx = tipX - root.centerX;
+                let dy = tipY - root.centerY;
+                let lenSq = dx * dx + dy * dy;
+                if (lenSq < 1) continue;
+
+                let t = ((mouse.x - root.centerX) * dx + (mouse.y - root.centerY) * dy) / lenSq;
+                t = Math.max(0, Math.min(1, t));
+                let closestX = root.centerX + t * dx;
+                let closestY = root.centerY + t * dy;
+                let distX = mouse.x - closestX;
+                let distY = mouse.y - closestY;
+                let dist = Math.sqrt(distX * distX + distY * distY);
+
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestIndex = i;
+                }
+            }
+
+            if (bestIndex >= 0) {
+                let modelIndex = signalDataModel.index(bestIndex, 0);
+                signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
+            } else {
+                signalDataModel.selectionModel.clearSelection();
+            }
+        }
     }
 
     // Single canvas for grid + phasors
@@ -193,55 +237,6 @@ Rectangle {
             font.pixelSize: AppTheme.typography.size.medium
             font.weight: Font.Medium
             font.family: AppTheme.typography.fontFamily
-        }
-    }
-
-    // Invisible tap areas for phasor arrows
-    Repeater {
-        model: signalDataModel
-
-        delegate: Item {
-            id: phasorTapArea
-            required property int index
-            required property real magnitude
-            required property real phaseAngle
-            required property string typeSymbol
-
-            property string signalType: typeSymbol === "V" ? "Voltage" : "Current"
-            property real cutoff: phasorTapArea.signalType === "Voltage" ? signalDataModel.voltageCutoff : signalDataModel.currentCutoff
-            property real normalizedMagnitude: phasorTapArea.magnitude / phasorTapArea.cutoff
-            property real phaseRad: phasorTapArea.phaseAngle * root.degreesToRadians
-            property real tipX: root.centerX + phasorTapArea.normalizedMagnitude * root.plotRadius * Math.cos(phasorTapArea.phaseRad)
-            property real tipY: root.centerY - phasorTapArea.normalizedMagnitude * root.plotRadius * Math.sin(phasorTapArea.phaseRad)
-            property real arrowLength: phasorTapArea.normalizedMagnitude * root.plotRadius
-
-            // Create a series of small rectangular tap zones along the phasor arrow
-            Repeater {
-                model: Math.max(10, Math.floor(phasorTapArea.arrowLength / root.tapTargetSpacing))
-
-                delegate: Item {
-                    required property int index
-
-                    property int totalCount: Math.max(10, Math.floor(phasorTapArea.arrowLength / root.tapTargetSpacing))
-                    property real t: totalCount > 1 ? index / (totalCount - 1) : 0
-                    property real posX: root.centerX + t * (phasorTapArea.tipX - root.centerX)
-                    property real posY: root.centerY + t * (phasorTapArea.tipY - root.centerY)
-                    property real halfTarget: root.tapTargetSize / 2
-
-                    x: posX - halfTarget
-                    y: posY - halfTarget
-                    width: root.tapTargetSize
-                    height: root.tapTargetSize
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            const modelIndex = signalDataModel.index(phasorTapArea.index, 0);
-                            signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
-                        }
-                    }
-                }
-            }
         }
     }
 

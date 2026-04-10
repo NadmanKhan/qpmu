@@ -61,7 +61,7 @@ Rectangle {
                     color: appInstance.isPaused ? AppTheme.colors.error : AppTheme.colors.primary
 
                     SequentialAnimation on opacity {
-                        running: !appInstance.isPaused
+                        running: !appInstance.isPaused && !AppTheme.reducedMotion
                         loops: Animation.Infinite
                         NumberAnimation {
                             from: 1.0

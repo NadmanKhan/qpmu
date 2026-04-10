@@ -7,6 +7,10 @@ import QtQuick
 QtObject {
     id: root
 
+    // Performance: disable animations for low-power targets (e.g. BeagleBone Black).
+    // Can be driven by env var QPMU_REDUCED_MOTION=1 in the future.
+    readonly property bool reducedMotion: true
+
     // ============================================================================
     // COLORS
     // ============================================================================
@@ -144,13 +148,13 @@ QtObject {
     // ============================================================================
 
     readonly property var motion: QtObject {
-        // Durations (milliseconds)
-        readonly property int instant: 100
-        readonly property int fast: 150
-        readonly property int normal: 200
-        readonly property int slow: 250
-        readonly property int slowest: 300
-        readonly property int pulse: 800
+        // Durations (milliseconds) — zeroed when reducedMotion is on
+        readonly property int instant: root.reducedMotion ? 0 : 100
+        readonly property int fast: root.reducedMotion ? 0 : 150
+        readonly property int normal: root.reducedMotion ? 0 : 200
+        readonly property int slow: root.reducedMotion ? 0 : 250
+        readonly property int slowest: root.reducedMotion ? 0 : 300
+        readonly property int pulse: root.reducedMotion ? 0 : 800
 
         // Easing curves
         readonly property int easeOut: Easing.OutQuad

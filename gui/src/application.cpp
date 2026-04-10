@@ -8,8 +8,8 @@ Application::Application(int &argc, char **argv)
 {
     // Create data model
     m_signalDataModel = new SignalDataModel(this);
-    connect(m_signalDataModel, &QAbstractListModel::dataChanged,
-            this, &Application::dataUpdated);
+    // Note: dataUpdated is emitted explicitly in processFrame/updateSimulatedData
+    // after updating m_lastSampleTime — no auto-forward from dataChanged needed.
     connect(m_signalDataModel, &SignalDataModel::pauseStateChanged,
             this, &Application::pauseStateChanged);
 

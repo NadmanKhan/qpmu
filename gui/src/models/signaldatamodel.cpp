@@ -398,8 +398,8 @@ void SignalDataModel::updateFromFrame(const qpmu::Measurement_Frame &frame)
     // Update dynamic scaling if enabled
     updateDynamicScaling();
 
-    // Update computed display values (effective magnitude/phase)
-    updateComputedDisplayValues();
+    // Update computed display values (don't emit yet — we emit once below)
+    updateComputedDisplayValues(false);
 
     // Notify views that data has changed (all rows, all columns)
     emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
@@ -448,8 +448,8 @@ void SignalDataModel::updateSimulatedData(qreal simulationTime)
     // Update dynamic scaling if enabled
     updateDynamicScaling();
 
-    // Update computed display values (effective magnitude/phase)
-    updateComputedDisplayValues();
+    // Update computed display values (don't emit yet — we emit once below)
+    updateComputedDisplayValues(false);
 
     // Notify views that data has changed (all rows, all columns)
     emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
@@ -553,10 +553,12 @@ qreal SignalDataModel::calculateMaxMagnitude(const QString &typeSymbol) const
     return maxMag;
 }
 
-void SignalDataModel::updateComputedDisplayValues()
+void SignalDataModel::updateComputedDisplayValues(bool emitSignal)
 {
-    // This updates the effective magnitude and phase for all signals
-    // These values are computed on-the-fly in the data() method
-    // So we just need to notify that data has changed
-    emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
+    // Effective magnitude and phase are computed on-the-fly in data().
+    // Only emit dataChanged when called standalone (e.g. from setMagnitudeMode),
+    // not when called from updateFromFrame/updateSimulatedData which emit it themselves.
+    if (emitSignal) {
+        emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
+    }
 }

@@ -95,9 +95,51 @@ Rectangle {
         }
     }
 
+    // Single hit-test MouseArea replaces ~720 individual tap target items
     MouseArea {
-        anchors.fill: parent
-        onClicked: signalDataModel.selectionModel.clearSelection()
+        x: root.chartX
+        y: root.chartY
+        width: root.chartWidth
+        height: root.chartHeight
+        z: 1
+
+        onClicked: function(mouse) {
+            let clickX = mouse.x + root.chartX;
+            let clickY = mouse.y + root.chartY;
+            let bestDist = root.tapTargetSize * 1.5;
+            let bestIndex = -1;
+            let signalCount = signalDataModel.rowCount();
+
+            for (let si = 0; si < signalCount; si++) {
+                let magnitude = signalDataModel.data(signalDataModel.index(si, 0), SignalDataModel.MagnitudeRole);
+                let phase = signalDataModel.data(signalDataModel.index(si, 0), SignalDataModel.PhaseAngleRole);
+                let typeSymbol = signalDataModel.data(signalDataModel.index(si, 0), SignalDataModel.TypeSymbolRole);
+                let signalType = typeSymbol === "V" ? "Voltage" : "Current";
+                let phaseRad = phase * root.degreesToRadians;
+
+                let sampleCount = 20;
+                for (let i = 0; i <= sampleCount; i++) {
+                    let t = i * root.cycleCount / sampleCount;
+                    let y = magnitude * Math.sin(2.0 * Math.PI * t + phaseRad);
+                    let sx = root.dataToScreenX(t);
+                    let sy = root.dataToScreenY(y, signalType);
+                    let dx = clickX - sx;
+                    let dy = clickY - sy;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestIndex = si;
+                    }
+                }
+            }
+
+            if (bestIndex >= 0) {
+                let modelIndex = signalDataModel.index(bestIndex, 0);
+                signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
+            } else {
+                signalDataModel.selectionModel.clearSelection();
+            }
+        }
     }
 
     // Single canvas for all waveforms
@@ -146,7 +188,7 @@ Rectangle {
         }
 
         Timer {
-            interval: 33  // ~30 fps
+            interval: 100  // ~10 fps
             running: true
             repeat: true
             onTriggered: {
@@ -286,55 +328,6 @@ Rectangle {
         font.weight: Font.DemiBold
         color: AppTheme.colors.textSecondary
         font.family: AppTheme.typography.fontFamily
-    }
-
-    // Invisible tap areas for waveform lines
-    Repeater {
-        model: signalDataModel
-
-        delegate: Item {
-            id: waveformTapArea
-            required property int index
-            required property real magnitude
-            required property real phaseAngle
-            required property string typeSymbol
-
-            property string signalType: typeSymbol === "V" ? "Voltage" : "Current"
-
-            x: root.chartX
-            y: root.chartY
-            width: root.chartWidth
-            height: root.chartHeight
-
-            // Create a series of small rectangular tap zones along the waveform
-            Repeater {
-                model: root.pointsPerCycle * root.cycleCount * 3
-
-                delegate: Item {
-                    required property int index
-
-                    property real t: index / (root.pointsPerCycle * root.gridDivisionsPerCycle)
-                    property real phaseRad: waveformTapArea.phaseAngle * root.degreesToRadians
-                    property real dataY: waveformTapArea.magnitude * Math.sin(2.0 * Math.PI * t + phaseRad)
-                    property real screenX: root.dataToScreenX(t)
-                    property real screenY: root.dataToScreenY(dataY, waveformTapArea.signalType)
-                    property real halfTarget: root.tapTargetSize / 2
-
-                    x: screenX - root.chartX - halfTarget
-                    y: screenY - root.chartY - halfTarget
-                    width: root.tapTargetSize
-                    height: root.tapTargetSize
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            const modelIndex = signalDataModel.index(waveformTapArea.index, 0);
-                            signalDataModel.selectionModel.select(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // Waveform tooltips - show when signal is selected (also clickable for selection)
