@@ -5,7 +5,7 @@ set(CMAKE_AUTORCC ON)
 # Find Qt
 find_package(
   QT REQUIRED
-  NAMES Qt6 Qt5
+  NAMES Qt6
 )
 find_package(
   Qt${QT_VERSION_MAJOR} REQUIRED

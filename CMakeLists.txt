@@ -20,24 +20,25 @@ endif()
 
 
 # Include custom CMake modules
-# include(cmake/FFTW.cmake)
-# include(cmake/Qt.cmake)
+include(cmake/FFTW.cmake)
+include(cmake/Qt.cmake)
 include(cmake/GoogleTest.cmake)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/Open-C37.118)
 
 # Add the "common" library and link it to the project
-# set(COMMON_LIB ${PROJECT_NAME}-common)
-# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/common)
-# target_compile_definitions(
-#   ${COMMON_LIB}
-#   PUBLIC PROJECT_ORG_NAME="cps-lab-nsu"
-#   PUBLIC PROJECT_APP_NAME="${PROJECT_NAME}"
-#   PUBLIC PROJECT_APP_DISPLAY_NAME="QPMU"
-# )
-# link_libraries(${COMMON_LIB})
+set(COMMON_LIB ${PROJECT_NAME}-common)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/common)
+target_compile_definitions(
+  ${COMMON_LIB}
+  PUBLIC PROJECT_ORG_NAME="cps-lab-nsu"
+  PUBLIC PROJECT_APP_NAME="${PROJECT_NAME}"
+  PUBLIC PROJECT_APP_DISPLAY_NAME="QPMU"
+)
+link_libraries(${COMMON_LIB})
 
-# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/estimation)
-# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/app)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/estimation)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/app)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/core)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/gui)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/gui2)
