@@ -9,6 +9,9 @@ find_package(Qt6 6.2 REQUIRED COMPONENTS Quick)
 
 qt_standard_project_setup(REQUIRES 6.2)
 
+qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
+
 qt_add_executable(appqpmu
     src/main.cpp
     src/application.h
