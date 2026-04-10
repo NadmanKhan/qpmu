@@ -77,9 +77,9 @@ Rectangle {
         }
     }
 
-    // Throttle to 30 fps
+    // Throttle to ~2 fps
     Timer {
-        interval: 100
+        interval: 500
         running: true
         repeat: true
         onTriggered: {

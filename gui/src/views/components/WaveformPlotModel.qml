@@ -188,7 +188,7 @@ Rectangle {
         }
 
         Timer {
-            interval: 100  // ~10 fps
+            interval: 500  // ~2 fps
             running: true
             repeat: true
             onTriggered: {

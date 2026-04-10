@@ -5,6 +5,9 @@
 
 int main(int argc, char *argv[])
 {
+    // On-demand rendering only — prevents vsync-locked scenegraph compositing
+    qputenv("QSG_RENDER_LOOP", "basic");
+
     Application app(argc, argv);
 
     // Set application metadata

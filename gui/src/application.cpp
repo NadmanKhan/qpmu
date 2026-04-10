@@ -24,9 +24,19 @@ Application::Application(int &argc, char **argv)
 
     // Setup simulation timer
     m_simulationTimer = new QTimer(this);
-    m_simulationTimer->setInterval(100); // 10 Hz
+    m_simulationTimer->setInterval(500); // 2 Hz
     connect(m_simulationTimer, &QTimer::timeout,
             this, &Application::updateSimulatedData);
+
+    // Throttle IPC frames to 2 Hz — stores latest frame, processes on timer tick
+    m_ipcThrottleTimer = new QTimer(this);
+    m_ipcThrottleTimer->setInterval(500); // 2 Hz
+    connect(m_ipcThrottleTimer, &QTimer::timeout, this, [this]() {
+        if (m_hasPendingFrame) {
+            processFrame(m_pendingFrame);
+            m_hasPendingFrame = false;
+        }
+    });
 
     // Auto-connect after event loop starts
     QTimer::singleShot(100, this, [this]() {
@@ -80,7 +90,16 @@ void Application::onIPCFrameReceived(const qpmu::Measurement_Frame& frame) {
         m_simulationTimer->stop();
     }
     m_liveMode = true;
-    processFrame(frame);
+
+    // Buffer the latest frame; the throttle timer processes it at 2 Hz
+    m_pendingFrame = frame;
+    m_hasPendingFrame = true;
+    if (!m_ipcThrottleTimer->isActive()) {
+        // Process the first frame immediately, then throttle subsequent ones
+        processFrame(m_pendingFrame);
+        m_hasPendingFrame = false;
+        m_ipcThrottleTimer->start();
+    }
 }
 
 void Application::onIPCConnected() {
@@ -91,6 +110,8 @@ void Application::onIPCConnected() {
 void Application::onIPCDisconnected() {
     qDebug() << "Application: Disconnected from QPMU service - falling back to simulation";
     m_liveMode = false;
+    m_ipcThrottleTimer->stop();
+    m_hasPendingFrame = false;
 
     if (!m_simulationTimer->isActive()) {
         startSimulation();
@@ -100,7 +121,7 @@ void Application::onIPCDisconnected() {
 }
 
 void Application::updateSimulatedData() {
-    m_simulationTime += 0.1;
+    m_simulationTime += 0.5;
     m_signalDataModel->updateSimulatedData(m_simulationTime);
 
     if (!m_signalDataModel->isPaused()) {

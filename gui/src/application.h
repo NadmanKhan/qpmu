@@ -60,6 +60,9 @@ private:
     SignalDataModel* m_signalDataModel;
     GuiIpcClient* m_ipcClient;
     QTimer* m_simulationTimer;
+    QTimer* m_ipcThrottleTimer;
+    qpmu::Measurement_Frame m_pendingFrame{};
+    bool m_hasPendingFrame = false;
 
     bool m_liveMode = false;
     QString m_lastSampleTime;
