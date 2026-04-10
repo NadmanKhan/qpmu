@@ -1,5 +1,5 @@
-import QtQuick 2.12
-import QtQuick.Controls 2.12
+import QtQuick
+import QtQuick.Controls
 import qpmu 1.0
 
 // Styled ComboBox for phase reference selection
@@ -72,8 +72,8 @@ ComboBox {
 
     delegate: ItemDelegate {
         id: delegateItem
-        property var model
-        property int index
+        required property var model
+        required property int index
 
         width: root.width - 8
         height: AppTheme.sizing.medium

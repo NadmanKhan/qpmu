@@ -1,4 +1,4 @@
-import QtQuick 2.12
+import QtQuick
 import qpmu 1.0
 
 Rectangle {
@@ -70,7 +70,7 @@ Rectangle {
     Repeater {
         model: root.gridRowCount
         delegate: Rectangle {
-            property int index
+            required property int index
             property real yValue: root.getGridLineValue(root.maxVoltage, index)
             x: root.chartX - root.axisPadding
             y: root.dataToScreenY(yValue, "Voltage")
@@ -84,7 +84,7 @@ Rectangle {
     Repeater {
         model: root.cycleCount * root.gridDivisionsPerCycle + 1
         delegate: Rectangle {
-            property int index
+            required property int index
             property real xValue: index / root.gridDivisionsPerCycle
             x: root.dataToScreenX(xValue)
             y: root.chartY - root.axisPadding
@@ -202,7 +202,7 @@ Rectangle {
     Repeater {
         model: root.gridRowCount
         delegate: Text {
-            property int index
+            required property int index
             property real voltageValue: root.getGridLineValue(root.maxVoltage, index)
             x: root.chartX - root.axisPadding - width - root.tickLabelGap
             y: root.dataToScreenY(voltageValue, "Voltage") - height / 2
@@ -219,7 +219,7 @@ Rectangle {
     Repeater {
         model: root.gridRowCount
         delegate: Text {
-            property int index
+            required property int index
             property real currentValue: root.getGridLineValue(root.maxCurrent, index)
             x: root.chartX + root.chartWidth + root.axisPadding + root.tickLabelGap
             y: root.dataToScreenY(currentValue, "Current") - height / 2
@@ -236,7 +236,7 @@ Rectangle {
     Repeater {
         model: root.cycleCount * root.gridDivisionsPerCycle + 1
         delegate: Text {
-            property int index
+            required property int index
             property real xValue: index / root.gridDivisionsPerCycle
             x: root.dataToScreenX(xValue) - width / 2
             y: root.chartY + root.chartHeight + root.axisPadding + root.tickLabelGap
@@ -294,10 +294,10 @@ Rectangle {
 
         delegate: Item {
             id: waveformTapArea
-            property int index
-            property real magnitude
-            property real phaseAngle
-            property string typeSymbol
+            required property int index
+            required property real magnitude
+            required property real phaseAngle
+            required property string typeSymbol
 
             property string signalType: typeSymbol === "V" ? "Voltage" : "Current"
 
@@ -311,7 +311,7 @@ Rectangle {
                 model: root.pointsPerCycle * root.cycleCount * 3
 
                 delegate: Item {
-                    property int index
+                    required property int index
 
                     property real t: index / (root.pointsPerCycle * root.gridDivisionsPerCycle)
                     property real phaseRad: waveformTapArea.phaseAngle * root.degreesToRadians
@@ -344,12 +344,12 @@ Rectangle {
         delegate: Rectangle {
             id: labelDelegate
 
-            property int index
-            property color decoration
-            property real magnitude
-            property real phaseAngle
-            property string typeSymbol
-            property string toolTip
+            required property int index
+            required property color decoration
+            required property real magnitude
+            required property real phaseAngle
+            required property string typeSymbol
+            required property string toolTip
 
             // Calculate position at the start of the waveform (t=0)
             property string signalType: typeSymbol === "V" ? "Voltage" : "Current"

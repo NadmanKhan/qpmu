@@ -1,4 +1,4 @@
-import QtQuick 2.12
+import QtQuick
 import qpmu 1.0
 
 // Toggle button for two-state controls (RMS/Peak, Dynamic/Manual)

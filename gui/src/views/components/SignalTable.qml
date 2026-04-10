@@ -1,5 +1,5 @@
-import QtQuick 2.12
-import QtQuick.Controls 2.12
+import QtQuick
+import QtQuick.Controls
 import QtCore
 import qpmu 1.0
 
@@ -38,8 +38,8 @@ Rectangle {
 
             delegate: Rectangle {
                 id: horizontalHeaderDelegate
-                property string display
-                property int index
+                required property string display
+                required property int index
 
                 readonly property size headerSize: signalDataModel.headerData(horizontalHeaderDelegate.index, Qt.Horizontal, Qt.SizeHintRole)
                 implicitWidth: headerSize.width
@@ -75,8 +75,8 @@ Rectangle {
 
             delegate: Rectangle {
                 id: verticalHeaderDelegate
-                property string display
-                property int index
+                required property string display
+                required property int index
 
                 readonly property size headerSize: signalDataModel.headerData(verticalHeaderDelegate.index, Qt.Vertical, Qt.SizeHintRole)
                 readonly property color signalColor: signalDataModel.data(signalDataModel.index(verticalHeaderDelegate.index, 0), Qt.DecorationRole)

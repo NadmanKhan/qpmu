@@ -1,5 +1,5 @@
-import QtQuick 2.12
-import QtQuick.Layouts 1.12
+import QtQuick
+import QtQuick.Layouts
 import qpmu 1.0
 
 Rectangle {
@@ -107,7 +107,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: appInstance.lastSampleTime || "--:--:--"
+                    text: appInstance.lastSampleTime ?? "--:--:--"
                     font.pixelSize: AppTheme.typography.size.normal
                     font.weight: Font.DemiBold
                     font.family: AppTheme.typography.fontFamilyMonospace

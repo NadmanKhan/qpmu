@@ -14,6 +14,9 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
 
+    // Add import path so engine can find the qpmu QML module
+    engine.addImportPath("qrc:/");
+
     // Expose application instance and models to QML
     engine.rootContext()->setContextProperty("appInstance", &app);
     engine.rootContext()->setContextProperty("signalDataModel", app.signalDataModel());

@@ -1,7 +1,7 @@
 
-import QtQuick 2.12
-import QtQuick.Controls 2.12
-import QtQuick.Layouts 1.12
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import qpmu 1.0
 import "components"
 
@@ -36,54 +36,52 @@ Screen {
     }
 
     // Main content area - graph view and data table
-    // Qt 5.12 compatible: Use Row/Column instead of SplitView (which requires Qt 5.13+)
-    Item {
+    SplitView {
         anchors.fill: parent
+        orientation: root.isNarrow ? Qt.Vertical : Qt.Horizontal
 
-        // Horizontal layout (wide screens)
-        Row {
-            anchors.fill: parent
-            visible: !root.isNarrow
+        handle: Rectangle {
+            implicitWidth: root.isNarrow ? parent.width : 6
+            implicitHeight: root.isNarrow ? 6 : parent.height
+            color: SplitHandle.hovered ? AppTheme.colors.borderEmphasized : AppTheme.colors.surfaceElevated
 
-            GraphViewSwitcher {
-                width: parent.width * 0.6
-                height: parent.height
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.motion.normal
+                }
             }
 
-            // Divider
             Rectangle {
-                width: 2
-                height: parent.height
-                color: AppTheme.colors.border
-            }
+                anchors.centerIn: parent
+                width: root.isNarrow ? parent.width * 0.3 : 2
+                height: root.isNarrow ? 2 : parent.height * 0.3
+                radius: 1
+                color: SplitHandle.hovered ? AppTheme.colors.textTertiary : AppTheme.colors.border
 
-            DataTable {
-                width: parent.width * 0.4 - 2
-                height: parent.height
+                Behavior on color {
+                    ColorAnimation {
+                        duration: AppTheme.motion.normal
+                    }
+                }
             }
         }
 
-        // Vertical layout (narrow screens)
-        Column {
-            anchors.fill: parent
-            visible: root.isNarrow
+        // Graph view (Left in horizontal, Top in vertical)
+        GraphViewSwitcher {
+            SplitView.preferredWidth: root.isNarrow ? parent.width : parent.width * 0.5
+            SplitView.preferredHeight: root.isNarrow ? parent.height * 0.5 : parent.height
+            SplitView.minimumWidth: root.isNarrow ? 100 : parent.width * 0.3
+            SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
+            SplitView.fillHeight: !root.isNarrow
+            SplitView.fillWidth: root.isNarrow
+        }
 
-            GraphViewSwitcher {
-                width: parent.width
-                height: parent.height * 0.5
-            }
-
-            // Divider
-            Rectangle {
-                width: parent.width
-                height: 2
-                color: AppTheme.colors.border
-            }
-
-            DataTable {
-                width: parent.width
-                height: parent.height * 0.5 - 2
-            }
+        // Data table (Right in horizontal, Bottom in vertical)
+        DataTable {
+            SplitView.fillWidth: true
+            SplitView.fillHeight: true
+            SplitView.minimumWidth: root.isNarrow ? 100 : parent.width * 0.3
+            SplitView.minimumHeight: root.isNarrow ? parent.height * 0.2 : 100
         }
     }
 }

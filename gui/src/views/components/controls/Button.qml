@@ -1,4 +1,4 @@
-import QtQuick 2.12
+import QtQuick
 import qpmu 1.0
 
 // Base button component with AppTheme styling

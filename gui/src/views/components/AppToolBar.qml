@@ -1,6 +1,6 @@
-import QtQuick 2.12
-import QtQuick.Controls 2.12
-import QtQuick.Layouts 1.12
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import qpmu 1.0
 
 /**
@@ -14,11 +14,11 @@ import qpmu 1.0
 ToolBar {
     id: root
 
-    property StackView stackView
-    property Drawer contextDrawer
+    required property StackView stackView
+    required property Drawer contextDrawer
 
-    readonly property var currentScreen: stackView ? stackView.currentItem : null
-    readonly property bool hasContextMenu: currentScreen ? currentScreen.contextMenu !== null : false
+    readonly property var currentScreen: stackView.currentItem
+    readonly property bool hasContextMenu: currentScreen?.contextMenu !== null
 
     background: Rectangle {
         color: AppTheme.colors.surface
@@ -61,14 +61,15 @@ ToolBar {
 
             onClicked: root.stackView.pop()
 
-            // Note: HoverHandler.cursorShape removed for Qt 5.12 compatibility
-            // Cursor shape on hover is a nice-to-have, not critical functionality
+            HoverHandler {
+                cursorShape: Qt.PointingHandCursor
+            }
         }
 
         // Center: Title
         Label {
             Layout.fillWidth: true
-            text: root.currentScreen ? root.currentScreen.title : ""
+            text: root.currentScreen?.title ?? ""
             font.pixelSize: AppTheme.typography.size.large
             font.weight: Font.Bold
             font.family: AppTheme.typography.fontFamily
@@ -107,8 +108,9 @@ ToolBar {
 
             onClicked: root.contextDrawer.open()
 
-            // Note: HoverHandler.cursorShape removed for Qt 5.12 compatibility
-            // Cursor shape on hover is a nice-to-have, not critical functionality
+            HoverHandler {
+                cursorShape: Qt.PointingHandCursor
+            }
         }
     }
 }

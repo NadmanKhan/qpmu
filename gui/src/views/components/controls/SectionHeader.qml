@@ -1,4 +1,4 @@
-import QtQuick 2.12
+import QtQuick
 import qpmu 1.0
 
 // Styled section header for control panel

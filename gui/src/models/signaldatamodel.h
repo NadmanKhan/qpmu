@@ -7,6 +7,7 @@
 #include <QItemSelectionModel>
 #include <QColor>
 #include <QObject>
+#include <QtQmlIntegration>
 
 #include "qpmu/core.h"
 
@@ -16,6 +17,7 @@
 class SignalDataModel : public QAbstractItemModel
 {
     Q_OBJECT
+    QML_ELEMENT
 
 public:
     // Display modes
