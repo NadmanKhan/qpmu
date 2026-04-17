@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Device tree overlay for PRU-based MCP3208 SPI ADC
+ * Configures P9_28-P9_31 for PRU0 GPIO (bit-banged SPI)
+ *
+ * P9_28 (mcasp0_ahclkr, 0x99c): mode 5 -> pr1_pru0_pru_r30[3] - Chip Select (output)
+ * P9_29 (mcasp0_fsx,    0x994): mode 6 -> pr1_pru0_pru_r31[1] - SPI MISO (input)
+ * P9_30 (mcasp0_axr0,   0x998): mode 5 -> pr1_pru0_pru_r30[2] - SPI MOSI (output)
+ * P9_31 (mcasp0_aclkx,  0x990): mode 5 -> pr1_pru0_pru_r30[0] - SPI Clock (output)
+ *
+ * Pin modes verified against:
+ *   /opt/source/dtb-5.10-ti/src/arm/am335x-bonegreen-wireless-common-univ.dtsi
+ *   /opt/source/dtb-5.10-ti/src/arm/am335x-boneblack-pruswuart.dts
+ *   /opt/source/dtb-6.18.x/src/arm/ti/omap/am335x-pocketbeagle.dts
+ *
+ * NOTE: The pru_rproc driver does NOT support pinctrl bindings, so this overlay
+ * only defines the pinmux group. Pins are applied at deploy time via
+ * adc/scripts/config-pru-pins.py, which writes the pad config registers
+ * directly through /dev/mem.
+ *
+ * This overlay DOES disable mcasp0 (audio) to release its claim on P9_28,
+ * P9_29, and P9_31. This is a permanent change: audio will not work while
+ * this overlay is loaded.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/pinctrl/am33xx.h>
+
+&{/chosen} {
+	overlays {
+		BB-PRU-MCP3208-00A0.kernel = __TIMESTAMP__;
+	};
+};
+
+/*
+ * Disable mcasp0 (audio) so it releases its claim on P9_28, P9_29, P9_31.
+ * Without this, those three pins remain owned by mcasp0 and cannot be
+ * reconfigured for PRU use.
+ */
+&mcasp0 {
+	status = "disabled";
+};
+
+/*
+ * Define the PRU pin group. This is NOT automatically applied because the
+ * pru_rproc driver does not call into the pinctrl subsystem. The group is
+ * defined here for documentation and future compatibility; actual pin
+ * configuration is done by adc/scripts/config-pru-pins.py at deploy time.
+ */
+&am33xx_pinmux {
+	pru_mcp3208_pins: pinmux_pru_mcp3208_pins {
+		pinctrl-single,pins = <
+			AM33XX_PADCONF(AM335X_PIN_MCASP0_ACLKX, PIN_OUTPUT, MUX_MODE5)  /* P9_31: CLK  -> pr1_pru0_pru_r30[0] */
+			AM33XX_PADCONF(AM335X_PIN_MCASP0_FSX,    PIN_INPUT,  MUX_MODE6)  /* P9_29: MISO -> pr1_pru0_pru_r31[1] */
+			AM33XX_PADCONF(AM335X_PIN_MCASP0_AXR0,   PIN_OUTPUT, MUX_MODE5)  /* P9_30: MOSI -> pr1_pru0_pru_r30[2] */
+			AM33XX_PADCONF(AM335X_PIN_MCASP0_AHCLKR, PIN_OUTPUT, MUX_MODE5)  /* P9_28: CS   -> pr1_pru0_pru_r30[3] */
+		>;
+	};
+};

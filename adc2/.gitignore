@@ -1,0 +1,4 @@
+gen/
+host/host_mcp3208
+overlay/*.dtbo
+scripts/config-pru-pins

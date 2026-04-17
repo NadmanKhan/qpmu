@@ -39,9 +39,18 @@ time difference between consecutive messages.
 sudo git clone https://git.ti.com/git/pru-software-support-package/pru-software-support-package.git /usr/lib/ti/pru-software-support-package
 ```
 
-    - Copy/symlink the linked scripts into expected locations:
+    - Copy the linker command scripts into expected locations. **Important:** Use the
+      `PRU_RPMsg_Echo_Interrupt0` (or `Interrupt1`) example's `AM335x_PRU.cmd`, **not** the
+      `PRU_Halt` example — the Halt example lacks the `.resource_table` section mapping
+      that the remoteproc driver needs to discover the RPMsg resource table.
 
 ```bash
-cp /usr/lib/ti/pru-software-support-package/examples/am335x/PRU_Halt/AM335x_PRU.cmd adc/pru0_mcp3208_comm/
-cp /usr/lib/ti/pru-software-support-package/examples/am335x/PRU_Halt/AM335x_PRU.cmd adc/pru1_mcp3208_rpmsg/
+cp /usr/lib/ti/pru-software-support-package/examples/am335x/PRU_RPMsg_Echo_Interrupt0/AM335x_PRU.cmd adc/pru0_mcp3208_comm/
+cp /usr/lib/ti/pru-software-support-package/examples/am335x/PRU_RPMsg_Echo_Interrupt1/AM335x_PRU.cmd adc/pru1_mcp3208_rpmsg/
+```
+
+      Alternatively, manually add this line to the `SECTIONS` block in both `AM335x_PRU.cmd` files:
+
+```
+	.resource_table > PRU_DMEM_0_1, PAGE 1
 ```

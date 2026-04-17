@@ -18,7 +18,7 @@ CURRENT_DIR := $(notdir $(patsubst %/,%,$(dir $(MKFILE_PATH))))
 PROJ_NAME=$(CURRENT_DIR)
 LINKER_COMMAND_FILE=./AM335x_PRU.cmd
 LIBS=--library=$(PRU_SSP)/lib/rpmsg_lib.lib
-INCLUDE=--include_path=$(SSP_CGT)/include --include_path=$(PRU_SSP)/include \
+INCLUDE=--include_path=$(PRU_CGT)/include --include_path=$(PRU_SSP)/include \
            --include_path=$(PRU_SSP)/include/am335x  \
                  --include_path=$(PRU_LIB)/include --include_path=$(PRU_LIB)/include/am335x
 

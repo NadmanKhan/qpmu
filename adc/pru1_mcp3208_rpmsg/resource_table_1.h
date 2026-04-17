@@ -53,38 +53,63 @@
 /* This firmware supports name service notifications as one of its features */
 #define RPMSG_PRU_C0_FEATURES	(1 << VIRTIO_RPMSG_F_NS)
 
-/* Definition for unused interrupts */
-#define HOST_UNUSED		255
+/*
+ * Interrupt map for mainline kernel pru_rproc driver.
+ *
+ * The old resource_table TYPE_POSTLOAD_VENDOR (type 5) custom entry is not
+ * supported by mainline kernels (6.x). The mainline pru_rproc driver instead
+ * reads interrupt routing from a ".pru_irq_map" ELF section whose layout is:
+ *
+ *   struct { uint8_t type; uint8_t num_evts; struct { uint8_t event; uint8_t chnl; uint8_t host; } maps[]; }
+ *
+ * For RPMsg on PRU1 (sysevt 18 = PRU1->ARM, sysevt 19 = ARM->PRU1):
+ *   sysevt 18 -> channel 3 -> host 3  (TO_ARM_HOST)
+ *   sysevt 19 -> channel 1 -> host 1  (FROM_ARM_HOST)
+ *
+ * type=0 selects the standard (non-K3) interrupt map format.
+ */
+struct pru_irq_rsc {
+	uint8_t  type;
+	uint8_t  num_evts;
+	struct {
+		uint8_t event;
+		uint8_t chnl;
+		uint8_t host;
+	} maps[2];
+};
 
-/* Mapping sysevts to a channel. Each pair contains a sysevt, channel. */
-struct ch_map pru_intc_map[] = { {18, 3},
-				 {19, 1},
+#pragma DATA_SECTION(pru_irq_map, ".pru_irq_map")
+#pragma RETAIN(pru_irq_map)
+struct pru_irq_rsc pru_irq_map = {
+	0,  /* type: 0 = standard (non-K3) */
+	2,  /* num_evts */
+	{
+		{ 18, 3, 3 },  /* sysevt 18 -> channel 3 -> host 3 (PRU1->ARM, TO_ARM_HOST) */
+		{ 19, 1, 1 },  /* sysevt 19 -> channel 1 -> host 1 (ARM->PRU1, FROM_ARM_HOST) */
+	},
 };
 
 struct my_resource_table {
 	struct resource_table base;
 
-	uint32_t offset[2]; /* Should match 'num' in actual definition */
+	uint32_t offset[1]; /* Should match 'num' in actual definition */
 
 	/* rpmsg vdev entry */
 	struct fw_rsc_vdev rpmsg_vdev;
 	struct fw_rsc_vdev_vring rpmsg_vring0;
 	struct fw_rsc_vdev_vring rpmsg_vring1;
-
-	/* intc definition */
-	struct fw_rsc_custom pru_ints;
 };
 
 #pragma DATA_SECTION(resourceTable, ".resource_table")
 #pragma RETAIN(resourceTable)
 struct my_resource_table resourceTable = {
-	1,	/* Resource table version: only version 1 is supported by the current driver */
-	2,	/* number of entries in the table */
-	0, 0,	/* reserved, must be zero */
+	1,  /* Resource table version */
+	1,  /* number of entries: vdev only (no custom PRU_INTS entry - not supported
+	     * by mainline kernels; interrupt map is in .pru_irq_map section instead) */
+	0, 0,  /* reserved, must be zero */
 	/* offsets to entries */
 	{
 		offsetof(struct my_resource_table, rpmsg_vdev),
-		offsetof(struct my_resource_table, pru_ints),
 	},
 
 	/* rpmsg vdev entry */
@@ -114,21 +139,6 @@ struct my_resource_table resourceTable = {
 		PRU_RPMSG_VQ1_SIZE,     //num of descriptors
 		0,                      //notifyid, will be populated, can't pass right now
 		0                       //reserved
-	},
-
-	{
-		TYPE_POSTLOAD_VENDOR, PRU_INTS_VER0 | TYPE_PRU_INTS,
-		sizeof(struct fw_rsc_custom_ints),
-		{
-			0x0000,
-			/* Channel-to-host mapping, 255 for unused */
-			HOST_UNUSED, 1, HOST_UNUSED, 3, HOST_UNUSED,
-			HOST_UNUSED, HOST_UNUSED, HOST_UNUSED, HOST_UNUSED, HOST_UNUSED,
-			/* Number of evts being mapped to channels */
-			(sizeof(pru_intc_map) / sizeof(struct ch_map)),
-			/* Pointer to the structure containing mapped events */
-			pru_intc_map,
-		},
 	},
 };
 

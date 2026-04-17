@@ -16,7 +16,7 @@ CURRENT_DIR := $(notdir $(patsubst %/,%,$(dir $(MKFILE_PATH))))
 PROJ_NAME=$(CURRENT_DIR)
 LINKER_COMMAND_FILE=./AM335x_PRU.cmd
 LIBS=--library=$(PRU_SSP)/lib/rpmsg_lib.lib
-INCLUDE=--include_path=$(SSP_CGT)/include --include_path=$(PRU_SSP)/include \
+INCLUDE=--include_path=$(PRU_CGT)/include --include_path=$(PRU_SSP)/include \
            --include_path=$(PRU_SSP)/include/am335x --include_path=$(PRU_CGT)/include \
                --include_path=$(PRU_LIB)/include --include_path=$(PRU_LIB)/include/am335x
 
@@ -47,10 +47,7 @@ deploy: install
 	-echo stop > $(RPROC)/state
 	echo $(PROJ_NAME) > $(RPROC)/firmware
 	echo start > $(RPROC)/state
-	config-pin P9_28 pruout
-	config-pin P9_29 pruin
-	config-pin P9_30 pruout
-	config-pin P9_31 pruout
+	-$(CURDIR)/../scripts/config-pru-pins
 
 # Invokes the linker (-z flag) to make the .out file
 $(TARGET): $(OBJECTS) $(LINKER_COMMAND_FILE)
