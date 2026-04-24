@@ -2,6 +2,7 @@
 #include "signaldatamodel.h"
 #include "phasorplot.h"
 #include "waveformplot.h"
+#include "contextmenupanel.h"
 #include "theme.h"
 
 #include <QHBoxLayout>
@@ -16,6 +17,7 @@
 #include <QStyledItemDelegate>
 #include <QPainter>
 #include <QFrame>
+#include <QResizeEvent>
 
 // ---------------------------------------------------------------------------
 // Table delegate: colored cell backgrounds based on signal color + selection
@@ -80,23 +82,23 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
 
     auto *toolbar = new QWidget(central);
     setupToolbar();
-    // setupToolbar populates m_pauseButton; now build the toolbar layout
     toolbar->setObjectName(QStringLiteral("toolbar"));
     toolbar->setFixedHeight(Theme::Sizing::toolbarHeight);
-    toolbar->setStyleSheet(QStringLiteral(
-        "QWidget#toolbar { background: %1; border-bottom: 1px solid %2; }")
-        .arg(Theme::Colors::surface.name(), Theme::Colors::borderEmphasized.name()));
+    toolbar->setStyleSheet(
+            QStringLiteral("QWidget#toolbar { background: %1; border-bottom: 1px solid %2; }")
+                    .arg(Theme::Colors::surface.name(), Theme::Colors::borderEmphasized.name()));
     {
         auto *hbox = new QHBoxLayout(toolbar);
         hbox->setContentsMargins(Theme::Spacing::small, 0, Theme::Spacing::small, 0);
         auto *title = new QLabel(QStringLiteral("QPMU"), toolbar);
         title->setStyleSheet(QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
-            .arg(Theme::Colors::textPrimary.name()).arg(Theme::Font::large));
+                                     .arg(Theme::Colors::textPrimary.name())
+                                     .arg(Theme::Font::large));
         title->setAlignment(Qt::AlignCenter);
         hbox->addStretch();
         hbox->addWidget(title);
         hbox->addStretch();
-        hbox->addWidget(m_pauseButton);
+        hbox->addWidget(m_menuButton);
     }
     layout->addWidget(toolbar);
 
@@ -107,6 +109,9 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
     layout->addWidget(m_statusBar);
 
     setCentralWidget(central);
+
+    // Context panel: absolute-positioned overlay child of central widget
+    m_contextPanel = new ContextMenuPanel(m_model, central);
 
     // Repaint visible plot on data changes
     connect(m_model, &QAbstractItemModel::dataChanged, this, [this]() {
@@ -121,10 +126,8 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
     });
 
     // Pause state
-    connect(m_model, &SignalDataModel::pauseStateChanged, this, [this]() {
-        updatePauseButton();
-        updateStatusIndicator();
-    });
+    connect(m_model, &SignalDataModel::pauseStateChanged, this,
+            [this]() { updateStatusIndicator(); });
 }
 
 // ---------------------------------------------------------------------------
@@ -133,29 +136,19 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
 
 void MainWindow::setupToolbar()
 {
-    m_pauseButton = new QPushButton;
-    m_pauseButton->setFixedSize(Theme::Sizing::medium, Theme::Sizing::medium);
-    m_pauseButton->setCursor(Qt::PointingHandCursor);
-    connect(m_pauseButton, &QPushButton::clicked, this, [this]() {
-        m_model->setIsPaused(!m_model->isPaused());
-    });
-    updatePauseButton();
-}
-
-void MainWindow::updatePauseButton()
-{
-    bool paused = m_model->isPaused();
-    m_pauseButton->setText(paused ? QStringLiteral("\u25B6") : QStringLiteral("\u23F8"));
-    m_pauseButton->setStyleSheet(QStringLiteral(
-        "QPushButton { background: %1; color: %2; border: 1px solid %3;"
-        " border-radius: %4px; font-size: %5px; }"
-        "QPushButton:hover { background: %6; }")
-        .arg(Theme::Colors::surfaceElevated.name(),
-             paused ? Theme::Colors::primary.name() : Theme::Colors::textPrimary.name(),
-             Theme::Colors::borderEmphasized.name())
-        .arg(Theme::Radius::large)
-        .arg(Theme::Font::large)
-        .arg(Theme::Colors::surfaceHover.name()));
+    m_menuButton = new QPushButton(QStringLiteral("⋮"));
+    m_menuButton->setFixedSize(Theme::Sizing::medium, Theme::Sizing::medium);
+    m_menuButton->setCursor(Qt::PointingHandCursor);
+    m_menuButton->setStyleSheet(
+            QStringLiteral("QPushButton { background: %1; color: %2; border: 1px solid %3;"
+                           " border-radius: %4px; font-size: %5px; font-weight: bold; }"
+                           "QPushButton:hover { background: %6; }")
+                    .arg(Theme::Colors::surfaceElevated.name(), Theme::Colors::textPrimary.name(),
+                         Theme::Colors::borderEmphasized.name())
+                    .arg(Theme::Radius::large)
+                    .arg(Theme::Font::huge)
+                    .arg(Theme::Colors::surfaceHover.name()));
+    connect(m_menuButton, &QPushButton::clicked, this, [this]() { m_contextPanel->toggle(); });
 }
 
 // ---------------------------------------------------------------------------
@@ -169,23 +162,23 @@ void MainWindow::setupCentralArea()
 
     // Tab bar
     m_tabBar = new QTabBar;
-    m_tabBar->addTab(QStringLiteral("\u25C9 Phasor"));
-    m_tabBar->addTab(QStringLiteral("\u223F Waveform"));
+    m_tabBar->addTab(QStringLiteral("◉ Phasor"));
+    m_tabBar->addTab(QStringLiteral("∿ Waveform"));
     m_tabBar->setDocumentMode(true);
     m_tabBar->setExpanding(false);
-    m_tabBar->setStyleSheet(QStringLiteral(
-        "QTabBar { background: %1; }"
-        "QTabBar::tab { background: %2; color: %3; padding: 8px 16px;"
-        " border-radius: %4px; margin: 4px 2px; font-weight: 600; font-size: %5px; }"
-        "QTabBar::tab:selected { background: %6; color: %7; border-bottom: 2px solid %8; }")
-        .arg(Theme::Colors::surface.name(),
-             Theme::Colors::surfaceElevated.name(),
-             Theme::Colors::textTertiary.name())
-        .arg(Theme::Radius::medium)
-        .arg(Theme::Font::normal)
-        .arg(Theme::Colors::borderEmphasized.name(),
-             Theme::Colors::textPrimary.name(),
-             Theme::Colors::primary.name()));
+    m_tabBar->setStyleSheet(
+            QStringLiteral(
+                    "QTabBar { background: %1; }"
+                    "QTabBar::tab { background: %2; color: %3; padding: 8px 16px;"
+                    " border-radius: %4px; margin: 4px 2px; font-weight: 600; font-size: %5px; }"
+                    "QTabBar::tab:selected { background: %6; color: %7; border-bottom: 2px solid "
+                    "%8; }")
+                    .arg(Theme::Colors::surface.name(), Theme::Colors::surfaceElevated.name(),
+                         Theme::Colors::textTertiary.name())
+                    .arg(Theme::Radius::medium)
+                    .arg(Theme::Font::normal)
+                    .arg(Theme::Colors::borderEmphasized.name(), Theme::Colors::textPrimary.name(),
+                         Theme::Colors::primary.name()));
 
     m_plotStack = new QStackedWidget;
     m_plotStack->addWidget(m_phasorPlot);
@@ -207,22 +200,21 @@ void MainWindow::setupCentralArea()
     m_tableView->setSelectionMode(QAbstractItemView::MultiSelection);
     m_tableView->setItemDelegate(new SignalTableDelegate(m_tableView));
     m_tableView->horizontalHeader()->setStretchLastSection(true);
-    m_tableView->verticalHeader()->setDefaultSectionSize(Theme::Sizing::small + Theme::Spacing::small);
+    m_tableView->verticalHeader()->setDefaultSectionSize(Theme::Sizing::small
+                                                         + Theme::Spacing::small);
     m_tableView->setShowGrid(false);
-    m_tableView->setStyleSheet(QStringLiteral(
-        "QTableView { background: %1; color: %2; gridline-color: %3;"
-        " font-family: '%4'; font-size: %5px; border: none; }"
-        "QHeaderView::section { background: %6; color: %7; padding: 6px;"
-        " border: none; border-bottom: 1px solid %8; font-weight: 600; font-size: %9px; }")
-        .arg(Theme::Colors::surface.name(),
-             Theme::Colors::textPrimary.name(),
-             Theme::Colors::borderSubtle.name(),
-             Theme::Font::monospace)
-        .arg(Theme::Font::normal)
-        .arg(Theme::Colors::surfaceElevated.name(),
-             Theme::Colors::textSecondary.name(),
-             Theme::Colors::borderEmphasized.name())
-        .arg(Theme::Font::small));
+    m_tableView->setStyleSheet(
+            QStringLiteral("QTableView { background: %1; color: %2; gridline-color: %3;"
+                           " font-family: '%4'; font-size: %5px; border: none; }"
+                           "QHeaderView::section { background: %6; color: %7; padding: 6px;"
+                           " border: none; border-bottom: 1px solid %8; font-weight: 600; "
+                           "font-size: %9px; }")
+                    .arg(Theme::Colors::surface.name(), Theme::Colors::textPrimary.name(),
+                         Theme::Colors::borderSubtle.name(), Theme::Font::monospace)
+                    .arg(Theme::Font::normal)
+                    .arg(Theme::Colors::surfaceElevated.name(), Theme::Colors::textSecondary.name(),
+                         Theme::Colors::borderEmphasized.name())
+                    .arg(Theme::Font::small));
 
     // Splitter
     m_splitter = new QSplitter(Qt::Horizontal);
@@ -231,11 +223,10 @@ void MainWindow::setupCentralArea()
     m_splitter->setStretchFactor(0, 1);
     m_splitter->setStretchFactor(1, 1);
     m_splitter->setHandleWidth(6);
-    m_splitter->setStyleSheet(QStringLiteral(
-        "QSplitter::handle { background: %1; }"
-        "QSplitter::handle:hover { background: %2; }")
-        .arg(Theme::Colors::surfaceElevated.name(),
-             Theme::Colors::borderEmphasized.name()));
+    m_splitter->setStyleSheet(QStringLiteral("QSplitter::handle { background: %1; }"
+                                             "QSplitter::handle:hover { background: %2; }")
+                                      .arg(Theme::Colors::surfaceElevated.name(),
+                                           Theme::Colors::borderEmphasized.name()));
 }
 
 // ---------------------------------------------------------------------------
@@ -245,18 +236,20 @@ void MainWindow::setupCentralArea()
 static QLabel *makeMetricHeader(const QString &text)
 {
     auto *label = new QLabel(text);
-    label->setStyleSheet(QStringLiteral(
-        "color: %1; font-size: %2px; font-weight: bold;")
-        .arg(Theme::Colors::textTertiary.name()).arg(Theme::Font::tiny));
+    label->setStyleSheet(QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
+                                 .arg(Theme::Colors::textTertiary.name())
+                                 .arg(Theme::Font::tiny));
     return label;
 }
 
 static QLabel *makeMetricValue(const QColor &color)
 {
     auto *label = new QLabel(QStringLiteral("--"));
-    label->setStyleSheet(QStringLiteral(
-        "color: %1; font-size: %2px; font-weight: 600; font-family: '%3';")
-        .arg(color.name()).arg(Theme::Font::normal).arg(Theme::Font::monospace));
+    label->setStyleSheet(
+            QStringLiteral("color: %1; font-size: %2px; font-weight: 600; font-family: '%3';")
+                    .arg(color.name())
+                    .arg(Theme::Font::normal)
+                    .arg(Theme::Font::monospace));
     return label;
 }
 
@@ -324,26 +317,34 @@ void MainWindow::updateStatusIndicator()
     QString label = paused ? QStringLiteral("PAUSED") : QStringLiteral("LIVE");
 
     m_statusText->setText(label);
-    m_statusText->setStyleSheet(QStringLiteral(
-        "color: %1; font-size: %2px; font-weight: bold; font-family: '%3';")
-        .arg(accent.name()).arg(Theme::Font::normal).arg(Theme::Font::monospace));
+    m_statusText->setStyleSheet(
+            QStringLiteral("color: %1; font-size: %2px; font-weight: bold; font-family: '%3';")
+                    .arg(accent.name())
+                    .arg(Theme::Font::normal)
+                    .arg(Theme::Font::monospace));
 
-    m_statusDot->setStyleSheet(QStringLiteral(
-        "background: %1; border-radius: 4px;").arg(accent.name()));
+    m_statusDot->setStyleSheet(
+            QStringLiteral("background: %1; border-radius: 4px;").arg(accent.name()));
 
-    m_statusPill->setStyleSheet(QStringLiteral(
-        "background: %1; border: %2px solid %3; border-radius: %4px;")
-        .arg(Theme::withAlpha(accent, 32).name(QColor::HexArgb))
-        .arg(Theme::Border::medium)
-        .arg(accent.name())
-        .arg(Theme::Radius::large));
+    m_statusPill->setStyleSheet(
+            QStringLiteral("background: %1; border: %2px solid %3; border-radius: %4px;")
+                    .arg(Theme::withAlpha(accent, 32).name(QColor::HexArgb))
+                    .arg(Theme::Border::medium)
+                    .arg(accent.name())
+                    .arg(Theme::Radius::large));
 
     // Top border on status bar
-    m_statusBar->setStyleSheet(QStringLiteral(
-        "background: %1; border-top: %2px solid %3;")
-        .arg(Theme::Colors::surface.name())
-        .arg(Theme::Border::thick)
-        .arg(accent.name()));
+    m_statusBar->setStyleSheet(QStringLiteral("background: %1; border-top: %2px solid %3;")
+                                       .arg(Theme::Colors::surface.name())
+                                       .arg(Theme::Border::thick)
+                                       .arg(accent.name()));
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    if (auto *cw = centralWidget())
+        m_contextPanel->updateGeometry(cw->width(), cw->height(), Theme::Sizing::toolbarHeight);
 }
 
 // ---------------------------------------------------------------------------

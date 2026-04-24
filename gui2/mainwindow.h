@@ -12,6 +12,7 @@ class QPushButton;
 class SignalDataModel;
 class PhasorPlot;
 class WaveformPlot;
+class ContextMenuPanel;
 
 class MainWindow : public QMainWindow
 {
@@ -24,12 +25,14 @@ public:
     void setLastSampleTime(const QString &time);
     void setSystemFrequency(qreal freq);
 
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+
 private:
     void setupToolbar();
     void setupCentralArea();
     void setupStatusBar();
 
-    void updatePauseButton();
     void updateStatusIndicator();
 
     SignalDataModel *m_model;
@@ -43,7 +46,10 @@ private:
     QTableView *m_tableView;
 
     // Toolbar
-    QPushButton *m_pauseButton;
+    QPushButton *m_menuButton;
+
+    // Context menu panel
+    ContextMenuPanel *m_contextPanel;
 
     // Status bar
     QWidget *m_statusBar;
