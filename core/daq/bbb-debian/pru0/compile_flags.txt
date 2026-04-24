@@ -1,0 +1,6 @@
+-I../../../../external/pru-software-support-package/include
+-I../../../../external/pru-software-support-package/include/am335x
+-I../shared
+-ffreestanding
+-include
+clangd_compat.h

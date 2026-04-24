@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * BB-PRU-MCP3208-00A0.dtso — pin overlay for PRU-based MCP3208 ADC
+ *
+ * 1. Disables mcasp0 (audio) so it releases P9_28, P9_29, P9_31.
+ * 2. Sets P9_28–P9_31 to PRU0 R30/R31 mode (mode 5/6).
+ * 3. Attaches the pin group to &pru0; the device core applies it at boot
+ *    via pinctrl_bind_pins() before pru_rproc probes (no /dev/mem writes).
+ *
+ * Verified against: am335x-bonegreen-wireless-common-univ.dtsi (config-pin
+ * source), am335x-boneblack-pruswuart.dts, am335x-pocketbeagle.dts.
+ *
+ *   P9_31  mcasp0_aclkx  0x990  mode 5  R30[0]  CLK   output
+ *   P9_29  mcasp0_fsx    0x994  mode 6  R31[1]  MISO  input
+ *   P9_30  mcasp0_axr0   0x998  mode 5  R30[2]  MOSI  output
+ *   P9_28  mcasp0_ahclkr 0x99c  mode 5  R30[3]  CS~   output
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/pinctrl/am33xx.h>
+
+&{/chosen} {
+	overlays { BB-PRU-MCP3208-00A0.kernel = __TIMESTAMP__; };
+};
+
+&mcasp0 { status = "disabled"; };
+
+&am33xx_pinmux {
+	pru0_mcp3208_pins: pinmux-pru0-mcp3208 {
+		pinctrl-single,pins = <
+			AM33XX_PADCONF(AM335X_PIN_MCASP0_ACLKX,  PIN_OUTPUT, MUX_MODE5)
+			AM33XX_PADCONF(AM335X_PIN_MCASP0_FSX,    PIN_INPUT,  MUX_MODE6)
+			AM33XX_PADCONF(AM335X_PIN_MCASP0_AXR0,   PIN_OUTPUT, MUX_MODE5)
+			AM33XX_PADCONF(AM335X_PIN_MCASP0_AHCLKR, PIN_OUTPUT, MUX_MODE5)
+		>;
+	};
+};
+
+&pru0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pru0_mcp3208_pins>;
+};

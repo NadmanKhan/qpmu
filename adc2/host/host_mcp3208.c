@@ -19,7 +19,7 @@
 
 #include "../common/shared_buffer.h"
 
-#define MAP_LEN  0x3000U    /* 12 KB — full PRUSS shared RAM */
+#define MAP_LEN 0x3000U /* 12 KB — full PRUSS shared RAM */
 
 int main(void)
 {
@@ -29,9 +29,8 @@ int main(void)
         return 1;
     }
 
-    const volatile SharedMem *shm = mmap(NULL, MAP_LEN,
-                                         PROT_READ, MAP_SHARED,
-                                         fd, PRUSS_SHARED_PHYS);
+    const volatile SharedMem *shm =
+            (SharedMem *)mmap(NULL, MAP_LEN, PROT_READ, MAP_SHARED, fd, PRUSS_SHARED_PHYS);
     close(fd);
 
     if (shm == MAP_FAILED) {
@@ -40,8 +39,8 @@ int main(void)
     }
 
     uint32_t last_seq = shm->seq;
-    uint64_t prev_ts  = 0;
-    int      i;
+    uint64_t prev_ts = 0;
+    int i;
 
     for (;;) {
         uint32_t seq;
@@ -55,7 +54,7 @@ int main(void)
             printf("ch%d=%4" PRIu16 "  ", i, buf->data[i]);
         printf("ts=%" PRIu64 " ns  dt=%" PRIu64 " ns\n", ts, ts - prev_ts);
 
-        prev_ts  = ts;
+        prev_ts = ts;
         last_seq = seq;
     }
 }

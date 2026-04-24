@@ -23,14 +23,26 @@ add_executable(qpmu_unit_tests
     gtest_discover_tests(qpmu_unit_tests)
 endif()
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/daq)
+
 add_executable(qpmu_service
         ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/daq.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/pmu.cpp
 )
 
-# Find and link pthread library (required for std::thread)
+target_include_directories(qpmu_service PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/daq)
+
 find_package(Threads REQUIRED)
 
 target_link_libraries(qpmu_service PRIVATE qpmu open-c37118 Threads::Threads)
+
+if(QPMU_DAQ_BBB)
+    target_link_libraries(qpmu_service PRIVATE qpmu_daq_bbb)
+    target_compile_definitions(qpmu_service PRIVATE QPMU_DAQ_BBB)
+endif()
+
+if(QPMU_DAQ_SIM)
+    target_link_libraries(qpmu_service PRIVATE qpmu_daq_sim)
+    target_compile_definitions(qpmu_service PRIVATE QPMU_DAQ_SIM)
+endif()

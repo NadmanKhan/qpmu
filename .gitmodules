@@ -1,3 +1,6 @@
 [submodule "external/Open-C37.118"]
 	path = external/Open-C37.118
 	url = https://github.com/NadmanKhan/Open-C37.118
+[submodule "external/pru-software-support-package"]
+	path = external/pru-software-support-package
+	url = https://git.ti.com/git/pru-software-support-package/pru-software-support-package.git
