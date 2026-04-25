@@ -9,6 +9,8 @@ target_include_directories(qpmu_daq_bbb
         ${CMAKE_CURRENT_SOURCE_DIR}      # for shared/buffer.h
 )
 
+target_compile_definitions(qpmu_daq_bbb PUBLIC QPMU_DAQ_BBB)
+
 target_link_libraries(qpmu_daq_bbb PUBLIC qpmu)
 
 # --- PRU0 firmware (custom target, only builds when explicitly requested) ---

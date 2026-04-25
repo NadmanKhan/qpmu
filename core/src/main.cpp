@@ -6,10 +6,10 @@
 #include "qpmu/core.h"
 #include "qpmu/ipc/gui_server.hpp"
 #include "interface.hpp"
-#ifdef QPMU_DAQ_BBB
-#include "bbb-debian/host/bbb_daq_reader.hpp"
+#if defined(QPMU_DAQ_BBB)
+#  include "bbb-debian/host/bbb_daq_reader.hpp"
 #elif defined(QPMU_DAQ_SIM)
-#include "simulation/sim_daq_reader.hpp"
+#  include "simulation/sim_daq_reader.hpp"
 #endif
 #include "dsp.cpp"
 
@@ -22,7 +22,7 @@ struct Args
     const char *gui_socket = "/tmp/qpmu_gui.sock";
     std::size_t gui_decimation = 120;
     bool verbose = false;
-#ifdef QPMU_DAQ_SIM
+#if defined(QPMU_DAQ_SIM)
     const char *data_file = nullptr;
 #endif
 };
@@ -38,7 +38,7 @@ void print_usage(const char *program_name)
                  "  -g, --gui-socket PATH   GUI IPC socket path (default: /tmp/qpmu_gui.sock)\n"
                  "  -D, --decimation N      GUI decimation factor (default: 120)\n"
                  "  -v, --verbose           Print detailed estimates to stdout\n"
-#ifdef QPMU_DAQ_SIM
+#if defined(QPMU_DAQ_SIM)
                  "  -d, --data-file PATH    CSV file to replay (required)\n"
 #endif
                  "  -h, --help              Show this help message\n"
@@ -98,7 +98,7 @@ Args parse_args(int argc, char *argv[])
             }
         } else if (std::strcmp(argv[i], "-v") == 0 || std::strcmp(argv[i], "--verbose") == 0) {
             args.verbose = true;
-#ifdef QPMU_DAQ_SIM
+#if defined(QPMU_DAQ_SIM)
         } else if (std::strcmp(argv[i], "-d") == 0 || std::strcmp(argv[i], "--data-file") == 0) {
             if (++i >= argc) {
                 std::fprintf(stderr, "Error: %s requires an argument\n", argv[i - 1]);
@@ -117,12 +117,12 @@ Args parse_args(int argc, char *argv[])
     return args;
 }
 
-#ifdef QPMU_DAQ_BBB
+#if defined(QPMU_DAQ_BBB)
 using DAQ_Reader_Type = qpmu::BBB_DAQ_Reader;
 #elif defined(QPMU_DAQ_SIM)
 using DAQ_Reader_Type = qpmu::Sim_DAQ_Reader;
 #else
-#error "No DAQ backend configured. Pass -DQPMU_DAQ_BBB=ON or -DQPMU_DAQ_SIM=ON."
+#  error "No DAQ backend configured. Pass -DQPMU_DAQ=<backend> to CMake. <backend> can be bbb or sim."
 #endif
 
 template <qpmu::DAQ_Reader Reader, std::size_t F_Nominal, std::size_t F_Sampling>
@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
     std::fprintf(stderr, "\n");
 
     // Construct the DAQ reader
-#ifdef QPMU_DAQ_BBB
+#if defined(QPMU_DAQ_BBB)
     DAQ_Reader_Type reader;
 #elif defined(QPMU_DAQ_SIM)
     if (!args.data_file) {

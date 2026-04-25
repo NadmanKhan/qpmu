@@ -5,86 +5,39 @@ project(qpmu-gui VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.2 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
-qt_standard_project_setup(REQUIRES 6.2)
+qt_standard_project_setup()
 
-qt_policy(SET QTP0001 NEW)
-qt_policy(SET QTP0004 NEW)
-
-qt_add_executable(appqpmu
-    src/main.cpp
-    src/application.h
-    src/application.cpp
-    src/models/signaldatamodel.h
-    src/models/signaldatamodel.cpp
-    src/ipc/guiclient.h
-    src/ipc/guiclient.cpp
+qt_add_executable(qpmu-gui
+    main.cpp
+    mainwindow.h mainwindow.cpp
+    phasorplot.h phasorplot.cpp
+    waveformplot.h waveformplot.cpp
+    signaldatamodel.h signaldatamodel.cpp
+    guiclient.h guiclient.cpp
+    contextitemmodel.h contextitemmodel.cpp
+    contextmenupanel.h contextmenupanel.cpp
+    screen.h
+    livemonitorscreen.h livemonitorscreen.cpp
+    theme.h
 )
 
-# Add qtquickcontrols2.conf as a resource at the root level
-qt_add_resources(appqpmu "config"
-    PREFIX "/"
-    FILES qtquickcontrols2.conf
+target_include_directories(qpmu-gui PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/include
 )
 
-# Mark AppTheme.qml as a singleton so qt_add_qml_module generates correct qmldir
-set_source_files_properties(src/AppTheme.qml
-    PROPERTIES
-        QT_QML_SINGLETON_TYPE TRUE
-)
+target_link_libraries(qpmu-gui PRIVATE Qt6::Widgets)
 
-qt_add_qml_module(appqpmu
-    URI qpmu
-    VERSION 1.0
-    QML_FILES
-        src/views/Main.qml
-        src/views/LiveMonitor.qml
-        src/views/components/AppStatusBar.qml
-        src/views/components/PhasorPlotModel.qml
-        src/views/components/WaveformPlotModel.qml
-        src/views/components/SignalTable.qml
-        src/views/components/DataTable.qml
-        src/views/components/GraphViewSwitcher.qml
-        src/views/components/Screen.qml
-        src/views/components/AppToolBar.qml
-        src/views/components/LiveMonitorContextMenu.qml
-        src/views/components/controls/Button.qml
-        src/views/components/controls/ToggleButton.qml
-        src/views/components/controls/Dropdown.qml
-        src/views/components/controls/SliderWithValue.qml
-        src/views/components/controls/SectionHeader.qml
-        src/AppTheme.qml
-    SOURCES
-        src/models/signaldatamodel.h
-        src/models/signaldatamodel.cpp
-        src/application.h
-        src/application.cpp
-        src/ipc/guiclient.h
-        src/ipc/guiclient.cpp
-)
-
-set_target_properties(appqpmu PROPERTIES
+set_target_properties(qpmu-gui PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
 
-target_include_directories(appqpmu PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/models
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ipc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/include
-)
-
-target_link_libraries(appqpmu
-    PRIVATE
-        Qt6::Quick
-)
-
 include(GNUInstallDirs)
-install(TARGETS appqpmu
+install(TARGETS qpmu-gui
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

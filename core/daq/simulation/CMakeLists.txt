@@ -8,4 +8,6 @@ target_include_directories(qpmu_daq_sim
         ${CMAKE_CURRENT_SOURCE_DIR}/..   # for interface.hpp
 )
 
+target_compile_definitions(qpmu_daq_sim PUBLIC QPMU_DAQ_SIM)
+
 target_link_libraries(qpmu_daq_sim PUBLIC qpmu)
