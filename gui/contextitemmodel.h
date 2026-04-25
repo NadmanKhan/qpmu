@@ -4,6 +4,10 @@
 #include <QVariant>
 #include <functional>
 
+/// Tree model (max depth 2) describing context menu controls declaratively.
+/// Level 0 = sections, Level 1 = items (toggle, dropdown, slider, button).
+/// Each item has a getter/setter lambda pair: the getter reads current state,
+/// the setter applies user changes. Call refreshValues() to re-sync from getters.
 class ContextItemModel : public QAbstractItemModel
 {
     Q_OBJECT
@@ -24,25 +28,21 @@ public:
 
     explicit ContextItemModel(QObject *parent = nullptr);
 
-    // Builder API — returns item index
+    // -- Builder API (returns item index) --
     int addSection(const QString &label);
-
     int addToggle(int sectionIdx, const QString &label,
                   const QStringList &options,
                   std::function<QVariant()> getter,
                   std::function<void(const QVariant &)> setter);
-
     int addDropdown(int sectionIdx, const QString &label,
                     const QStringList &options,
                     std::function<QVariant()> getter,
                     std::function<void(const QVariant &)> setter);
-
     int addSlider(int sectionIdx, const QString &label,
                   qreal min, qreal max, qreal step,
                   int decimals, const QString &unit,
                   std::function<QVariant()> getter,
                   std::function<void(const QVariant &)> setter);
-
     int addButton(int sectionIdx, const QString &label,
                   const QString &icon,
                   std::function<QVariant()> getter,
@@ -51,7 +51,7 @@ public:
     void setValue(const QModelIndex &index, const QVariant &value);
     void refreshValues();
 
-    // QAbstractItemModel interface
+    // -- QAbstractItemModel interface --
     QModelIndex index(int row, int column,
                       const QModelIndex &parent = QModelIndex()) const override;
     QModelIndex parent(const QModelIndex &child) const override;
@@ -77,7 +77,8 @@ private:
     };
 
     int addItem(Item item);
-    Item *itemAt(const QModelIndex &index) const;
+    const Item *itemAt(const QModelIndex &index) const;
+    Item *mutableItemAt(const QModelIndex &index);
 
     QList<Item> m_items;
     QList<int> m_rootItems;

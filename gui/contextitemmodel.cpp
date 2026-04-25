@@ -1,9 +1,13 @@
 #include "contextitemmodel.h"
 
+// ── Construction ────────────────────────────────────────────────────────────
+
 ContextItemModel::ContextItemModel(QObject *parent)
     : QAbstractItemModel(parent)
 {
 }
+
+// ── Builder API ─────────────────────────────────────────────────────────────
 
 int ContextItemModel::addItem(Item item)
 {
@@ -82,9 +86,11 @@ int ContextItemModel::addButton(int sectionIdx, const QString &label,
                      .parentIdx = sectionIdx });
 }
 
+// ── Value management ────────────────────────────────────────────────────────
+
 void ContextItemModel::setValue(const QModelIndex &idx, const QVariant &value)
 {
-    auto *item = itemAt(idx);
+    auto *item = mutableItemAt(idx);
     if (!item || !item->setter)
         return;
     item->setter(value);
@@ -100,17 +106,16 @@ void ContextItemModel::refreshValues()
         QVariant newVal = item.getter();
         if (item.value != newVal) {
             item.value = newVal;
-            QModelIndex idx = createIndex(
-                item.parentIdx < 0
-                    ? m_rootItems.indexOf(i)
-                    : m_items[item.parentIdx].children.indexOf(i),
-                0, quintptr(i));
+            int row = item.parentIdx < 0
+                ? m_rootItems.indexOf(i)
+                : m_items[item.parentIdx].children.indexOf(i);
+            QModelIndex idx = createIndex(row, 0, quintptr(i));
             emit dataChanged(idx, idx, { ValueRole });
         }
     }
 }
 
-// --- QAbstractItemModel interface ---
+// ── QAbstractItemModel interface ────────────────────────────────────────────
 
 QModelIndex ContextItemModel::index(int row, int column, const QModelIndex &parent) const
 {
@@ -163,7 +168,7 @@ int ContextItemModel::columnCount(const QModelIndex &) const
 
 QVariant ContextItemModel::data(const QModelIndex &index, int role) const
 {
-    auto *item = itemAt(index);
+    const auto *item = itemAt(index);
     if (!item)
         return {};
     switch (role) {
@@ -197,12 +202,24 @@ QHash<int, QByteArray> ContextItemModel::roleNames() const
     };
 }
 
-ContextItemModel::Item *ContextItemModel::itemAt(const QModelIndex &index) const
+// ── Item access ─────────────────────────────────────────────────────────────
+
+const ContextItemModel::Item *ContextItemModel::itemAt(const QModelIndex &index) const
 {
     if (!index.isValid())
         return nullptr;
     int idx = int(index.internalId());
     if (idx < 0 || idx >= m_items.size())
         return nullptr;
-    return const_cast<Item *>(&m_items[idx]);
+    return &m_items[idx];
+}
+
+ContextItemModel::Item *ContextItemModel::mutableItemAt(const QModelIndex &index)
+{
+    if (!index.isValid())
+        return nullptr;
+    int idx = int(index.internalId());
+    if (idx < 0 || idx >= m_items.size())
+        return nullptr;
+    return &m_items[idx];
 }

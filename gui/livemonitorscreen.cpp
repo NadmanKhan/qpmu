@@ -14,9 +14,7 @@
 #include <QStyledItemDelegate>
 #include <QPainter>
 
-// ---------------------------------------------------------------------------
-// Table delegate (moved from mainwindow.cpp)
-// ---------------------------------------------------------------------------
+// ── Signal table delegate ───────────────────────────────────────────────────
 
 class SignalTableDelegate : public QStyledItemDelegate
 {
@@ -31,8 +29,7 @@ public:
         QColor sigColor = index.data(Qt::DecorationRole).value<QColor>();
         bool selected = option.state & QStyle::State_Selected;
 
-        QColor bg = Theme::withAlpha(sigColor, selected ? 77 : 25);
-        painter->fillRect(option.rect, bg);
+        painter->fillRect(option.rect, Theme::withAlpha(sigColor, selected ? 77 : 25));
 
         if (selected) {
             painter->setPen(QPen(sigColor, Theme::Border::medium));
@@ -57,15 +54,18 @@ public:
     }
 };
 
-// ---------------------------------------------------------------------------
-// LiveMonitorScreen
-// ---------------------------------------------------------------------------
+// ── LiveMonitorScreen ───────────────────────────────────────────────────────
 
 LiveMonitorScreen::LiveMonitorScreen(SignalDataModel *model, QWidget *parent)
     : Screen(parent), m_model(model)
 {
+    // -- Plots --
     m_phasorPlot = new PhasorPlot(m_model);
     m_waveformPlot = new WaveformPlot(m_model);
+
+    m_plotStack = new QStackedWidget;
+    m_plotStack->addWidget(m_phasorPlot);
+    m_plotStack->addWidget(m_waveformPlot);
 
     m_tabBar = new QTabBar;
     m_tabBar->addTab(QStringLiteral("◉ Phasor"));
@@ -85,9 +85,6 @@ LiveMonitorScreen::LiveMonitorScreen(SignalDataModel *model, QWidget *parent)
             .arg(Theme::Colors::borderEmphasized.name(), Theme::Colors::textPrimary.name(),
                  Theme::Colors::primary.name()));
 
-    m_plotStack = new QStackedWidget;
-    m_plotStack->addWidget(m_phasorPlot);
-    m_plotStack->addWidget(m_waveformPlot);
     connect(m_tabBar, &QTabBar::currentChanged, m_plotStack, &QStackedWidget::setCurrentIndex);
 
     auto *graphPane = new QWidget;
@@ -97,6 +94,7 @@ LiveMonitorScreen::LiveMonitorScreen(SignalDataModel *model, QWidget *parent)
     graphLayout->addWidget(m_tabBar);
     graphLayout->addWidget(m_plotStack, 1);
 
+    // -- Data table --
     m_tableView = new QTableView;
     m_tableView->setModel(m_model);
     m_tableView->setSelectionModel(m_model->selectionModel());
@@ -120,6 +118,7 @@ LiveMonitorScreen::LiveMonitorScreen(SignalDataModel *model, QWidget *parent)
                  Theme::Colors::borderEmphasized.name())
             .arg(Theme::Font::small));
 
+    // -- Splitter layout --
     m_splitter = new QSplitter(Qt::Horizontal);
     m_splitter->addWidget(graphPane);
     m_splitter->addWidget(m_tableView);
@@ -136,6 +135,16 @@ LiveMonitorScreen::LiveMonitorScreen(SignalDataModel *model, QWidget *parent)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(m_splitter);
 
+    // -- Repaint plots on data/selection changes --
+    connect(m_model, &QAbstractItemModel::dataChanged, this, [this]() {
+        if (auto *w = m_plotStack->currentWidget())
+            w->update();
+    });
+    connect(m_model->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() {
+        m_phasorPlot->update();
+        m_waveformPlot->update();
+    });
+
     buildContextModel();
 }
 
@@ -149,9 +158,7 @@ ContextItemModel *LiveMonitorScreen::contextModel() const
     return m_contextModel;
 }
 
-// ---------------------------------------------------------------------------
-// Context model construction
-// ---------------------------------------------------------------------------
+// ── Context model construction ──────────────────────────────────────────────
 
 void LiveMonitorScreen::buildContextModel()
 {
@@ -225,7 +232,6 @@ void LiveMonitorScreen::buildContextModel()
         [this]() -> QVariant { return m_model->currentCutoff(); },
         [this](const QVariant &v) { m_model->setCurrentCutoff(v.toReal()); });
 
-    // Sync when model properties change
     auto refresh = [this]() { m_contextModel->refreshValues(); };
     connect(m_model, &SignalDataModel::magnitudeModeChanged, this, refresh);
     connect(m_model, &SignalDataModel::phaseReferenceChanged, this, refresh);

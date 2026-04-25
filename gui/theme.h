@@ -64,8 +64,8 @@ inline constexpr int normal = 15;
 inline constexpr int large = 18;
 inline constexpr int huge = 22;
 
-inline const QString family = QStringLiteral("Segoe UI");
-inline const QString monospace = QStringLiteral("Consolas");
+inline const QString family = QStringLiteral("sans-serif");
+inline const QString monospace = QStringLiteral("monospace");
 } // namespace Font
 
 namespace Radius {

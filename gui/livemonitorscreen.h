@@ -22,10 +22,6 @@ public:
     QString title() const override;
     ContextItemModel *contextModel() const override;
 
-    PhasorPlot *phasorPlot() const { return m_phasorPlot; }
-    WaveformPlot *waveformPlot() const { return m_waveformPlot; }
-    QStackedWidget *plotStack() const { return m_plotStack; }
-
 private:
     void buildContextModel();
 

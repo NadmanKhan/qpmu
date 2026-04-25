@@ -9,6 +9,8 @@
 #include <fcntl.h>
 #include <errno.h>
 
+// ── Connection lifecycle ────────────────────────────────────────────────────
+
 GuiIpcClient::GuiIpcClient(QObject* parent)
     : QObject(parent)
 {
@@ -117,6 +119,8 @@ void GuiIpcClient::closeConnection()
     m_readBuffer.clear();
 }
 
+// ── Reconnection ────────────────────────────────────────────────────────────
+
 void GuiIpcClient::scheduleReconnect()
 {
     if (!m_reconnectTimer->isActive()) {
@@ -135,6 +139,8 @@ void GuiIpcClient::attemptReconnect()
         scheduleReconnect();
     }
 }
+
+// ── Frame reading ───────────────────────────────────────────────────────────
 
 void GuiIpcClient::onSocketReadyRead()
 {

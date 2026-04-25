@@ -9,7 +9,6 @@ class QPushButton;
 class SignalDataModel;
 class Screen;
 class ContextMenuPanel;
-class LiveMonitorScreen;
 
 class MainWindow : public QMainWindow
 {
@@ -29,8 +28,6 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
 
 private:
-    void setupToolbar();
-    void setupStatusBar();
     void updateToolbar();
     void updateStatusIndicator();
 
@@ -38,7 +35,6 @@ private:
 
     // Navigation
     QStackedWidget *m_screenStack;
-    LiveMonitorScreen *m_liveMonitorScreen;
 
     // Toolbar
     QLabel *m_titleLabel;

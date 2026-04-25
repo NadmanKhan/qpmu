@@ -35,7 +35,7 @@ QPointF PhasorPlot::phasorTip(int i) const
     return QPointF(c.x() + norm * r * qCos(rad), c.y() - norm * r * qSin(rad));
 }
 
-// ---------- painting ----------
+// ── Painting ────────────────────────────────────────────────────────────────
 
 void PhasorPlot::paintEvent(QPaintEvent *)
 {
@@ -160,7 +160,7 @@ void PhasorPlot::drawTooltipLabels(QPainter &p)
     }
 }
 
-// ---------- hit testing ----------
+// ── Hit testing ─────────────────────────────────────────────────────────────
 
 qreal PhasorPlot::pointToSegmentDist(const QPointF &pt, const QPointF &a, const QPointF &b)
 {

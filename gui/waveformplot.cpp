@@ -34,7 +34,7 @@ qreal WaveformPlot::dataToScreenY(qreal y, bool isVoltage) const
     return cr.y() + cr.height() / 2.0 - norm * cr.height();
 }
 
-// ---------- painting ----------
+// ── Painting ────────────────────────────────────────────────────────────────
 
 void WaveformPlot::paintEvent(QPaintEvent *)
 {
@@ -221,7 +221,7 @@ void WaveformPlot::drawTooltipLabels(QPainter &p)
     }
 }
 
-// ---------- hit testing ----------
+// ── Hit testing ─────────────────────────────────────────────────────────────
 
 int WaveformPlot::hitTestWaveform(const QPointF &pos) const
 {
