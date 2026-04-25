@@ -68,4 +68,14 @@ struct Measurement_Frame
     Estimate_Array estimate_array;
 };
 
+struct DSP_Config
+{
+    Float dc_alpha = 0.001f;
+    bool hann_enabled = true;
+    bool ipdft_enabled = true;
+    std::size_t freq_median_window = 7;
+    std::size_t rocof_median_window = 11;
+    std::size_t rocof_regression_window = 9;
+};
+
 } // namespace qpmu

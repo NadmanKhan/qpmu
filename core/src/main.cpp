@@ -25,6 +25,7 @@ struct Args
 #if defined(QPMU_DAQ_SIM)
     const char *data_file = nullptr;
 #endif
+    qpmu::DSP_Config dsp_config;
 };
 
 void print_usage(const char *program_name)
@@ -41,6 +42,14 @@ void print_usage(const char *program_name)
 #if defined(QPMU_DAQ_SIM)
                  "  -d, --data-file PATH    CSV file to replay (required)\n"
 #endif
+                 "\nDSP options:\n"
+                 "  --dc-alpha F            DC offset removal alpha (default: 0.001, 0 to disable)\n"
+                 "  --no-hann               Disable Hann windowing (use rectangular window)\n"
+                 "  --no-ipdft              Disable IpDFT frequency correction\n"
+                 "  --freq-median N         Frequency median filter window (default: 7, 0 to disable)\n"
+                 "  --rocof-median N        ROCOF median filter window (default: 11, 0 to disable)\n"
+                 "  --rocof-window N        ROCOF regression window (default: 9, min 3)\n"
+                 "\n"
                  "  -h, --help              Show this help message\n"
                  "\nExamples:\n"
                  "  %s                      # Use defaults (50 Hz, 1200 Hz sampling)\n"
@@ -98,6 +107,51 @@ Args parse_args(int argc, char *argv[])
             }
         } else if (std::strcmp(argv[i], "-v") == 0 || std::strcmp(argv[i], "--verbose") == 0) {
             args.verbose = true;
+        } else if (std::strcmp(argv[i], "--dc-alpha") == 0) {
+            if (++i >= argc) {
+                std::fprintf(stderr, "Error: %s requires an argument\n", argv[i - 1]);
+                std::exit(1);
+            }
+            args.dsp_config.dc_alpha = std::atof(argv[i]);
+            if (args.dsp_config.dc_alpha < 0) {
+                std::fprintf(stderr, "Error: --dc-alpha must be >= 0\n");
+                std::exit(1);
+            }
+        } else if (std::strcmp(argv[i], "--no-hann") == 0) {
+            args.dsp_config.hann_enabled = false;
+        } else if (std::strcmp(argv[i], "--no-ipdft") == 0) {
+            args.dsp_config.ipdft_enabled = false;
+        } else if (std::strcmp(argv[i], "--freq-median") == 0) {
+            if (++i >= argc) {
+                std::fprintf(stderr, "Error: %s requires an argument\n", argv[i - 1]);
+                std::exit(1);
+            }
+            args.dsp_config.freq_median_window = std::atoi(argv[i]);
+            if (args.dsp_config.freq_median_window > 31) {
+                std::fprintf(stderr, "Error: --freq-median must be 0-31\n");
+                std::exit(1);
+            }
+        } else if (std::strcmp(argv[i], "--rocof-median") == 0) {
+            if (++i >= argc) {
+                std::fprintf(stderr, "Error: %s requires an argument\n", argv[i - 1]);
+                std::exit(1);
+            }
+            args.dsp_config.rocof_median_window = std::atoi(argv[i]);
+            if (args.dsp_config.rocof_median_window > 31) {
+                std::fprintf(stderr, "Error: --rocof-median must be 0-31\n");
+                std::exit(1);
+            }
+        } else if (std::strcmp(argv[i], "--rocof-window") == 0) {
+            if (++i >= argc) {
+                std::fprintf(stderr, "Error: %s requires an argument\n", argv[i - 1]);
+                std::exit(1);
+            }
+            args.dsp_config.rocof_regression_window = std::atoi(argv[i]);
+            if (args.dsp_config.rocof_regression_window < 3
+                || args.dsp_config.rocof_regression_window > 31) {
+                std::fprintf(stderr, "Error: --rocof-window must be 3-31\n");
+                std::exit(1);
+            }
 #if defined(QPMU_DAQ_SIM)
         } else if (std::strcmp(argv[i], "-d") == 0 || std::strcmp(argv[i], "--data-file") == 0) {
             if (++i >= argc) {
@@ -114,6 +168,11 @@ Args parse_args(int argc, char *argv[])
         }
     }
 
+    if (args.dsp_config.ipdft_enabled && !args.dsp_config.hann_enabled) {
+        std::fprintf(stderr, "Warning: IpDFT requires Hann windowing; disabling IpDFT\n");
+        args.dsp_config.ipdft_enabled = false;
+    }
+
     return args;
 }
 
@@ -128,7 +187,7 @@ using DAQ_Reader_Type = qpmu::Sim_DAQ_Reader;
 template <qpmu::DAQ_Reader Reader, std::size_t F_Nominal, std::size_t F_Sampling>
 int run_service(const Args &args, Reader &&sample_reader)
 {
-    DSP_Engine<F_Nominal, F_Sampling> dsp_engine;
+    DSP_Engine<F_Nominal, F_Sampling> dsp_engine(args.dsp_config);
 
     // Start GUI IPC server in worker thread
     GUI_IPC_Config gui_config;
@@ -216,6 +275,19 @@ int main(int argc, char *argv[])
     std::fprintf(stderr, "GUI decimation:    %zu (%.1f Hz output)\n", args.gui_decimation,
                  static_cast<double>(args.sampling_rate) / args.gui_decimation);
     std::fprintf(stderr, "Verbose output:    %s\n", args.verbose ? "enabled" : "disabled");
+    std::fprintf(stderr, "\nDSP Configuration:\n");
+    std::fprintf(stderr, "  DC removal:      %s",
+                 args.dsp_config.dc_alpha > 0 ? "enabled" : "disabled");
+    if (args.dsp_config.dc_alpha > 0)
+        std::fprintf(stderr, " (alpha=%.4f)", args.dsp_config.dc_alpha);
+    std::fprintf(stderr, "\n");
+    std::fprintf(stderr, "  Hann window:     %s\n",
+                 args.dsp_config.hann_enabled ? "enabled" : "disabled");
+    std::fprintf(stderr, "  IpDFT:           %s\n",
+                 args.dsp_config.ipdft_enabled ? "enabled" : "disabled");
+    std::fprintf(stderr, "  Freq median:     %zu\n", args.dsp_config.freq_median_window);
+    std::fprintf(stderr, "  ROCOF median:    %zu\n", args.dsp_config.rocof_median_window);
+    std::fprintf(stderr, "  ROCOF regr. win: %zu\n", args.dsp_config.rocof_regression_window);
     std::fprintf(stderr, "\n");
 
     // Construct the DAQ reader

@@ -59,8 +59,12 @@ bool BBB_DAQ_Reader::read_sample_frame() noexcept
     const volatile Sample_Buffer *buf = &_shared->buf[seq & 1];
 
     _sample_frame.timestamp = static_cast<Timestamp>(buf->timestamp_ns);
-    for (std::size_t i = 0; i < Signal_Infos.size(); ++i) {
-        _sample_frame.sample_array[i] = buf->samples[i];
+    for (std::size_t ch = 0; ch < Signal_Infos.size(); ++ch) {
+        std::uint32_t sum = 0;
+        for (std::size_t scan = 0; scan < NUM_SCANS; ++scan) {
+            sum += buf->samples[scan * NUM_CHANNELS + ch];
+        }
+        _sample_frame.sample_array[ch] = static_cast<Sample>(sum / NUM_SCANS);
     }
 
     ++_sample_frame.seq_num;
