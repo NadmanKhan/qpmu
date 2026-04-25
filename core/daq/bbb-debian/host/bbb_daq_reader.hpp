@@ -5,8 +5,7 @@
 
 #include "qpmu/core.h"
 #include "../../interface.hpp"
-
-struct Shared_State; // forward-declare (from shared/buffer.h)
+#include "../shared/buffer.h"
 
 namespace qpmu {
 

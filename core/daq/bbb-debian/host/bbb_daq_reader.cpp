@@ -1,5 +1,4 @@
 #include "bbb_daq_reader.hpp"
-#include "../shared/buffer.h"
 
 #include <cerrno>
 #include <cstring>
