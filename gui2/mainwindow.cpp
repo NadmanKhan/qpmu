@@ -1,69 +1,19 @@
 #include "mainwindow.h"
 #include "signaldatamodel.h"
+#include "screen.h"
+#include "livemonitorscreen.h"
+#include "contextmenupanel.h"
 #include "phasorplot.h"
 #include "waveformplot.h"
-#include "contextmenupanel.h"
 #include "theme.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
-#include <QSplitter>
 #include <QStackedWidget>
-#include <QTabBar>
-#include <QTableView>
-#include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
-#include <QStyledItemDelegate>
-#include <QPainter>
 #include <QFrame>
 #include <QResizeEvent>
-
-// ---------------------------------------------------------------------------
-// Table delegate: colored cell backgrounds based on signal color + selection
-// ---------------------------------------------------------------------------
-
-class SignalTableDelegate : public QStyledItemDelegate
-{
-public:
-    using QStyledItemDelegate::QStyledItemDelegate;
-
-    void paint(QPainter *painter, const QStyleOptionViewItem &option,
-               const QModelIndex &index) const override
-    {
-        painter->save();
-
-        QColor sigColor = index.data(Qt::DecorationRole).value<QColor>();
-        bool selected = option.state & QStyle::State_Selected;
-
-        // Cell background
-        QColor bg = Theme::withAlpha(sigColor, selected ? 77 : 25); // 30% / 10%
-        painter->fillRect(option.rect, bg);
-
-        // Selection border
-        if (selected) {
-            painter->setPen(QPen(sigColor, Theme::Border::medium));
-            painter->drawRect(option.rect.adjusted(1, 1, -1, -1));
-        }
-
-        // Text
-        QFont font(Theme::Font::monospace, Theme::Font::normal);
-        font.setWeight(selected ? QFont::DemiBold : QFont::Normal);
-        painter->setFont(font);
-        painter->setPen(selected ? Theme::Colors::textPrimary : sigColor);
-
-        QString text = index.data(Qt::DisplayRole).toString();
-        QRect textRect = option.rect.adjusted(Theme::Spacing::small, 0, -Theme::Spacing::small, 0);
-        painter->drawText(textRect, Qt::AlignRight | Qt::AlignVCenter, text);
-
-        painter->restore();
-    }
-
-    QSize sizeHint(const QStyleOptionViewItem &, const QModelIndex &) const override
-    {
-        return QSize(120, Theme::Sizing::small + Theme::Spacing::small);
-    }
-};
 
 // ---------------------------------------------------------------------------
 // MainWindow
@@ -80,30 +30,28 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    auto *toolbar = new QWidget(central);
     setupToolbar();
+
+    auto *toolbar = new QWidget(central);
     toolbar->setObjectName(QStringLiteral("toolbar"));
     toolbar->setFixedHeight(Theme::Sizing::toolbarHeight);
     toolbar->setStyleSheet(
-            QStringLiteral("QWidget#toolbar { background: %1; border-bottom: 1px solid %2; }")
-                    .arg(Theme::Colors::surface.name(), Theme::Colors::borderEmphasized.name()));
+        QStringLiteral("QWidget#toolbar { background: %1; border-bottom: 1px solid %2; }")
+            .arg(Theme::Colors::surface.name(), Theme::Colors::borderEmphasized.name()));
     {
         auto *hbox = new QHBoxLayout(toolbar);
         hbox->setContentsMargins(Theme::Spacing::small, 0, Theme::Spacing::small, 0);
-        auto *title = new QLabel(QStringLiteral("QPMU"), toolbar);
-        title->setStyleSheet(QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
-                                     .arg(Theme::Colors::textPrimary.name())
-                                     .arg(Theme::Font::large));
-        title->setAlignment(Qt::AlignCenter);
+        hbox->addWidget(m_backButton);
         hbox->addStretch();
-        hbox->addWidget(title);
+        hbox->addWidget(m_titleLabel);
         hbox->addStretch();
         hbox->addWidget(m_menuButton);
     }
     layout->addWidget(toolbar);
 
-    setupCentralArea();
-    layout->addWidget(m_splitter, 1);
+    // Screen stack
+    m_screenStack = new QStackedWidget;
+    layout->addWidget(m_screenStack, 1);
 
     setupStatusBar();
     layout->addWidget(m_statusBar);
@@ -111,18 +59,22 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
     setCentralWidget(central);
 
     // Context panel: absolute-positioned overlay child of central widget
-    m_contextPanel = new ContextMenuPanel(m_model, central);
+    m_contextPanel = new ContextMenuPanel(central);
+
+    // Push initial screen
+    m_liveMonitorScreen = new LiveMonitorScreen(m_model);
+    pushScreen(m_liveMonitorScreen);
 
     // Repaint visible plot on data changes
     connect(m_model, &QAbstractItemModel::dataChanged, this, [this]() {
-        if (m_plotStack->currentWidget())
-            m_plotStack->currentWidget()->update();
+        if (auto *plot = m_liveMonitorScreen->plotStack()->currentWidget())
+            plot->update();
     });
 
     // Repaint plots on selection changes
     connect(m_model->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() {
-        m_phasorPlot->update();
-        m_waveformPlot->update();
+        m_liveMonitorScreen->phasorPlot()->update();
+        m_liveMonitorScreen->waveformPlot()->update();
     });
 
     // Pause state
@@ -136,97 +88,88 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
 
 void MainWindow::setupToolbar()
 {
+    m_titleLabel = new QLabel;
+    m_titleLabel->setStyleSheet(
+        QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
+            .arg(Theme::Colors::textPrimary.name()).arg(Theme::Font::large));
+    m_titleLabel->setAlignment(Qt::AlignCenter);
+
+    m_backButton = new QPushButton(QStringLiteral("‹"));
+    m_backButton->setFixedSize(Theme::Sizing::medium, Theme::Sizing::medium);
+    m_backButton->setCursor(Qt::PointingHandCursor);
+    m_backButton->setStyleSheet(
+        QStringLiteral(
+            "QPushButton { background: %1; color: %2; border: 1px solid %3;"
+            " border-radius: %4px; font-size: %5px; font-weight: bold; }"
+            "QPushButton:hover { background: %6; }")
+            .arg(Theme::Colors::surfaceElevated.name(), Theme::Colors::textPrimary.name(),
+                 Theme::Colors::borderEmphasized.name())
+            .arg(Theme::Radius::large)
+            .arg(Theme::Font::huge)
+            .arg(Theme::Colors::surfaceHover.name()));
+    connect(m_backButton, &QPushButton::clicked, this, &MainWindow::popScreen);
+
     m_menuButton = new QPushButton(QStringLiteral("⋮"));
     m_menuButton->setFixedSize(Theme::Sizing::medium, Theme::Sizing::medium);
     m_menuButton->setCursor(Qt::PointingHandCursor);
     m_menuButton->setStyleSheet(
-            QStringLiteral("QPushButton { background: %1; color: %2; border: 1px solid %3;"
-                           " border-radius: %4px; font-size: %5px; font-weight: bold; }"
-                           "QPushButton:hover { background: %6; }")
-                    .arg(Theme::Colors::surfaceElevated.name(), Theme::Colors::textPrimary.name(),
-                         Theme::Colors::borderEmphasized.name())
-                    .arg(Theme::Radius::large)
-                    .arg(Theme::Font::huge)
-                    .arg(Theme::Colors::surfaceHover.name()));
-    connect(m_menuButton, &QPushButton::clicked, this, [this]() { m_contextPanel->toggle(); });
+        QStringLiteral(
+            "QPushButton { background: %1; color: %2; border: 1px solid %3;"
+            " border-radius: %4px; font-size: %5px; font-weight: bold; }"
+            "QPushButton:hover { background: %6; }")
+            .arg(Theme::Colors::surfaceElevated.name(), Theme::Colors::textPrimary.name(),
+                 Theme::Colors::borderEmphasized.name())
+            .arg(Theme::Radius::large)
+            .arg(Theme::Font::huge)
+            .arg(Theme::Colors::surfaceHover.name()));
+    connect(m_menuButton, &QPushButton::clicked, this, [this]() {
+        m_contextPanel->toggle();
+    });
+}
+
+void MainWindow::updateToolbar()
+{
+    auto *screen = qobject_cast<Screen *>(m_screenStack->currentWidget());
+    if (!screen)
+        return;
+
+    m_titleLabel->setText(screen->title());
+    m_backButton->setVisible(m_screenStack->count() > 1);
+
+    bool hasMenu = screen->contextModel() != nullptr;
+    m_menuButton->setVisible(hasMenu);
+
+    m_contextPanel->hidePanel();
+    m_contextPanel->setModel(screen->contextModel());
 }
 
 // ---------------------------------------------------------------------------
-// Central area: graph tabs + table
+// Screen navigation
 // ---------------------------------------------------------------------------
 
-void MainWindow::setupCentralArea()
+void MainWindow::pushScreen(Screen *screen)
 {
-    m_phasorPlot = new PhasorPlot(m_model);
-    m_waveformPlot = new WaveformPlot(m_model);
+    m_screenStack->addWidget(screen);
+    m_screenStack->setCurrentWidget(screen);
+    connect(screen, &Screen::navigateTo, this, &MainWindow::pushScreen);
+    updateToolbar();
+}
 
-    // Tab bar
-    m_tabBar = new QTabBar;
-    m_tabBar->addTab(QStringLiteral("◉ Phasor"));
-    m_tabBar->addTab(QStringLiteral("∿ Waveform"));
-    m_tabBar->setDocumentMode(true);
-    m_tabBar->setExpanding(false);
-    m_tabBar->setStyleSheet(
-            QStringLiteral(
-                    "QTabBar { background: %1; }"
-                    "QTabBar::tab { background: %2; color: %3; padding: 8px 16px;"
-                    " border-radius: %4px; margin: 4px 2px; font-weight: 600; font-size: %5px; }"
-                    "QTabBar::tab:selected { background: %6; color: %7; border-bottom: 2px solid "
-                    "%8; }")
-                    .arg(Theme::Colors::surface.name(), Theme::Colors::surfaceElevated.name(),
-                         Theme::Colors::textTertiary.name())
-                    .arg(Theme::Radius::medium)
-                    .arg(Theme::Font::normal)
-                    .arg(Theme::Colors::borderEmphasized.name(), Theme::Colors::textPrimary.name(),
-                         Theme::Colors::primary.name()));
+void MainWindow::popScreen()
+{
+    if (m_screenStack->count() <= 1)
+        return;
+    auto *screen = m_screenStack->currentWidget();
+    m_screenStack->removeWidget(screen);
+    screen->deleteLater();
+    updateToolbar();
+}
 
-    m_plotStack = new QStackedWidget;
-    m_plotStack->addWidget(m_phasorPlot);
-    m_plotStack->addWidget(m_waveformPlot);
-    connect(m_tabBar, &QTabBar::currentChanged, m_plotStack, &QStackedWidget::setCurrentIndex);
-
-    auto *graphPane = new QWidget;
-    auto *graphLayout = new QVBoxLayout(graphPane);
-    graphLayout->setContentsMargins(0, 0, 0, 0);
-    graphLayout->setSpacing(0);
-    graphLayout->addWidget(m_tabBar);
-    graphLayout->addWidget(m_plotStack, 1);
-
-    // Table
-    m_tableView = new QTableView;
-    m_tableView->setModel(m_model);
-    m_tableView->setSelectionModel(m_model->selectionModel());
-    m_tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_tableView->setSelectionMode(QAbstractItemView::MultiSelection);
-    m_tableView->setItemDelegate(new SignalTableDelegate(m_tableView));
-    m_tableView->horizontalHeader()->setStretchLastSection(true);
-    m_tableView->verticalHeader()->setDefaultSectionSize(Theme::Sizing::small
-                                                         + Theme::Spacing::small);
-    m_tableView->setShowGrid(false);
-    m_tableView->setStyleSheet(
-            QStringLiteral("QTableView { background: %1; color: %2; gridline-color: %3;"
-                           " font-family: '%4'; font-size: %5px; border: none; }"
-                           "QHeaderView::section { background: %6; color: %7; padding: 6px;"
-                           " border: none; border-bottom: 1px solid %8; font-weight: 600; "
-                           "font-size: %9px; }")
-                    .arg(Theme::Colors::surface.name(), Theme::Colors::textPrimary.name(),
-                         Theme::Colors::borderSubtle.name(), Theme::Font::monospace)
-                    .arg(Theme::Font::normal)
-                    .arg(Theme::Colors::surfaceElevated.name(), Theme::Colors::textSecondary.name(),
-                         Theme::Colors::borderEmphasized.name())
-                    .arg(Theme::Font::small));
-
-    // Splitter
-    m_splitter = new QSplitter(Qt::Horizontal);
-    m_splitter->addWidget(graphPane);
-    m_splitter->addWidget(m_tableView);
-    m_splitter->setStretchFactor(0, 1);
-    m_splitter->setStretchFactor(1, 1);
-    m_splitter->setHandleWidth(6);
-    m_splitter->setStyleSheet(QStringLiteral("QSplitter::handle { background: %1; }"
-                                             "QSplitter::handle:hover { background: %2; }")
-                                      .arg(Theme::Colors::surfaceElevated.name(),
-                                           Theme::Colors::borderEmphasized.name()));
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    if (auto *cw = centralWidget())
+        m_contextPanel->updateGeometry(cw->width(), cw->height(), Theme::Sizing::toolbarHeight);
 }
 
 // ---------------------------------------------------------------------------
@@ -237,8 +180,8 @@ static QLabel *makeMetricHeader(const QString &text)
 {
     auto *label = new QLabel(text);
     label->setStyleSheet(QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
-                                 .arg(Theme::Colors::textTertiary.name())
-                                 .arg(Theme::Font::tiny));
+                             .arg(Theme::Colors::textTertiary.name())
+                             .arg(Theme::Font::tiny));
     return label;
 }
 
@@ -246,10 +189,10 @@ static QLabel *makeMetricValue(const QColor &color)
 {
     auto *label = new QLabel(QStringLiteral("--"));
     label->setStyleSheet(
-            QStringLiteral("color: %1; font-size: %2px; font-weight: 600; font-family: '%3';")
-                    .arg(color.name())
-                    .arg(Theme::Font::normal)
-                    .arg(Theme::Font::monospace));
+        QStringLiteral("color: %1; font-size: %2px; font-weight: 600; font-family: '%3';")
+            .arg(color.name())
+            .arg(Theme::Font::normal)
+            .arg(Theme::Font::monospace));
     return label;
 }
 
@@ -271,7 +214,6 @@ void MainWindow::setupStatusBar()
     hbox->setContentsMargins(Theme::Spacing::medium, 0, Theme::Spacing::medium, 0);
     hbox->setSpacing(Theme::Spacing::large);
 
-    // LIVE/PAUSED pill
     m_statusPill = new QWidget;
     m_statusPill->setFixedSize(110, Theme::Sizing::medium);
 
@@ -290,7 +232,6 @@ void MainWindow::setupStatusBar()
     hbox->addWidget(m_statusPill);
     hbox->addStretch();
 
-    // Metric columns
     auto addMetricColumn = [&](const QString &header, QLabel *&valueOut, const QColor &color) {
         auto *col = new QVBoxLayout;
         col->setSpacing(Theme::Spacing::tiny);
@@ -318,33 +259,26 @@ void MainWindow::updateStatusIndicator()
 
     m_statusText->setText(label);
     m_statusText->setStyleSheet(
-            QStringLiteral("color: %1; font-size: %2px; font-weight: bold; font-family: '%3';")
-                    .arg(accent.name())
-                    .arg(Theme::Font::normal)
-                    .arg(Theme::Font::monospace));
+        QStringLiteral("color: %1; font-size: %2px; font-weight: bold; font-family: '%3';")
+            .arg(accent.name())
+            .arg(Theme::Font::normal)
+            .arg(Theme::Font::monospace));
 
     m_statusDot->setStyleSheet(
-            QStringLiteral("background: %1; border-radius: 4px;").arg(accent.name()));
+        QStringLiteral("background: %1; border-radius: 4px;").arg(accent.name()));
 
     m_statusPill->setStyleSheet(
-            QStringLiteral("background: %1; border: %2px solid %3; border-radius: %4px;")
-                    .arg(Theme::withAlpha(accent, 32).name(QColor::HexArgb))
-                    .arg(Theme::Border::medium)
-                    .arg(accent.name())
-                    .arg(Theme::Radius::large));
+        QStringLiteral("background: %1; border: %2px solid %3; border-radius: %4px;")
+            .arg(Theme::withAlpha(accent, 32).name(QColor::HexArgb))
+            .arg(Theme::Border::medium)
+            .arg(accent.name())
+            .arg(Theme::Radius::large));
 
-    // Top border on status bar
-    m_statusBar->setStyleSheet(QStringLiteral("background: %1; border-top: %2px solid %3;")
-                                       .arg(Theme::Colors::surface.name())
-                                       .arg(Theme::Border::thick)
-                                       .arg(accent.name()));
-}
-
-void MainWindow::resizeEvent(QResizeEvent *event)
-{
-    QMainWindow::resizeEvent(event);
-    if (auto *cw = centralWidget())
-        m_contextPanel->updateGeometry(cw->width(), cw->height(), Theme::Sizing::toolbarHeight);
+    m_statusBar->setStyleSheet(
+        QStringLiteral("background: %1; border-top: %2px solid %3;")
+            .arg(Theme::Colors::surface.name())
+            .arg(Theme::Border::thick)
+            .arg(accent.name()));
 }
 
 // ---------------------------------------------------------------------------

@@ -16,7 +16,10 @@ qt_add_executable(qpmu-gui
     waveformplot.h waveformplot.cpp
     signaldatamodel.h signaldatamodel.cpp
     guiclient.h guiclient.cpp
+    contextitemmodel.h contextitemmodel.cpp
     contextmenupanel.h contextmenupanel.cpp
+    screen.h
+    livemonitorscreen.h livemonitorscreen.cpp
     theme.h
 )
 

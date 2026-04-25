@@ -1,5 +1,5 @@
 #include "contextmenupanel.h"
-#include "signaldatamodel.h"
+#include "contextitemmodel.h"
 #include "theme.h"
 
 #include <QVBoxLayout>
@@ -13,6 +13,11 @@
 #include <QPropertyAnimation>
 #include <QEasingCurve>
 #include <QMouseEvent>
+#include <QSignalBlocker>
+
+// ---------------------------------------------------------------------------
+// Style helpers
+// ---------------------------------------------------------------------------
 
 static QLabel *makeSectionHeader(const QString &text)
 {
@@ -102,41 +107,47 @@ static QString scrollAreaStyle()
 }
 
 // ---------------------------------------------------------------------------
+// ContextMenuPanel
+// ---------------------------------------------------------------------------
 
-ContextMenuPanel::ContextMenuPanel(SignalDataModel *model, QWidget *parent)
-    : QWidget(parent), m_model(model)
+ContextMenuPanel::ContextMenuPanel(QWidget *parent)
+    : QWidget(parent)
 {
     setVisible(false);
 
-    // Scroll area fills the panel
     auto *panelLayout = new QVBoxLayout(this);
     panelLayout->setContentsMargins(0, 0, 0, 0);
 
-    auto *scrollArea = new QScrollArea;
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    scrollArea->setStyleSheet(scrollAreaStyle());
-    scrollArea->setWidget(buildContent());
-    panelLayout->addWidget(scrollArea);
+    m_scrollArea = new QScrollArea;
+    m_scrollArea->setWidgetResizable(true);
+    m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_scrollArea->setStyleSheet(scrollAreaStyle());
+    panelLayout->addWidget(m_scrollArea);
 
-    // Animation
     m_animation = new QPropertyAnimation(this, "geometry", this);
     m_animation->setDuration(ANIM_DURATION);
     m_animation->setEasingCurve(QEasingCurve::OutCubic);
 
-    // Event filter on parent for click-outside and resize tracking
     if (parent)
         parent->installEventFilter(this);
-
-    syncFromModel();
-
-    connect(m_model, &SignalDataModel::magnitudeModeChanged, this, &ContextMenuPanel::syncFromModel);
-    connect(m_model, &SignalDataModel::phaseReferenceChanged, this, &ContextMenuPanel::syncFromModel);
-    connect(m_model, &SignalDataModel::pauseStateChanged, this, &ContextMenuPanel::syncFromModel);
-    connect(m_model, &SignalDataModel::voltageScalingChanged, this, &ContextMenuPanel::syncFromModel);
-    connect(m_model, &SignalDataModel::currentScalingChanged, this, &ContextMenuPanel::syncFromModel);
 }
 
+void ContextMenuPanel::setModel(ContextItemModel *model)
+{
+    if (m_model == model)
+        return;
+    if (m_model)
+        disconnect(m_model, nullptr, this, nullptr);
+    m_model = model;
+    rebuildContent();
+    if (m_model) {
+        connect(m_model, &QAbstractItemModel::dataChanged,
+                this, &ContextMenuPanel::syncFromModel);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Overlay behavior (unchanged)
 // ---------------------------------------------------------------------------
 
 void ContextMenuPanel::toggle()
@@ -149,7 +160,7 @@ void ContextMenuPanel::toggle()
 
 void ContextMenuPanel::showPanel()
 {
-    if (isVisible())
+    if (isVisible() || !m_model)
         return;
 
     int h = m_parentHeight - m_topOffset - Theme::Sizing::statusBarHeight;
@@ -195,8 +206,6 @@ void ContextMenuPanel::updateGeometry(int parentWidth, int parentHeight, int top
     }
 }
 
-// ---------------------------------------------------------------------------
-
 bool ContextMenuPanel::eventFilter(QObject *obj, QEvent *event)
 {
     if (obj == parentWidget()) {
@@ -223,192 +232,206 @@ void ContextMenuPanel::paintEvent(QPaintEvent *)
 }
 
 // ---------------------------------------------------------------------------
+// Build UI from model
+// ---------------------------------------------------------------------------
 
-QWidget *ContextMenuPanel::buildContent()
+void ContextMenuPanel::rebuildContent()
 {
-    auto *content = new QWidget;
-    content->setStyleSheet(QStringLiteral("background: transparent;"));
+    m_controlMap.clear();
 
-    auto *root = new QVBoxLayout(content);
+    delete m_contentWidget;
+    m_contentWidget = nullptr;
+
+    if (!m_model) {
+        m_scrollArea->setWidget(nullptr);
+        return;
+    }
+
+    m_contentWidget = new QWidget;
+    m_contentWidget->setStyleSheet(QStringLiteral("background: transparent;"));
+
+    auto *root = new QVBoxLayout(m_contentWidget);
     root->setContentsMargins(Theme::Spacing::medium, Theme::Spacing::medium,
                              Theme::Spacing::medium, Theme::Spacing::medium);
     root->setSpacing(Theme::Spacing::medium);
 
-    // ---- Header ----
     auto *header = new QLabel(QStringLiteral("Controls"));
     header->setStyleSheet(QStringLiteral(
         "color: %1; font-size: %2px; font-weight: bold;")
         .arg(Theme::Colors::textPrimary.name()).arg(Theme::Font::large));
     root->addWidget(header);
 
-    // ---- DATA CONTROLS ----
-    root->addWidget(makeSectionHeader(QStringLiteral("DATA CONTROLS")));
+    int sectionCount = m_model->rowCount();
+    for (int s = 0; s < sectionCount; ++s) {
+        QModelIndex sectionIdx = m_model->index(s, 0);
+        QString sectionLabel = m_model->data(sectionIdx, ContextItemModel::LabelRole).toString();
 
-    // Magnitude mode
-    root->addWidget(makeFieldLabel(QStringLiteral("Magnitude")));
-    m_magnitudeToggle = new QPushButton;
-    m_magnitudeToggle->setCursor(Qt::PointingHandCursor);
-    m_magnitudeToggle->setFixedHeight(Theme::Sizing::small);
-    root->addWidget(m_magnitudeToggle);
-    connect(m_magnitudeToggle, &QPushButton::clicked, this, [this]() {
-        auto mode = m_model->magnitudeMode() == SignalDataModel::RMS
-                        ? SignalDataModel::Peak
-                        : SignalDataModel::RMS;
-        m_model->setMagnitudeMode(mode);
-    });
+        if (s > 0) {
+            auto *sep = new QWidget;
+            sep->setFixedHeight(1);
+            sep->setStyleSheet(QStringLiteral("background: %1;")
+                                   .arg(Theme::Colors::borderEmphasized.name()));
+            root->addSpacing(Theme::Spacing::small);
+            root->addWidget(sep);
+            root->addSpacing(Theme::Spacing::small);
+        }
 
-    // Phase reference
-    root->addWidget(makeFieldLabel(QStringLiteral("Phase Reference")));
-    m_phaseRefCombo = new QComboBox;
-    m_phaseRefCombo->addItems({
-        QStringLiteral("Absolute"),
-        QStringLiteral("VA"), QStringLiteral("VB"), QStringLiteral("VC"),
-        QStringLiteral("IA"), QStringLiteral("IB"), QStringLiteral("IC"),
-    });
-    m_phaseRefCombo->setFixedHeight(Theme::Sizing::small);
-    m_phaseRefCombo->setStyleSheet(comboBoxStyle());
-    root->addWidget(m_phaseRefCombo);
-    connect(m_phaseRefCombo, &QComboBox::currentIndexChanged, this, [this](int idx) {
-        m_model->setPhaseReferenceIndex(idx - 1);
-    });
+        root->addWidget(makeSectionHeader(sectionLabel));
 
-    // Pause/Resume
-    root->addSpacing(Theme::Spacing::small);
-    m_pauseButton = new QPushButton;
-    m_pauseButton->setCursor(Qt::PointingHandCursor);
-    m_pauseButton->setFixedHeight(Theme::Sizing::small);
-    root->addWidget(m_pauseButton);
-    connect(m_pauseButton, &QPushButton::clicked, this, [this]() {
-        m_model->setIsPaused(!m_model->isPaused());
-    });
+        int itemCount = m_model->rowCount(sectionIdx);
+        for (int i = 0; i < itemCount; ++i) {
+            QModelIndex itemIdx = m_model->index(i, 0, sectionIdx);
+            QString type = m_model->data(itemIdx, ContextItemModel::TypeRole).toString();
+            QString label = m_model->data(itemIdx, ContextItemModel::LabelRole).toString();
+            int itemId = int(itemIdx.internalId());
 
-    // ---- Separator ----
-    auto *sep = new QWidget;
-    sep->setFixedHeight(1);
-    sep->setStyleSheet(QStringLiteral("background: %1;").arg(Theme::Colors::borderEmphasized.name()));
-    root->addSpacing(Theme::Spacing::small);
-    root->addWidget(sep);
-    root->addSpacing(Theme::Spacing::small);
+            root->addWidget(makeFieldLabel(label));
 
-    // ---- PLOT CONTROLS ----
-    root->addWidget(makeSectionHeader(QStringLiteral("PLOT CONTROLS")));
+            if (type == QLatin1String("toggle")) {
+                auto *btn = new QPushButton;
+                btn->setCursor(Qt::PointingHandCursor);
+                btn->setFixedHeight(Theme::Sizing::small);
 
-    // Voltage scaling
-    root->addWidget(makeFieldLabel(QStringLiteral("Voltage Scaling")));
-    m_voltageScaleToggle = new QPushButton;
-    m_voltageScaleToggle->setCursor(Qt::PointingHandCursor);
-    m_voltageScaleToggle->setFixedHeight(Theme::Sizing::small);
-    root->addWidget(m_voltageScaleToggle);
-    connect(m_voltageScaleToggle, &QPushButton::clicked, this, [this]() {
-        auto mode = m_model->voltageScalingMode() == SignalDataModel::Dynamic
-                        ? SignalDataModel::Manual
-                        : SignalDataModel::Dynamic;
-        m_model->setVoltageScalingMode(mode);
-    });
+                QStringList options = m_model->data(itemIdx, ContextItemModel::OptionsRole).toStringList();
+                bool val = m_model->data(itemIdx, ContextItemModel::ValueRole).toBool();
+                btn->setText(val ? options.value(1) : options.value(0));
+                btn->setStyleSheet(toggleButtonStyle(true));
 
-    m_voltageSliderRow = new QWidget;
-    auto *vSliderLayout = new QHBoxLayout(m_voltageSliderRow);
-    vSliderLayout->setContentsMargins(0, 0, 0, 0);
-    vSliderLayout->setSpacing(Theme::Spacing::small);
-    m_voltageSlider = new QSlider(Qt::Horizontal);
-    m_voltageSlider->setRange(10, 500);
-    m_voltageSlider->setSingleStep(5);
-    m_voltageSlider->setStyleSheet(sliderStyle());
-    m_voltageSliderValue = new QLabel;
-    m_voltageSliderValue->setFixedWidth(60);
-    m_voltageSliderValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_voltageSliderValue->setStyleSheet(QStringLiteral(
-        "color: %1; font-size: %2px; font-family: '%3'; font-weight: 600;")
-        .arg(Theme::Colors::textPrimary.name())
-        .arg(Theme::Font::medium)
-        .arg(Theme::Font::monospace));
-    vSliderLayout->addWidget(m_voltageSlider, 1);
-    vSliderLayout->addWidget(m_voltageSliderValue);
-    root->addWidget(m_voltageSliderRow);
-    connect(m_voltageSlider, &QSlider::valueChanged, this, [this](int val) {
-        m_model->setVoltageCutoff(val);
-        m_voltageSliderValue->setText(QString::number(val) + QStringLiteral(" V"));
-    });
+                connect(btn, &QPushButton::clicked, this, [this, itemIdx]() {
+                    bool cur = m_model->data(itemIdx, ContextItemModel::ValueRole).toBool();
+                    m_model->setValue(itemIdx, !cur);
+                });
 
-    // Current scaling
-    root->addSpacing(Theme::Spacing::small);
-    root->addWidget(makeFieldLabel(QStringLiteral("Current Scaling")));
-    m_currentScaleToggle = new QPushButton;
-    m_currentScaleToggle->setCursor(Qt::PointingHandCursor);
-    m_currentScaleToggle->setFixedHeight(Theme::Sizing::small);
-    root->addWidget(m_currentScaleToggle);
-    connect(m_currentScaleToggle, &QPushButton::clicked, this, [this]() {
-        auto mode = m_model->currentScalingMode() == SignalDataModel::Dynamic
-                        ? SignalDataModel::Manual
-                        : SignalDataModel::Dynamic;
-        m_model->setCurrentScalingMode(mode);
-    });
+                m_controlMap[itemId] = btn;
+                root->addWidget(btn);
 
-    m_currentSliderRow = new QWidget;
-    auto *cSliderLayout = new QHBoxLayout(m_currentSliderRow);
-    cSliderLayout->setContentsMargins(0, 0, 0, 0);
-    cSliderLayout->setSpacing(Theme::Spacing::small);
-    m_currentSlider = new QSlider(Qt::Horizontal);
-    m_currentSlider->setRange(10, 500);  // 1.0A to 50.0A in tenths
-    m_currentSlider->setSingleStep(5);   // 0.5A steps
-    m_currentSlider->setStyleSheet(sliderStyle());
-    m_currentSliderValue = new QLabel;
-    m_currentSliderValue->setFixedWidth(60);
-    m_currentSliderValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_currentSliderValue->setStyleSheet(QStringLiteral(
-        "color: %1; font-size: %2px; font-family: '%3'; font-weight: 600;")
-        .arg(Theme::Colors::textPrimary.name())
-        .arg(Theme::Font::medium)
-        .arg(Theme::Font::monospace));
-    cSliderLayout->addWidget(m_currentSlider, 1);
-    cSliderLayout->addWidget(m_currentSliderValue);
-    root->addWidget(m_currentSliderRow);
-    connect(m_currentSlider, &QSlider::valueChanged, this, [this](int val) {
-        m_model->setCurrentCutoff(val / 10.0);
-        m_currentSliderValue->setText(QString::number(val / 10.0, 'f', 1) + QStringLiteral(" A"));
-    });
+            } else if (type == QLatin1String("dropdown")) {
+                auto *combo = new QComboBox;
+                combo->addItems(m_model->data(itemIdx, ContextItemModel::OptionsRole).toStringList());
+                combo->setFixedHeight(Theme::Sizing::small);
+                combo->setStyleSheet(comboBoxStyle());
+                combo->setCurrentIndex(m_model->data(itemIdx, ContextItemModel::ValueRole).toInt());
 
-    root->addStretch();
+                connect(combo, &QComboBox::currentIndexChanged, this, [this, itemIdx](int idx) {
+                    m_model->setValue(itemIdx, idx);
+                });
 
-    return content;
-}
+                m_controlMap[itemId] = combo;
+                root->addWidget(combo);
 
-void ContextMenuPanel::syncFromModel()
-{
-    // Magnitude toggle
-    bool isRMS = m_model->magnitudeMode() == SignalDataModel::RMS;
-    m_magnitudeToggle->setText(isRMS ? QStringLiteral("RMS") : QStringLiteral("Peak"));
-    m_magnitudeToggle->setStyleSheet(toggleButtonStyle(true));
+            } else if (type == QLatin1String("slider")) {
+                qreal min = m_model->data(itemIdx, ContextItemModel::MinRole).toReal();
+                qreal max = m_model->data(itemIdx, ContextItemModel::MaxRole).toReal();
+                qreal step = m_model->data(itemIdx, ContextItemModel::StepRole).toReal();
+                int decimals = m_model->data(itemIdx, ContextItemModel::DecimalsRole).toInt();
+                QString unit = m_model->data(itemIdx, ContextItemModel::UnitRole).toString();
+                qreal val = m_model->data(itemIdx, ContextItemModel::ValueRole).toReal();
 
-    // Phase reference
-    QSignalBlocker blocker(m_phaseRefCombo);
-    m_phaseRefCombo->setCurrentIndex(m_model->phaseReferenceIndex() + 1);
+                int scale = 1;
+                for (int d = 0; d < decimals; ++d)
+                    scale *= 10;
 
-    // Pause button
-    bool paused = m_model->isPaused();
-    m_pauseButton->setText(paused ? QStringLiteral("▶  Resume") : QStringLiteral("⏸  Pause"));
-    QColor pauseAccent = paused ? Theme::Colors::primary : Theme::Colors::error;
-    m_pauseButton->setStyleSheet(toggleButtonStyle(!paused, pauseAccent));
+                auto *row = new QWidget;
+                auto *rowLayout = new QHBoxLayout(row);
+                rowLayout->setContentsMargins(0, 0, 0, 0);
+                rowLayout->setSpacing(Theme::Spacing::small);
 
-    // Voltage scaling
-    bool vDynamic = m_model->voltageScalingMode() == SignalDataModel::Dynamic;
-    m_voltageScaleToggle->setText(vDynamic ? QStringLiteral("Dynamic") : QStringLiteral("Manual"));
-    m_voltageScaleToggle->setStyleSheet(toggleButtonStyle(vDynamic));
-    m_voltageSliderRow->setVisible(!vDynamic);
-    if (!vDynamic) {
-        QSignalBlocker sb(m_voltageSlider);
-        m_voltageSlider->setValue(qRound(m_model->voltageCutoff()));
-        m_voltageSliderValue->setText(QString::number(qRound(m_model->voltageCutoff())) + QStringLiteral(" V"));
+                auto *slider = new QSlider(Qt::Horizontal);
+                slider->setRange(int(min * scale), int(max * scale));
+                slider->setSingleStep(int(step * scale));
+                slider->setValue(int(val * scale));
+                slider->setStyleSheet(sliderStyle());
+
+                auto *valueLabel = new QLabel;
+                valueLabel->setFixedWidth(60);
+                valueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                valueLabel->setStyleSheet(QStringLiteral(
+                    "color: %1; font-size: %2px; font-family: '%3'; font-weight: 600;")
+                    .arg(Theme::Colors::textPrimary.name())
+                    .arg(Theme::Font::medium)
+                    .arg(Theme::Font::monospace));
+                valueLabel->setText(QString::number(val, 'f', decimals) + QStringLiteral(" ") + unit);
+
+                connect(slider, &QSlider::valueChanged, this,
+                        [this, itemIdx, scale, decimals, unit, valueLabel](int v) {
+                    qreal realVal = qreal(v) / scale;
+                    m_model->setValue(itemIdx, realVal);
+                    valueLabel->setText(
+                        QString::number(realVal, 'f', decimals) + QStringLiteral(" ") + unit);
+                });
+
+                rowLayout->addWidget(slider, 1);
+                rowLayout->addWidget(valueLabel);
+                m_controlMap[itemId] = slider;
+                root->addWidget(row);
+
+            } else if (type == QLatin1String("button")) {
+                auto *btn = new QPushButton;
+                btn->setCursor(Qt::PointingHandCursor);
+                btn->setFixedHeight(Theme::Sizing::small);
+
+                QVariant val = m_model->data(itemIdx, ContextItemModel::ValueRole);
+                QString icon = m_model->data(itemIdx, ContextItemModel::IconRole).toString();
+                btn->setText(icon + QStringLiteral("  ") + label);
+                btn->setStyleSheet(toggleButtonStyle(val.toBool()));
+
+                connect(btn, &QPushButton::clicked, this, [this, itemIdx]() {
+                    QVariant cur = m_model->data(itemIdx, ContextItemModel::ValueRole);
+                    m_model->setValue(itemIdx, !cur.toBool());
+                });
+
+                m_controlMap[itemId] = btn;
+                root->addWidget(btn);
+            }
+        }
     }
 
-    // Current scaling
-    bool cDynamic = m_model->currentScalingMode() == SignalDataModel::Dynamic;
-    m_currentScaleToggle->setText(cDynamic ? QStringLiteral("Dynamic") : QStringLiteral("Manual"));
-    m_currentScaleToggle->setStyleSheet(toggleButtonStyle(cDynamic));
-    m_currentSliderRow->setVisible(!cDynamic);
-    if (!cDynamic) {
-        QSignalBlocker sb(m_currentSlider);
-        m_currentSlider->setValue(qRound(m_model->currentCutoff() * 10));
-        m_currentSliderValue->setText(QString::number(m_model->currentCutoff(), 'f', 1) + QStringLiteral(" A"));
+    root->addStretch();
+    m_scrollArea->setWidget(m_contentWidget);
+}
+
+// ---------------------------------------------------------------------------
+// Sync controls when model values change
+// ---------------------------------------------------------------------------
+
+void ContextMenuPanel::syncFromModel(const QModelIndex &topLeft, const QModelIndex &,
+                                     const QList<int> &roles)
+{
+    if (!roles.contains(ContextItemModel::ValueRole))
+        return;
+
+    int itemId = int(topLeft.internalId());
+    auto *widget = m_controlMap.value(itemId);
+    if (!widget)
+        return;
+
+    QString type = m_model->data(topLeft, ContextItemModel::TypeRole).toString();
+    QVariant value = m_model->data(topLeft, ContextItemModel::ValueRole);
+
+    if (type == QLatin1String("toggle")) {
+        auto *btn = qobject_cast<QPushButton *>(widget);
+        QStringList options = m_model->data(topLeft, ContextItemModel::OptionsRole).toStringList();
+        btn->setText(value.toBool() ? options.value(1) : options.value(0));
+
+    } else if (type == QLatin1String("dropdown")) {
+        auto *combo = qobject_cast<QComboBox *>(widget);
+        QSignalBlocker blocker(combo);
+        combo->setCurrentIndex(value.toInt());
+
+    } else if (type == QLatin1String("slider")) {
+        auto *slider = qobject_cast<QSlider *>(widget);
+        int decimals = m_model->data(topLeft, ContextItemModel::DecimalsRole).toInt();
+        int scale = 1;
+        for (int d = 0; d < decimals; ++d)
+            scale *= 10;
+        QSignalBlocker blocker(slider);
+        slider->setValue(int(value.toReal() * scale));
+
+    } else if (type == QLatin1String("button")) {
+        auto *btn = qobject_cast<QPushButton *>(widget);
+        QString icon = m_model->data(topLeft, ContextItemModel::IconRole).toString();
+        QString label = m_model->data(topLeft, ContextItemModel::LabelRole).toString();
+        btn->setText(icon + QStringLiteral("  ") + label);
+        btn->setStyleSheet(toggleButtonStyle(value.toBool()));
     }
 }

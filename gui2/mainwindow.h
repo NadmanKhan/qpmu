@@ -3,16 +3,13 @@
 #include <QMainWindow>
 
 class QLabel;
-class QSplitter;
 class QStackedWidget;
-class QTabBar;
-class QTableView;
 class QPushButton;
 
 class SignalDataModel;
-class PhasorPlot;
-class WaveformPlot;
+class Screen;
 class ContextMenuPanel;
+class LiveMonitorScreen;
 
 class MainWindow : public QMainWindow
 {
@@ -25,27 +22,27 @@ public:
     void setLastSampleTime(const QString &time);
     void setSystemFrequency(qreal freq);
 
+    void pushScreen(Screen *screen);
+    void popScreen();
+
 protected:
     void resizeEvent(QResizeEvent *event) override;
 
 private:
     void setupToolbar();
-    void setupCentralArea();
     void setupStatusBar();
-
+    void updateToolbar();
     void updateStatusIndicator();
 
     SignalDataModel *m_model;
 
-    // Plots
-    PhasorPlot *m_phasorPlot;
-    WaveformPlot *m_waveformPlot;
-    QStackedWidget *m_plotStack;
-    QTabBar *m_tabBar;
-    QSplitter *m_splitter;
-    QTableView *m_tableView;
+    // Navigation
+    QStackedWidget *m_screenStack;
+    LiveMonitorScreen *m_liveMonitorScreen;
 
     // Toolbar
+    QLabel *m_titleLabel;
+    QPushButton *m_backButton;
     QPushButton *m_menuButton;
 
     // Context menu panel

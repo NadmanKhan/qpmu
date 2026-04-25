@@ -2,21 +2,19 @@
 
 #include <QWidget>
 
-class QLabel;
-class QPushButton;
-class QComboBox;
-class QSlider;
 class QScrollArea;
 class QPropertyAnimation;
-class SignalDataModel;
+class QVBoxLayout;
+class ContextItemModel;
 
 class ContextMenuPanel : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit ContextMenuPanel(SignalDataModel *model, QWidget *parent = nullptr);
+    explicit ContextMenuPanel(QWidget *parent = nullptr);
 
+    void setModel(ContextItemModel *model);
     void toggle();
     void showPanel();
     void hidePanel();
@@ -27,32 +25,22 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
-    QWidget *buildContent();
-    void syncFromModel();
+    void rebuildContent();
+    void syncFromModel(const QModelIndex &topLeft, const QModelIndex &bottomRight,
+                       const QList<int> &roles);
 
     static constexpr int PANEL_WIDTH = 300;
     static constexpr int ANIM_DURATION = 200;
 
-    SignalDataModel *m_model;
+    ContextItemModel *m_model = nullptr;
     QPropertyAnimation *m_animation;
+    QScrollArea *m_scrollArea;
+    QWidget *m_contentWidget = nullptr;
 
     int m_topOffset = 0;
     int m_parentWidth = 0;
     int m_parentHeight = 0;
 
-    // Data controls
-    QPushButton *m_magnitudeToggle;
-    QComboBox *m_phaseRefCombo;
-    QPushButton *m_pauseButton;
-
-    // Plot controls
-    QPushButton *m_voltageScaleToggle;
-    QSlider *m_voltageSlider;
-    QLabel *m_voltageSliderValue;
-    QWidget *m_voltageSliderRow;
-
-    QPushButton *m_currentScaleToggle;
-    QSlider *m_currentSlider;
-    QLabel *m_currentSliderValue;
-    QWidget *m_currentSliderRow;
+    // Maps model internal-id → widget for syncing values
+    QHash<int, QWidget *> m_controlMap;
 };
