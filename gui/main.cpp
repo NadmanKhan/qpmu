@@ -71,19 +71,8 @@ int main(int argc, char *argv[])
         }
     });
 
-    // ── Simulation fallback (2 Hz) ──────────────────────────────────────────
-    qreal simTime = 0.0;
-    QTimer simTimer;
-    simTimer.setInterval(500);
-    QObject::connect(&simTimer, &QTimer::timeout, &app, [&]() {
-        simTime += 0.5;
-        model->updateSimulatedData(simTime);
-        updateStatusBar();
-    });
-
     // ── Connection lifecycle ────────────────────────────────────────────────
     QObject::connect(ipcClient, &GuiIpcClient::connected, &app, [&]() {
-        simTimer.stop();
         window->setLiveMode(true);
     });
 
@@ -91,14 +80,11 @@ int main(int argc, char *argv[])
         ipcThrottle.stop();
         hasPending = false;
         window->setLiveMode(false);
-        if (!simTimer.isActive())
-            simTimer.start();
     });
 
     QTimer::singleShot(100, &app, [&]() {
         ipcClient->connectToService();
     });
-    simTimer.start();
 
     return app.exec();
 }

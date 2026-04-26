@@ -269,32 +269,6 @@ void SignalDataModel::updateFromFrame(const qpmu::Measurement_Frame &frame)
     emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
 }
 
-void SignalDataModel::updateSimulatedData(qreal simulationTime)
-{
-    if (m_isPaused)
-        return;
-
-    qreal vMag = 120.0 + 5.0 * qSin(simulationTime * 0.5);
-    qreal iMag = 10.0 + 1.0 * qSin(simulationTime * 0.7);
-    qreal freq = 60.0 + 0.05 * qSin(simulationTime * 0.3);
-
-    for (int i = 0; i < SIGNAL_COUNT; ++i) {
-        qreal phaseDeg = (i < 3) ? (i * 120.0) // voltages: 0°, 120°, 240°
-                                 : ((i - 3) * 120.0 - 30.0); // currents: lagging by 30°
-        qreal mag = (i < 3) ? vMag : iMag;
-
-        auto &p = m_signals[i].payload;
-        p.magnitude = mag;
-        p.phaseAngle = phaseDeg;
-        p.frequency = freq;
-        p.rocof = 0;
-    }
-
-    computePower();
-    updateDynamicScaling();
-    emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
-}
-
 // ── Internal helpers ────────────────────────────────────────────────────────
 
 qreal SignalDataModel::effectiveMagnitude(const SignalData &sig) const

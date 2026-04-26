@@ -17,23 +17,22 @@
 
 static QString toolbarButtonStyle()
 {
-    return QStringLiteral(
-        "QPushButton { background: %1; color: %2; border: 1px solid %3;"
-        " border-radius: %4px; font-size: %5px; font-weight: bold; }"
-        "QPushButton:hover { background: %6; }")
-        .arg(Theme::Colors::surfaceElevated.name(), Theme::Colors::textPrimary.name(),
-             Theme::Colors::borderEmphasized.name())
-        .arg(Theme::Radius::large)
-        .arg(Theme::Font::huge)
-        .arg(Theme::Colors::surfaceHover.name());
+    return QStringLiteral("QPushButton { background: %1; color: %2; border: 1px solid %3;"
+                          " border-radius: %4px; font-size: %5px; font-weight: bold; }"
+                          "QPushButton:hover { background: %6; }")
+            .arg(Theme::Colors::surfaceElevated.name(), Theme::Colors::textPrimary.name(),
+                 Theme::Colors::borderEmphasized.name())
+            .arg(Theme::Radius::large)
+            .arg(Theme::Font::huge)
+            .arg(Theme::Colors::surfaceHover.name());
 }
 
 static QLabel *makeMetricHeader(const QString &text)
 {
     auto *label = new QLabel(text);
     label->setStyleSheet(QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
-                             .arg(Theme::Colors::textTertiary.name())
-                             .arg(Theme::Font::tiny));
+                                 .arg(Theme::Colors::textTertiary.name())
+                                 .arg(Theme::Font::tiny));
     return label;
 }
 
@@ -41,10 +40,10 @@ static QLabel *makeMetricValue(const QColor &color)
 {
     auto *label = new QLabel(QStringLiteral("--"));
     label->setStyleSheet(
-        QStringLiteral("color: %1; font-size: %2px; font-weight: 600; font-family: '%3';")
-            .arg(color.name())
-            .arg(Theme::Font::normal)
-            .arg(Theme::Font::monospace));
+            QStringLiteral("color: %1; font-size: %2px; font-weight: 600; font-family: '%3';")
+                    .arg(color.name())
+                    .arg(Theme::Font::normal)
+                    .arg(Theme::Font::monospace));
     return label;
 }
 
@@ -72,9 +71,9 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
 
     // -- Toolbar --
     m_titleLabel = new QLabel;
-    m_titleLabel->setStyleSheet(
-        QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
-            .arg(Theme::Colors::textPrimary.name()).arg(Theme::Font::large));
+    m_titleLabel->setStyleSheet(QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
+                                        .arg(Theme::Colors::textPrimary.name())
+                                        .arg(Theme::Font::large));
     m_titleLabel->setAlignment(Qt::AlignCenter);
 
     m_backButton = new QPushButton(QStringLiteral("‹"));
@@ -87,16 +86,14 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
     m_menuButton->setFixedSize(Theme::Sizing::medium, Theme::Sizing::medium);
     m_menuButton->setCursor(Qt::PointingHandCursor);
     m_menuButton->setStyleSheet(toolbarButtonStyle());
-    connect(m_menuButton, &QPushButton::clicked, this, [this]() {
-        m_contextPanel->toggle();
-    });
+    connect(m_menuButton, &QPushButton::clicked, this, [this]() { m_contextPanel->toggle(); });
 
     auto *toolbar = new QWidget(central);
     toolbar->setObjectName(QStringLiteral("toolbar"));
     toolbar->setFixedHeight(Theme::Sizing::toolbarHeight);
     toolbar->setStyleSheet(
-        QStringLiteral("QWidget#toolbar { background: %1; border-bottom: 1px solid %2; }")
-            .arg(Theme::Colors::surface.name(), Theme::Colors::borderEmphasized.name()));
+            QStringLiteral("QWidget#toolbar { background: %1; border-bottom: 1px solid %2; }")
+                    .arg(Theme::Colors::surface.name(), Theme::Colors::borderEmphasized.name()));
     {
         auto *hbox = new QHBoxLayout(toolbar);
         hbox->setContentsMargins(Theme::Spacing::small, 0, Theme::Spacing::small, 0);
@@ -214,32 +211,40 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::updateStatusIndicator()
 {
-    bool paused = m_model->isPaused();
-    QColor accent = paused ? Theme::Colors::error : Theme::Colors::primary;
-    QString label = paused ? QStringLiteral("PAUSED") : QStringLiteral("LIVE");
+    QColor accent;
+    QString label;
+    if (!m_liveMode) {
+        accent = Theme::Colors::textTertiary;
+        label = QStringLiteral("OFFLINE");
+    } else if (m_model->isPaused()) {
+        accent = Theme::Colors::error;
+        label = QStringLiteral("PAUSED");
+    } else {
+        accent = Theme::Colors::primary;
+        label = QStringLiteral("LIVE");
+    }
 
     m_statusText->setText(label);
     m_statusText->setStyleSheet(
-        QStringLiteral("color: %1; font-size: %2px; font-weight: bold; font-family: '%3';")
-            .arg(accent.name())
-            .arg(Theme::Font::normal)
-            .arg(Theme::Font::monospace));
+            QStringLiteral("color: %1; font-size: %2px; font-weight: bold; font-family: '%3';")
+                    .arg(accent.name())
+                    .arg(Theme::Font::normal)
+                    .arg(Theme::Font::monospace));
 
     m_statusDot->setStyleSheet(
-        QStringLiteral("background: %1; border-radius: 4px;").arg(accent.name()));
+            QStringLiteral("background: %1; border-radius: 4px;").arg(accent.name()));
 
     m_statusPill->setStyleSheet(
-        QStringLiteral("background: %1; border: %2px solid %3; border-radius: %4px;")
-            .arg(Theme::withAlpha(accent, 32).name(QColor::HexArgb))
-            .arg(Theme::Border::medium)
-            .arg(accent.name())
-            .arg(Theme::Radius::large));
+            QStringLiteral("background: %1; border: %2px solid %3; border-radius: %4px;")
+                    .arg(Theme::withAlpha(accent, 32).name(QColor::HexArgb))
+                    .arg(Theme::Border::medium)
+                    .arg(accent.name())
+                    .arg(Theme::Radius::large));
 
-    m_statusBar->setStyleSheet(
-        QStringLiteral("background: %1; border-top: %2px solid %3;")
-            .arg(Theme::Colors::surface.name())
-            .arg(Theme::Border::thick)
-            .arg(accent.name()));
+    m_statusBar->setStyleSheet(QStringLiteral("background: %1; border-top: %2px solid %3;")
+                                       .arg(Theme::Colors::surface.name())
+                                       .arg(Theme::Border::thick)
+                                       .arg(accent.name()));
 }
 
 // ── Public setters ──────────────────────────────────────────────────────────

@@ -89,7 +89,6 @@ public:
 
     // -- Data updates --
     void updateFromFrame(const qpmu::Measurement_Frame &frame);
-    void updateSimulatedData(qreal simulationTime);
 
 signals:
     void magnitudeModeChanged();
