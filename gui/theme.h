@@ -42,7 +42,7 @@ inline const QColor signal[] = {
 
 namespace Sizing {
 inline constexpr int toolbarHeight = 55;
-inline constexpr int statusBarHeight = 72;
+inline constexpr int statusBarHeight = 48;
 inline constexpr int small = 30;
 inline constexpr int medium = 44;
 inline constexpr int large = 54;

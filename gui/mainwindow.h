@@ -29,7 +29,7 @@ protected:
 
 private:
     void updateToolbar();
-    void updateStatusIndicator();
+    void updateConnectionIndicator();
 
     SignalDataModel *m_model;
 
@@ -46,12 +46,13 @@ private:
 
     // Status bar
     QWidget *m_statusBar;
-    QLabel *m_statusDot;
-    QLabel *m_statusText;
-    QWidget *m_statusPill;
-    QLabel *m_timeValue;
-    QLabel *m_rateValue;
+    QLabel *m_connectionDot;
+    QLabel *m_connectionLabel;
+    QWidget *m_liveMetrics;
+    QLabel *m_sampleTimeValue;
     QLabel *m_freqValue;
+    QLabel *m_rateValue;
+    QLabel *m_utcLabel;
 
     bool m_liveMode = false;
 };

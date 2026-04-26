@@ -10,8 +10,9 @@
 #include <QStackedWidget>
 #include <QLabel>
 #include <QPushButton>
-#include <QFrame>
 #include <QResizeEvent>
+#include <QTimer>
+#include <QDateTime>
 
 // ── Style helpers ───────────────────────────────────────────────────────────
 
@@ -27,12 +28,12 @@ static QString toolbarButtonStyle()
             .arg(Theme::Colors::surfaceHover.name());
 }
 
-static QLabel *makeMetricHeader(const QString &text)
+static QLabel *makeMetricLabel(const QString &text)
 {
     auto *label = new QLabel(text);
-    label->setStyleSheet(QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
+    label->setStyleSheet(QStringLiteral("color: %1; font-size: %2px;")
                                  .arg(Theme::Colors::textTertiary.name())
-                                 .arg(Theme::Font::tiny));
+                                 .arg(Theme::Font::small));
     return label;
 }
 
@@ -42,18 +43,18 @@ static QLabel *makeMetricValue(const QColor &color)
     label->setStyleSheet(
             QStringLiteral("color: %1; font-size: %2px; font-weight: 600; font-family: '%3';")
                     .arg(color.name())
-                    .arg(Theme::Font::normal)
+                    .arg(Theme::Font::medium)
                     .arg(Theme::Font::monospace));
     return label;
 }
 
-static QFrame *makeSeparator()
+static QLabel *makeDotSeparator()
 {
-    auto *sep = new QFrame;
-    sep->setFrameShape(QFrame::VLine);
-    sep->setFixedHeight(40);
-    sep->setStyleSheet(QStringLiteral("color: %1;").arg(Theme::Colors::border.name()));
-    return sep;
+    auto *dot = new QLabel(QStringLiteral("·"));
+    dot->setStyleSheet(QStringLiteral("color: %1; font-size: %2px;")
+                               .arg(Theme::Colors::border.name())
+                               .arg(Theme::Font::large));
+    return dot;
 }
 
 // ── MainWindow ──────────────────────────────────────────────────────────────
@@ -115,45 +116,76 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
 
     auto *statusLayout = new QHBoxLayout(m_statusBar);
     statusLayout->setContentsMargins(Theme::Spacing::medium, 0, Theme::Spacing::medium, 0);
-    statusLayout->setSpacing(Theme::Spacing::large);
+    statusLayout->setSpacing(0);
 
-    m_statusPill = new QWidget;
-    m_statusPill->setFixedSize(110, Theme::Sizing::medium);
+    auto *connectionGroup = new QWidget;
     {
-        auto *pillLayout = new QHBoxLayout(m_statusPill);
-        pillLayout->setContentsMargins(Theme::Spacing::small, 0, Theme::Spacing::small, 0);
-        pillLayout->setSpacing(Theme::Spacing::small);
+        auto *vbox = new QVBoxLayout(connectionGroup);
+        vbox->setContentsMargins(0, 0, 0, 0);
+        vbox->setSpacing(0);
 
-        m_statusDot = new QLabel;
-        m_statusDot->setFixedSize(8, 8);
-        m_statusText = new QLabel;
+        // Row 1: dot + label
+        auto *row1 = new QHBoxLayout;
+        row1->setSpacing(Theme::Spacing::tiny);
+        m_connectionDot = new QLabel;
+        m_connectionDot->setFixedSize(7, 7);
+        m_connectionLabel = new QLabel;
+        row1->addWidget(m_connectionDot);
+        row1->addWidget(m_connectionLabel);
+        row1->addStretch();
+        vbox->addLayout(row1);
 
-        pillLayout->addWidget(m_statusDot);
-        pillLayout->addWidget(m_statusText);
+        // Row 2: sample time, freq, rate (hidden when offline)
+        m_liveMetrics = new QWidget;
+        {
+            auto *row2 = new QHBoxLayout(m_liveMetrics);
+            row2->setContentsMargins(0, 0, 0, 0);
+            row2->setSpacing(Theme::Spacing::small);
+
+            row2->addWidget(makeMetricLabel(QStringLiteral("Last")));
+            m_sampleTimeValue = makeMetricValue(Theme::Colors::textSecondary);
+            row2->addWidget(m_sampleTimeValue);
+
+            row2->addWidget(makeDotSeparator());
+
+            row2->addWidget(makeMetricLabel(QStringLiteral("Freq")));
+            m_freqValue = makeMetricValue(Theme::Colors::primary);
+            row2->addWidget(m_freqValue);
+
+            row2->addWidget(makeDotSeparator());
+
+            row2->addWidget(makeMetricLabel(QStringLiteral("Rate")));
+            m_rateValue = makeMetricValue(Theme::Colors::info);
+            m_rateValue->setText(QStringLiteral("1000.0 Hz"));
+            row2->addWidget(m_rateValue);
+        }
+        vbox->addWidget(m_liveMetrics);
     }
+    statusLayout->addWidget(connectionGroup);
 
-    statusLayout->addWidget(m_statusPill);
     statusLayout->addStretch();
 
-    auto addMetricColumn = [&](const QString &header, QLabel *&valueOut, const QColor &color) {
-        auto *col = new QVBoxLayout;
-        col->setSpacing(Theme::Spacing::tiny);
-        col->addWidget(makeMetricHeader(header));
-        valueOut = makeMetricValue(color);
-        col->addWidget(valueOut);
-        statusLayout->addLayout(col);
-    };
-
-    addMetricColumn(QStringLiteral("TIME"), m_timeValue, Theme::Colors::textPrimary);
-    statusLayout->addWidget(makeSeparator());
-    addMetricColumn(QStringLiteral("SAMPLING RATE"), m_rateValue, Theme::Colors::info);
-    m_rateValue->setText(QStringLiteral("1000.0 Hz"));
-    statusLayout->addWidget(makeSeparator());
-    addMetricColumn(QStringLiteral("FREQUENCY"), m_freqValue, Theme::Colors::primary);
+    m_utcLabel = new QLabel;
+    m_utcLabel->setStyleSheet(
+            QStringLiteral("color: %1; font-size: %2px; font-family: '%3';")
+                    .arg(Theme::Colors::textSecondary.name())
+                    .arg(Theme::Font::medium)
+                    .arg(Theme::Font::monospace));
+    statusLayout->addWidget(m_utcLabel);
 
     layout->addWidget(m_statusBar);
     setCentralWidget(central);
-    updateStatusIndicator();
+    updateConnectionIndicator();
+
+    // -- UTC clock --
+    auto updateUtc = [this]() {
+        m_utcLabel->setText(
+                QDateTime::currentDateTimeUtc().toString(QStringLiteral("hh:mm:ss · ddd, MMM d")));
+    };
+    updateUtc();
+    auto *utcTimer = new QTimer(this);
+    connect(utcTimer, &QTimer::timeout, this, updateUtc);
+    utcTimer->start(1000);
 
     // -- Context panel (overlay) --
     m_contextPanel = new ContextMenuPanel(central);
@@ -161,9 +193,6 @@ MainWindow::MainWindow(SignalDataModel *model, QWidget *parent)
     // -- Initial screen --
     auto *liveScreen = new LiveMonitorScreen(m_model);
     pushScreen(liveScreen);
-
-    connect(m_model, &SignalDataModel::pauseStateChanged, this,
-            [this]() { updateStatusIndicator(); });
 }
 
 // ── Screen navigation ───────────────────────────────────────────────────────
@@ -209,42 +238,25 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 // ── Status bar ──────────────────────────────────────────────────────────────
 
-void MainWindow::updateStatusIndicator()
+void MainWindow::updateConnectionIndicator()
 {
-    QColor accent;
-    QString label;
-    if (!m_liveMode) {
-        accent = Theme::Colors::textTertiary;
-        label = QStringLiteral("OFFLINE");
-    } else if (m_model->isPaused()) {
-        accent = Theme::Colors::error;
-        label = QStringLiteral("PAUSED");
-    } else {
-        accent = Theme::Colors::primary;
-        label = QStringLiteral("LIVE");
-    }
+    QColor accent = m_liveMode ? Theme::Colors::primary : Theme::Colors::textTertiary;
+    QString label = m_liveMode ? QStringLiteral("Source") : QStringLiteral("No source");
 
-    m_statusText->setText(label);
-    m_statusText->setStyleSheet(
-            QStringLiteral("color: %1; font-size: %2px; font-weight: bold; font-family: '%3';")
+    m_connectionDot->setStyleSheet(
+            QStringLiteral("background: %1; border-radius: 3px;").arg(accent.name()));
+
+    m_connectionLabel->setText(label);
+    m_connectionLabel->setStyleSheet(
+            QStringLiteral("color: %1; font-size: %2px; font-weight: bold;")
                     .arg(accent.name())
-                    .arg(Theme::Font::normal)
-                    .arg(Theme::Font::monospace));
+                    .arg(Theme::Font::small));
 
-    m_statusDot->setStyleSheet(
-            QStringLiteral("background: %1; border-radius: 4px;").arg(accent.name()));
+    m_sampleTimeValue->setText(QStringLiteral("--"));
+    m_liveMetrics->setVisible(m_liveMode);
 
-    m_statusPill->setStyleSheet(
-            QStringLiteral("background: %1; border: %2px solid %3; border-radius: %4px;")
-                    .arg(Theme::withAlpha(accent, 32).name(QColor::HexArgb))
-                    .arg(Theme::Border::medium)
-                    .arg(accent.name())
-                    .arg(Theme::Radius::large));
-
-    m_statusBar->setStyleSheet(QStringLiteral("background: %1; border-top: %2px solid %3;")
-                                       .arg(Theme::Colors::surface.name())
-                                       .arg(Theme::Border::thick)
-                                       .arg(accent.name()));
+    m_statusBar->setStyleSheet(
+            QStringLiteral("background: %1;").arg(Theme::Colors::surface.name()));
 }
 
 // ── Public setters ──────────────────────────────────────────────────────────
@@ -252,12 +264,12 @@ void MainWindow::updateStatusIndicator()
 void MainWindow::setLiveMode(bool live)
 {
     m_liveMode = live;
-    updateStatusIndicator();
+    updateConnectionIndicator();
 }
 
 void MainWindow::setLastSampleTime(const QString &time)
 {
-    m_timeValue->setText(time);
+    m_sampleTimeValue->setText(time);
 }
 
 void MainWindow::setSystemFrequency(qreal freq)
