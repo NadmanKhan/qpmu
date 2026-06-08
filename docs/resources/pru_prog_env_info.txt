@@ -1,0 +1,45 @@
+
+PRU Programming Info
+------------------------
+1. Download dev tools for ARM-A8 to local Windows machine to from:
+
+https://www.google.com/url?q=https://www.ti.com/tool/download/PRU-CGT-2-1&source=gmail-imap&ust=1778223973000000&usg=AOvVaw2DQprk2aF-Q3M25fr3Ll1a
+
+2. Move the file to VirtualBox shared folder and copy to BBB 
+[use Double Commander for the following command]
+
+$ scp /media/sf_vbox_share_ubuntu/ti_cgt_pru_2.1.5_armlinuxa8hf_busybox_installer.sh ubuntu@192.168.7.2:/home/ubuntu/Downloads/
+
+3. Install the compiler
+
+$ chmod +x ti_cgt_pru_2.1.5_armlinuxa8hf_busybox_installer.sh
+
+$ sudo ./ti_cgt_pru_2.1.5_armlinuxa8hf_busybox_installer.sh
+
+4. Update uEnv.txt for PRU-RPROC
+
+# pico /boot/uEnv.txt
+-- uncomment pru_rproc (4.19.x-ti kernel) as below
+uboot_overlay_pru=AM335X-PRU-RPROC-4-19-TI-00A0.dtbo
+
+5. Download the PRU software support package v5.5.0 from:
+
+https://www.google.com/url?q=https://git.ti.com/cgit/pru-software-support-package/pru-software-support-package/&source=gmail-imap&ust=1778223973000000&usg=AOvVaw380ML1XCf7Ba5s1Mzn9g7k
+
+-- move to BBB and extract to /usr/lib/ti/pru-software-support-package
+-- PRU_SSP environment variable points to it
+
+-- PRU code generation tools must be downloaded from https://www.google.com/url?q=https://www.ti.com/tool/download/PRU-CGT-2-1/&source=gmail-imap&ust=1778223973000000&usg=AOvVaw0VNbND_Ix-zHz2I9sdIklR 
+-- and installed in /usr/share/ti/cgt-pru and PRU_CGT environment variable point to it.
+
+6. Install show-pins untility
+
+cd /usr/local/sbin
+sudo wget -N https://www.google.com/url?q=https://raw.githubusercontent.com/mvduin/bbb-pin-utils/master/show-pins&source=gmail-imap&ust=1778223973000000&usg=AOvVaw3Cn2mjdppfryd2bXRr-qgT
+sudo chmod a+x show-pins
+
+7. Google: Beaglebone "pru" vs "multi core" processor
+https://www.google.com/url?q=https://electronics.stackexchange.com/questions/405717/systems-similar-to-tis-prus&source=gmail-imap&ust=1778223973000000&usg=AOvVaw1dgA3089SXfm_xIf-_7oPP
+
+
+

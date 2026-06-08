@@ -1,0 +1,237 @@
+GPS Setup for BeagleBone Black
+
+View gpsd data
+
+# gpsmon (see GPS data from gpsd)
+# cgps -s  (application to view GPS status - xgps for graphical)
+
+
+# ppstest /dev/pps0
+# journalctl -xe | grep pps0*
+
+-- gpsdctl for U-blox
+# cat /lib/udev/rules.d/60-gpsd.rules
+
+# u-blox AG, u-blox 8 (tested with GNSS Evaluation Kit EKV-M8N) [linux module: cdc_acm]
+ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a8", SYMLINK+="gps%n", TAG+="systemd", ENV{SYSTEMD_WANTS}="gpsdctl@%k.service"
+
+https://www.youtube.com/watch?v=QjgkfY8-gxM  (BBB GPS read Python)
+https://www.youtube.com/watch?v=LtqVrwwVfGY  (Adafruit GPS Troubleshooting)
+
+
+Diagnostic Commands
+
+# systemctl status gpsd
+# service gpsd status  (same as the last one)
+# service gpsd restart
+# journalctl -xe | grep gpsd
+# dmesg | grep -i gps
+# dmesg | grep gpsd
+# ls -al /dev/ttyO*
+# gpsmon –n
+# ntpshmmon
+# ntpq -p
+# ps -ef (show the scripts running)
+# crontab –e  (edit corntab entry)
+# grep CRON /var/log/syslog (find running history of CRON commands)
+
+
+GPS UART
+
+# apt-get install gpsd gpsd-clients
+# apt-get install pps-tools
+# apt-get install ntp
+
+-- change /etc/default/gpsd  to configure ports for GPS data and boot option
+-- new values at : https://github.com/guycole/perky-janus/blob/main/gpsd.default
+
+# nano /etc/default/gpsd  (then copy paste gpsd.default from the above link)
+
+-- For GPS data and PPS, get BB-UART1-GPS-00A0.dts compile and update BBB env
+# from https://github.com/guycole/perky-janus/blob/main/BB-UART1-GPS-00A0.dts
+# and compile at /home/ubuntu/bb.org-overlays  
+bb.org-overlays# nano src/arm/BB-UART1-GPS-00A0.dts   
+                          (copy paste, change P9.24, P9.26 MUX_MODE6 ==> MUX_MODE0)       
+bb.org-overlays# make src/arm/BB-UART1-GPS-00A0.dtbo
+
+-- Then copy BB-UART1-GPS-00A0.dtbo to /lib/firmware/
+# cp src/arm/BB-UART1-GPS-00A0.dtbo /lib/firmware/
+
+-- Update /boot/uEnv.txt to reference the new overlay
+uboot_overlay_addr5=/lib/firmware/BB-UART1-GPS-00A0.dtbo
+
+-- check folders
+# ls  -al /lib/firmware/BB-UART1-GPS-00A0.dtbo
+# ls  -a /sys/devices/platform/ocp/
+
+------------------- 
+
+GPS USB
+
+-- GPSd setup and connection to USB port
+https://www.youtube.com/watch?v=A1zmhxcUOxw  (configure gpsd)
+
+# systemctl stop gpsd.socket
+# systemctl disable gpsd.socket
+# nano /lib/systemd/system/gpsd.socket
+--change the old value of the following variable to this new value
+       ListenStream=0.0.0.0:2947
+# killall gpsd
+-- bind gpsd to serial port ttyACM0 (found through: ls /dev)
+# gpsd /dev/ttyACM0 -F /var/run/gpsd.sock 
+
+-- during normal start following command is sufficient
+# systemctl stop gpsd.socket
+# gpsd /dev/ttyACM0 -F /var/run/gpsd.sock 
+
+https://www.blog.neudeep.com/bbgw/how-to-interface-gps-with-beaglebone-green/820/
+https://gpsd.io/gpsd-client-example-code.html
+
+https://blog.dan.drown.org/beaglebone-black-ntpgps-server/
+
+Beaglebone Black GPS Tracker LESSON 1
+https://www.youtube.com/watch?v=QjgkfY8-gxM
+https://support.digitalmatter.com/support/solutions/articles/16000105699-common-concepts-gps-settings-and-gps-accuracy
+
+https://www.u-blox.com/en/product-resources (u-blox info)
+https://github.com/ZIOCC/Zio-Qwiic-GPS-Module-U-blox-NEO-M8N-0-10
+https://www.electronicspecifier.com/news/blog/11-things-you-probably-didn-t-know-about-u-center
+https://raspberrypi.stackexchange.com/questions/98840/how-can-rpi-connect-a-gps-module
+
+https://engineering.fb.com/2020/03/18/production-engineering/ntp-service/
+
+
+NTP timer using GPS
+
+# nano /etc/systemd/timesyncd.conf
+  set -> NTP=bd.pool.ntp.org
+         FallbackNTP=ntp.ubuntu.com
+
+https://www.youtube.com/watch?v=_dzZ8i06WhY    (Configure NTP using GPS)
+
+# systemctl status chronyd
+# service ntp restart
+# ntpq -p  (query ntp staus)
+
+# nano /etc/ntp.conf   (configure ntp to gpsd)
+# nano /etc/chrony/chrony.conf
+
+
+GPS module as variable frequency reference (Ublox)
+
+https://www.youtube.com/watch?v=M6SmdqMA-Dg
+
+
+GPS Tracker LESSONS
+Understanding GPS NMEA Sentences
+https://www.youtube.com/watch?v=AXwSYz6htsg
+
+Parsing NMEA Sentences in Python
+https://www.youtube.com/watch?v=xIzFa26s8_w
+
+
+nmea gps command string parsing c++
+
+https://gpsd.gitlab.io/gpsd/client-howto.html (Gpsd C++)
+https://github.com/jtlobdell/cppnmea (using boost)
+https://github.com/ckgt/NemaTode
+
+GPS Intro
+
+https://learn.sparkfun.com/tutorials/gps-basics/all
+
+
+GPS Problems
+
+https://www.junipersys.com/support/article/12810
+
+GPSd Test Commands
+
+-- Check your process to know gpsd is running or not:
+# ps aux | grep gpsd
+
+-- Get raw sentences: 
+# gpspipe -r
+
+--  Get gpsd output: 
+# gpspipe -w
+
+-- GPSd version
+# gpsd –V
+
+-- verify gpsd is using the PPS
+# ntpshmmon
+
+Upgrade GPSd (build from source and install)
+
+https://austinsnerdythings.com/2021/10/01/how-to-update-gpsd-by-building-from-source/
+
+Google: Beaglebone system clock synchronization gpsd "1pps"
+Google: Beaglebone black NTP PPS UART pin dtbo
+
+https://github.com/guycole/perky-janus   (*** important ***)
+
+https://gpsd.gitlab.io/gpsd/gpsd-time-service-howto.html (GPSd ver 3.22 req, BBB 3.20)
+
+http://derekmolloy.ie/automatically-setting-the-beaglebone-black-time-using-ntp/
+
+https://github.com/jrockway/beaglebone-gps-clock
+
+https://forum.beagleboard.org/t/beaglebone-black-gps-pps-and-chrony-for-time-sync/897
+
+https://github.com/vyacht/gpsd/blob/master/www/gpsd-time-service-howto.txt
+
+https://groups.google.com/g/beagleboard/c/clhEv0BhH3I
+
+https://forum.beagleboard.org/t/how-to-synchronize-adc-sampling-clock/20299/7
+
+https://groups.google.com/g/beagleboard/c/h0-O4t0-4Yk
+
+https://www.sandsindia.com/gps-ntp-time-server/ (product from India)
+
+https://groups.google.com/g/comp.protocols.time.ntp/c/qE__rOfn6Sw
+
+No PPS from gpsd
+
+https://ubuntu.com/server/docs/network-ntp 
+https://lists.gnu.org/archive/html/gpsd-users/2021-07/msg00091.html
+https://groups.google.com/g/comp.protocols.time.ntp/c/qE__rOfn6Sw
+https://www.mail-archive.com/ubuntu-bugs@lists.ubuntu.com/msg5781627.html
+https://community.toradex.com/t/pps-on-i-mx6q-it/13046/3  
+                              ( root@beaglebone:/boot# nano config-4.19.94-ti-r59)
+	CONFIG_PPS_CLIENT_KTIMER
+
+PPS from gpsd  (Fixed on 18/1/2024) 
+(updating gpsd config file at /etc/default/gpsd)
+
+# nano /etc/default/gpsd
+
+-- within gpsd config file
+DEVICES="/dev/ttyO1 /dev/pps1"  ( disabled -- > DEVICES="/dev/ttyO1 /dev/pps0")
+
+-- restart gpsd
+# service gpsd restart        (**** to include 1PPS from /dev/pps1 *** )
+
+--- test PPS 
+# gpsmon
+
+
+GPSD Time Service HOWTO
+https://gpsd.gitlab.io/gpsd/gpsd-time-service-howto.html
+
+PPS Output Sample
+https://docs.kernel.org/driver-api/pps.html
+https://www.kernel.org/doc/Documentation/pps/pps.txt
+https://forums.raspberrypi.com/viewtopic.php?t=337151
+
+# ppstest /dev/pps1 
+trying PPS source "/dev/pps1"
+found PPS source "/dev/pps1"
+ok, found 1 source(s), now start fetching data...
+source 0 - assert 1705590736.013716366, sequence: 8202 - clear  0.000000000, sequence: 0
+source 0 - assert 1705590737.013716654, sequence: 8203 - clear  0.000000000, sequence: 0
+
+Precision Time Protocol (PTP) for BBB  -- Nanosecond range
+
+https://www.youtube.com/watch?v=-8DQ6jqTiQM
+
