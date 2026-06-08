@@ -6,11 +6,15 @@ target_include_directories(qpmu INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
+find_package(Threads REQUIRED)
+
 if(BUILD_TESTING)
 add_executable(qpmu_unit_tests
         ${CMAKE_CURRENT_SOURCE_DIR}/include/qpmu/algorithms/minmax_heap.test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/qpmu/containers/sliding_mmm.test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/qpmu/algorithms/linear_algebra.test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/qpmu/concurrency/spsc_ring.test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/qpmu/logging/data_logger.test.cpp
     )
 
     target_link_libraries(qpmu_unit_tests
@@ -18,6 +22,7 @@ add_executable(qpmu_unit_tests
         qpmu
         GTest::gtest
         GTest::gtest_main
+        Threads::Threads
     )
 
     gtest_discover_tests(qpmu_unit_tests)
@@ -33,8 +38,6 @@ add_executable(qpmu_service
 )
 
 target_include_directories(qpmu_service PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/daq)
-
-find_package(Threads REQUIRED)
 
 target_link_libraries(qpmu_service PRIVATE qpmu open-c37118 Threads::Threads)
 

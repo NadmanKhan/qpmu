@@ -2,9 +2,11 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "qpmu/concurrency/spsc_ring.hpp"
 #include "qpmu/concurrency/worker.hpp"
 #include "qpmu/core.h"
 #include "qpmu/ipc/gui_server.hpp"
+#include "qpmu/logging/data_logger.hpp"
 #include "interface.hpp"
 #if defined(QPMU_DAQ_BBB)
 #  include "bbb-debian/host/bbb_daq_reader.hpp"
@@ -26,35 +28,41 @@ struct Args
     const char *data_file = nullptr;
 #endif
     qpmu::DSP_Config dsp_config;
+    const char *log_file = nullptr;
+    std::size_t log_size_mb = 8192; // 8 GB
 };
 
 void print_usage(const char *program_name)
 {
-    std::fprintf(stderr,
-                 "Usage: %s [OPTIONS]\n"
-                 "\n"
-                 "Options:\n"
-                 "  -f, --frequency FREQ    Nominal frequency in Hz (50 or 60, default: 50)\n"
-                 "  -s, --sampling RATE     Sampling rate in Hz (default: 1200)\n"
-                 "  -g, --gui-socket PATH   GUI IPC socket path (default: /tmp/qpmu_gui.sock)\n"
-                 "  -D, --decimation N      GUI decimation factor (default: 120)\n"
-                 "  -v, --verbose           Print detailed estimates to stdout\n"
+    std::fprintf(
+            stderr,
+            "Usage: %s [OPTIONS]\n"
+            "\n"
+            "Options:\n"
+            "  -f, --frequency FREQ    Nominal frequency in Hz (50 or 60, default: 50)\n"
+            "  -s, --sampling RATE     Sampling rate in Hz (default: 1200)\n"
+            "  -g, --gui-socket PATH   GUI IPC socket path (default: /tmp/qpmu_gui.sock)\n"
+            "  -D, --decimation N      GUI decimation factor (default: 120)\n"
+            "  -v, --verbose           Print detailed estimates to stdout\n"
 #if defined(QPMU_DAQ_SIM)
-                 "  -d, --data-file PATH    CSV file to replay (required)\n"
+            "  -d, --data-file PATH    CSV file to replay (required)\n"
 #endif
-                 "\nDSP options:\n"
-                 "  --dc-alpha F            DC offset removal alpha (default: 0.001, 0 to disable)\n"
-                 "  --no-hann               Disable Hann windowing (use rectangular window)\n"
-                 "  --no-ipdft              Disable IpDFT frequency correction\n"
-                 "  --freq-median N         Frequency median filter window (default: 7, 0 to disable)\n"
-                 "  --rocof-median N        ROCOF median filter window (default: 11, 0 to disable)\n"
-                 "  --rocof-window N        ROCOF regression window (default: 9, min 3)\n"
-                 "\n"
-                 "  -h, --help              Show this help message\n"
-                 "\nExamples:\n"
-                 "  %s                      # Use defaults (50 Hz, 1200 Hz sampling)\n"
-                 "  %s -f 60 -s 1800        # 60 Hz system, 1800 Hz sampling\n",
-                 program_name, program_name, program_name);
+            "\nLogging options:\n"
+            "  --log-file PATH         Enable data logging to file\n"
+            "  --log-size MB           Max log file size in MB (default: 8192)\n"
+            "\nDSP options:\n"
+            "  --dc-alpha F            DC offset removal alpha (default: 0.001, 0 to disable)\n"
+            "  --no-hann               Disable Hann windowing (use rectangular window)\n"
+            "  --no-ipdft              Disable IpDFT frequency correction\n"
+            "  --freq-median N         Frequency median filter window (default: 7, 0 to disable)\n"
+            "  --rocof-median N        ROCOF median filter window (default: 11, 0 to disable)\n"
+            "  --rocof-window N        ROCOF regression window (default: 9, min 3)\n"
+            "\n"
+            "  -h, --help              Show this help message\n"
+            "\nExamples:\n"
+            "  %s                      # Use defaults (50 Hz, 1200 Hz sampling)\n"
+            "  %s -f 60 -s 1800        # 60 Hz system, 1800 Hz sampling\n",
+            program_name, program_name, program_name);
 }
 
 Args parse_args(int argc, char *argv[])
@@ -152,6 +160,22 @@ Args parse_args(int argc, char *argv[])
                 std::fprintf(stderr, "Error: --rocof-window must be 3-31\n");
                 std::exit(1);
             }
+        } else if (std::strcmp(argv[i], "--log-file") == 0) {
+            if (++i >= argc) {
+                std::fprintf(stderr, "Error: %s requires an argument\n", argv[i - 1]);
+                std::exit(1);
+            }
+            args.log_file = argv[i];
+        } else if (std::strcmp(argv[i], "--log-size") == 0) {
+            if (++i >= argc) {
+                std::fprintf(stderr, "Error: %s requires an argument\n", argv[i - 1]);
+                std::exit(1);
+            }
+            args.log_size_mb = std::atoi(argv[i]);
+            if (args.log_size_mb < 1) {
+                std::fprintf(stderr, "Error: --log-size must be at least 1 MB\n");
+                std::exit(1);
+            }
 #if defined(QPMU_DAQ_SIM)
         } else if (std::strcmp(argv[i], "-d") == 0 || std::strcmp(argv[i], "--data-file") == 0) {
             if (++i >= argc) {
@@ -184,6 +208,8 @@ using DAQ_Reader_Type = qpmu::Sim_DAQ_Reader;
 #  error "No DAQ backend configured. Pass -DQPMU_DAQ=<backend> to CMake. <backend> can be bbb or sim."
 #endif
 
+static SPSC_Ring<Measurement_Frame, 4096> log_ring;
+
 template <qpmu::DAQ_Reader Reader, std::size_t F_Nominal, std::size_t F_Sampling>
 int run_service(const Args &args, Reader &&sample_reader)
 {
@@ -197,6 +223,23 @@ int run_service(const Args &args, Reader &&sample_reader)
     gui_server_worker.start([&gui_server]() {
         gui_server.start(); // Blocking accept loop
     });
+
+    // Start data logger in worker thread
+    std::atomic<bool> log_running{ true };
+    Worker log_worker;
+    if (args.log_file) {
+        Data_Logger::Config log_config;
+        log_config.file_path = args.log_file;
+        log_config.max_file_size_bytes = args.log_size_mb * 1024ULL * 1024ULL;
+        log_config.nominal_freq = static_cast<uint32_t>(F_Nominal);
+        log_config.sampling_rate = static_cast<uint32_t>(F_Sampling);
+        log_config.dsp_config = args.dsp_config;
+
+        log_worker.start([log_config, &log_running]() {
+            Data_Logger logger(log_config);
+            logger.run(log_ring, log_running);
+        });
+    }
 
     // Service loop
     while (true) {
@@ -257,6 +300,11 @@ int run_service(const Args &args, Reader &&sample_reader)
                 std::printf("\nPublished frame %zu to GUI\n", sample_frame.seq_num);
             }
         }
+
+        // 6. Push to data logger (non-blocking, drops if ring full)
+        if (args.log_file) {
+            log_ring.try_push(measurement_frame);
+        }
     }
 
     return 0;
@@ -288,6 +336,16 @@ int main(int argc, char *argv[])
     std::fprintf(stderr, "  Freq median:     %zu\n", args.dsp_config.freq_median_window);
     std::fprintf(stderr, "  ROCOF median:    %zu\n", args.dsp_config.rocof_median_window);
     std::fprintf(stderr, "  ROCOF regr. win: %zu\n", args.dsp_config.rocof_regression_window);
+    std::fprintf(stderr, "\nData Logging:\n");
+    if (args.log_file) {
+        double retention_hours = (double(args.log_size_mb) * 1024.0 * 1024.0)
+                / (double(args.sampling_rate) * sizeof(qpmu::Log_Record) * 3600.0);
+        std::fprintf(stderr, "  Log file:        %s\n", args.log_file);
+        std::fprintf(stderr, "  Log size:        %zu MB (~%.1f hours retention)\n",
+                     args.log_size_mb, retention_hours);
+    } else {
+        std::fprintf(stderr, "  Disabled (use --log-file to enable)\n");
+    }
     std::fprintf(stderr, "\n");
 
     // Construct the DAQ reader
