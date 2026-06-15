@@ -1,17 +1,17 @@
-# C++ host library
-add_library(qpmu_daq_bbb STATIC
-    host/bbb_daq_reader.cpp
+# C++ host library — AM335x + MCP3208 ADC via PRU shared RAM
+add_library(qpmu_daq STATIC
+    host/reader.cpp
 )
 
-target_include_directories(qpmu_daq_bbb
+target_include_directories(qpmu_daq
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/..   # for interface.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}      # for shared/buffer.h
 )
 
-target_compile_definitions(qpmu_daq_bbb PUBLIC QPMU_DAQ_BBB)
+target_compile_definitions(qpmu_daq PUBLIC QPMU_DAQ_AM335X_MCP3208_PRU_SHRAM)
 
-target_link_libraries(qpmu_daq_bbb PUBLIC qpmu)
+target_link_libraries(qpmu_daq PUBLIC qpmu)
 
 # --- PRU0 firmware (custom target, only builds when explicitly requested) ---
 
@@ -55,24 +55,31 @@ add_custom_command(OUTPUT ${PRU0_OUT}
 
 add_custom_target(pru0_firmware DEPENDS ${PRU0_OUT})
 
-# --- Device tree overlay (custom target) ---
+# --- Device tree overlays (custom targets) ---
 
 set(DT_INCLUDE "/opt/source/dtb-6.18.x/include" CACHE PATH "Device tree include path")
 
-set(OVERLAY_SRC ${CMAKE_CURRENT_SOURCE_DIR}/overlay/BB-PRU-MCP3208-00A0.dtso)
-set(OVERLAY_PP  ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-PRU-MCP3208-00A0.pp.dts)
-set(OVERLAY_BIN ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-PRU-MCP3208-00A0.dtbo)
+function(add_dtso_overlay NAME)
+    set(SRC ${CMAKE_CURRENT_SOURCE_DIR}/overlay/${NAME}.dtso)
+    set(PP  ${CMAKE_CURRENT_BINARY_DIR}/overlay/${NAME}.pp.dts)
+    set(BIN ${CMAKE_CURRENT_BINARY_DIR}/overlay/${NAME}.dtbo)
 
-add_custom_command(OUTPUT ${OVERLAY_BIN}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/overlay
-    COMMAND cpp -nostdinc -undef -D__DTS__ -x assembler-with-cpp
-        -I${DT_INCLUDE} ${OVERLAY_SRC} -o ${OVERLAY_PP}
-    COMMAND dtc -I dts -O dtb -@ -o ${OVERLAY_BIN} ${OVERLAY_PP}
-    DEPENDS ${OVERLAY_SRC}
-    COMMENT "Compiling device tree overlay"
-)
+    add_custom_command(OUTPUT ${BIN}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/overlay
+        COMMAND cpp -nostdinc -undef -D__DTS__ -x assembler-with-cpp
+            -I${DT_INCLUDE} ${SRC} -o ${PP}
+        COMMAND dtc -I dts -O dtb -@ -o ${BIN} ${PP}
+        DEPENDS ${SRC}
+        COMMENT "Compiling overlay ${NAME}"
+    )
+    add_custom_target(${NAME} DEPENDS ${BIN})
+endfunction()
 
-add_custom_target(bbb_overlay DEPENDS ${OVERLAY_BIN})
+add_dtso_overlay(BB-PRU-MCP3208-00A0)
+add_dtso_overlay(BB-UART1-00A0)
+add_dtso_overlay(BB-PPS-00A0)
+
+add_custom_target(bbb_overlays DEPENDS BB-PRU-MCP3208-00A0 BB-UART1-00A0 BB-PPS-00A0)
 
 # --- Deploy / install targets ---
 
@@ -87,8 +94,15 @@ add_custom_target(deploy_pru0
     COMMENT "Deploying PRU0 firmware"
 )
 
-add_custom_target(install_overlay
-    COMMAND cp ${OVERLAY_BIN} /boot/dtbs/$\(uname\ -r\)/overlays/
-    DEPENDS bbb_overlay
-    COMMENT "Installing device tree overlay to /boot"
+add_custom_target(install_overlays
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-PRU-MCP3208-00A0.dtbo /boot/dtbs/$\(uname\ -r\)/overlays/
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-UART1-00A0.dtbo      /boot/dtbs/$\(uname\ -r\)/overlays/
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-PPS-00A0.dtbo        /boot/dtbs/$\(uname\ -r\)/overlays/
+    DEPENDS bbb_overlays
+    COMMENT "Installing device tree overlays to /boot"
 )
+
+# --- Shared RAM test tool (only builds on ARM / BBB) ---
+
+add_executable(test_shram EXCLUDE_FROM_ALL tools/test_shram.c)
+target_include_directories(test_shram PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

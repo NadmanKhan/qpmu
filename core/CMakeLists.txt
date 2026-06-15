@@ -41,9 +41,4 @@ target_include_directories(qpmu_service PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/daq)
 
 target_link_libraries(qpmu_service PRIVATE qpmu open-c37118 Threads::Threads)
 
-string(TOLOWER "${QPMU_DAQ}" _qpmu_daq_lower)
-if(_qpmu_daq_lower STREQUAL "bbb")
-    target_link_libraries(qpmu_service PRIVATE qpmu_daq_bbb)
-elseif(_qpmu_daq_lower STREQUAL "sim")
-    target_link_libraries(qpmu_service PRIVATE qpmu_daq_sim)
-endif()
+target_link_libraries(qpmu_service PRIVATE qpmu_daq)

@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * BB-PPS-00A0.dtso — PPS GPIO overlay for GPS 1PPS signal
+ *
+ *   P9_12  gpmc_ben1  GPIO1_28  MUX_MODE7  input (pps-gpio)
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/am33xx.h>
+
+&{/chosen} {
+	overlays { BB-PPS-00A0.kernel = __TIMESTAMP__; };
+};
+
+&ocp {
+	P9_12_pinmux { status = "disabled"; };
+};
+
+&am33xx_pinmux {
+	bb_pps_gpio_pins: pinmux-pps-gpio {
+		pinctrl-single,pins = <
+			AM33XX_PADCONF(AM335X_PIN_GPMC_BEN1, PIN_INPUT_PULLDOWN, MUX_MODE7)
+		>;
+	};
+};
+
+&{/} {
+	pps {
+		status = "okay";
+		compatible = "pps-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&bb_pps_gpio_pins>;
+		gpios = <&gpio1 28 GPIO_ACTIVE_HIGH>;
+	};
+};

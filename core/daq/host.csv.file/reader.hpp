@@ -10,16 +10,16 @@
 
 namespace qpmu {
 
-class Sim_DAQ_Reader
+class CSV_File_Reader
 {
 public:
-    explicit Sim_DAQ_Reader(const char *csv_path);
-    ~Sim_DAQ_Reader() = default;
+    explicit CSV_File_Reader(const char *csv_path);
+    ~CSV_File_Reader() = default;
 
-    Sim_DAQ_Reader(const Sim_DAQ_Reader &) = delete;
-    Sim_DAQ_Reader &operator=(const Sim_DAQ_Reader &) = delete;
-    Sim_DAQ_Reader(Sim_DAQ_Reader &&) = default;
-    Sim_DAQ_Reader &operator=(Sim_DAQ_Reader &&) = default;
+    CSV_File_Reader(const CSV_File_Reader &) = delete;
+    CSV_File_Reader &operator=(const CSV_File_Reader &) = delete;
+    CSV_File_Reader(CSV_File_Reader &&) = default;
+    CSV_File_Reader &operator=(CSV_File_Reader &&) = default;
 
     bool read_sample_frame() noexcept;
     const Sample_Frame &sample_frame() const noexcept;
@@ -40,6 +40,6 @@ private:
     std::chrono::steady_clock::time_point _next_time;
 };
 
-static_assert(DAQ_Reader<Sim_DAQ_Reader>);
+static_assert(DAQ_Reader<CSV_File_Reader>);
 
 } // namespace qpmu

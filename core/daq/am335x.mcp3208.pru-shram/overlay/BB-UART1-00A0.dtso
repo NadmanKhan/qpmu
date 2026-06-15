@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * BB-UART1-00A0.dtso — UART1 overlay for GPS NMEA data
+ *
+ *   P9_24  uart1_txd  MUX_MODE0  output  (BBB TX → GPS RX)
+ *   P9_26  uart1_rxd  MUX_MODE0  input   (GPS TX → BBB RX)
+ *
+ * Uses MUX_MODE0 (not mode 6 as in some older overlays).
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/pinctrl/am33xx.h>
+
+&{/chosen} {
+	overlays { BB-UART1-00A0.kernel = __TIMESTAMP__; };
+};
+
+&ocp {
+	P9_24_pinmux { status = "disabled"; };
+	P9_26_pinmux { status = "disabled"; };
+};
+
+&am33xx_pinmux {
+	bb_uart1_pins: pinmux-bb-uart1 {
+		pinctrl-single,pins = <
+			AM33XX_PADCONF(AM335X_PIN_UART1_TXD, PIN_OUTPUT, MUX_MODE0)
+			AM33XX_PADCONF(AM335X_PIN_UART1_RXD, PIN_INPUT,  MUX_MODE0)
+		>;
+	};
+};
+
+&uart1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&bb_uart1_pins>;
+};

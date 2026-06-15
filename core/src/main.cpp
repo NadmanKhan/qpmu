@@ -8,10 +8,10 @@
 #include "qpmu/ipc/gui_server.hpp"
 #include "qpmu/logging/data_logger.hpp"
 #include "interface.hpp"
-#if defined(QPMU_DAQ_BBB)
-#  include "bbb-debian/host/bbb_daq_reader.hpp"
-#elif defined(QPMU_DAQ_SIM)
-#  include "simulation/sim_daq_reader.hpp"
+#if defined(QPMU_DAQ_AM335X_MCP3208_PRU_SHRAM)
+#  include "am335x.mcp3208.pru-shram/host/reader.hpp"
+#elif defined(QPMU_DAQ_HOST_CSV_FILE)
+#  include "host.csv.file/reader.hpp"
 #endif
 #include "dsp.cpp"
 
@@ -24,7 +24,7 @@ struct Args
     const char *gui_socket = "/tmp/qpmu_gui.sock";
     std::size_t gui_decimation = 120;
     bool verbose = false;
-#if defined(QPMU_DAQ_SIM)
+#if defined(QPMU_DAQ_HOST_CSV_FILE)
     const char *data_file = nullptr;
 #endif
     qpmu::DSP_Config dsp_config;
@@ -44,7 +44,7 @@ void print_usage(const char *program_name)
             "  -g, --gui-socket PATH   GUI IPC socket path (default: /tmp/qpmu_gui.sock)\n"
             "  -D, --decimation N      GUI decimation factor (default: 120)\n"
             "  -v, --verbose           Print detailed estimates to stdout\n"
-#if defined(QPMU_DAQ_SIM)
+#if defined(QPMU_DAQ_HOST_CSV_FILE)
             "  -d, --data-file PATH    CSV file to replay (required)\n"
 #endif
             "\nLogging options:\n"
@@ -176,7 +176,7 @@ Args parse_args(int argc, char *argv[])
                 std::fprintf(stderr, "Error: --log-size must be at least 1 MB\n");
                 std::exit(1);
             }
-#if defined(QPMU_DAQ_SIM)
+#if defined(QPMU_DAQ_HOST_CSV_FILE)
         } else if (std::strcmp(argv[i], "-d") == 0 || std::strcmp(argv[i], "--data-file") == 0) {
             if (++i >= argc) {
                 std::fprintf(stderr, "Error: %s requires an argument\n", argv[i - 1]);
@@ -200,12 +200,12 @@ Args parse_args(int argc, char *argv[])
     return args;
 }
 
-#if defined(QPMU_DAQ_BBB)
-using DAQ_Reader_Type = qpmu::BBB_DAQ_Reader;
-#elif defined(QPMU_DAQ_SIM)
-using DAQ_Reader_Type = qpmu::Sim_DAQ_Reader;
+#if defined(QPMU_DAQ_AM335X_MCP3208_PRU_SHRAM)
+using DAQ_Reader_Type = qpmu::AM335x_MCP3208_PRU_SHRAM_Reader;
+#elif defined(QPMU_DAQ_HOST_CSV_FILE)
+using DAQ_Reader_Type = qpmu::CSV_File_Reader;
 #else
-#  error "No DAQ backend configured. Pass -DQPMU_DAQ=<backend> to CMake. <backend> can be bbb or sim."
+#  error "No DAQ backend configured. Pass -DQPMU_DAQ=<backend> to CMake (am335x.mcp3208.pru-shram or host.csv.file)."
 #endif
 
 static SPSC_Ring<Measurement_Frame, 4096> log_ring;
@@ -349,9 +349,9 @@ int main(int argc, char *argv[])
     std::fprintf(stderr, "\n");
 
     // Construct the DAQ reader
-#if defined(QPMU_DAQ_BBB)
+#if defined(QPMU_DAQ_AM335X_MCP3208_PRU_SHRAM)
     DAQ_Reader_Type reader;
-#elif defined(QPMU_DAQ_SIM)
+#elif defined(QPMU_DAQ_HOST_CSV_FILE)
     if (!args.data_file) {
         std::fprintf(stderr, "Error: --data-file is required for simulation mode\n");
         print_usage(argv[0]);

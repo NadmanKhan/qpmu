@@ -12,12 +12,13 @@
 #define NUM_SCANS       30
 #define SAMPLES_PER_BUF (NUM_CHANNELS * NUM_SCANS)
 
-typedef struct {
+/* __packed__: TI clpru and ARM GCC may pad differently without it. */
+typedef struct __attribute__((__packed__)) {
     uint64_t timestamp_ns;
     uint16_t samples[SAMPLES_PER_BUF];
 } Sample_Buffer;
 
-typedef struct {
+typedef struct __attribute__((__packed__)) {
     uint32_t seq;
     uint32_t _pad; /* 8-byte alignment for buf[] */
     Sample_Buffer buf[2];

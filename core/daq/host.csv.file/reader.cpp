@@ -1,4 +1,4 @@
-#include "sim_daq_reader.hpp"
+#include "reader.hpp"
 
 #include <chrono>
 #include <cstdio>
@@ -30,12 +30,11 @@ static bool parse_csv_line(const std::string &line, Timestamp &ts, Sample_Array 
     return true;
 }
 
-Sim_DAQ_Reader::Sim_DAQ_Reader(const char *csv_path)
+CSV_File_Reader::CSV_File_Reader(const char *csv_path)
 {
     std::ifstream file(csv_path);
     if (!file.is_open()) {
-        throw std::runtime_error(
-                std::string("Failed to open CSV file: ") + csv_path);
+        throw std::runtime_error(std::string("Failed to open CSV file: ") + csv_path);
     }
 
     std::string line;
@@ -53,8 +52,7 @@ Sim_DAQ_Reader::Sim_DAQ_Reader(const char *csv_path)
             continue;
         Raw_Row row;
         if (!parse_csv_line(line, row.timestamp, row.samples)) {
-            throw std::runtime_error(
-                    std::string("Malformed CSV line: ") + line);
+            throw std::runtime_error(std::string("Malformed CSV line: ") + line);
         }
         rows.push_back(row);
     }
@@ -80,16 +78,16 @@ Sim_DAQ_Reader::Sim_DAQ_Reader(const char *csv_path)
     _next_time = std::chrono::steady_clock::now();
 }
 
-bool Sim_DAQ_Reader::read_sample_frame() noexcept
+bool CSV_File_Reader::read_sample_frame() noexcept
 {
     std::this_thread::sleep_until(_next_time);
 
     const auto &frame = _frames[_index];
 
     auto wall_now = std::chrono::system_clock::now();
-    _sample_frame.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                      wall_now.time_since_epoch())
-                                      .count();
+    _sample_frame.timestamp =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(wall_now.time_since_epoch())
+                    .count();
     _sample_frame.sample_array = frame.samples;
     ++_sample_frame.seq_num;
 
@@ -99,12 +97,12 @@ bool Sim_DAQ_Reader::read_sample_frame() noexcept
     return true;
 }
 
-const Sample_Frame &Sim_DAQ_Reader::sample_frame() const noexcept
+const Sample_Frame &CSV_File_Reader::sample_frame() const noexcept
 {
     return _sample_frame;
 }
 
-const char *Sim_DAQ_Reader::error() const noexcept
+const char *CSV_File_Reader::error() const noexcept
 {
     return _error;
 }
