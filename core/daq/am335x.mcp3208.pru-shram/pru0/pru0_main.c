@@ -21,6 +21,7 @@
 #include <pru_ctrl.h>
 
 #include "../shared/buffer.h"
+#include "resource_table_empty.h"
 
 /* ── GPIO pin masks (bit positions in R30/R31) ───────────────────────────── */
 
@@ -118,6 +119,8 @@ static uint64_t timestamp_ns(void)
 int main(void)
 {
     uint32_t seq = 0;
+    volatile Sample_Buffer *buf;
+    int i;
 
     CT_CFG.SYSCFG_bit.STANDBY_INIT = 0; /* enable OCP master port */
 
@@ -132,10 +135,10 @@ int main(void)
 
     for (;;) {
         ++seq;
-        volatile Sample_Buffer *buf = &shared->buf[seq & 1];
+        buf = &shared->buf[seq & 1];
 
         buf->timestamp_ns = timestamp_ns();
-        for (int i = 0; i < SAMPLES_PER_BUF; i++) {
+        for (i = 0; i < SAMPLES_PER_BUF; i++) {
             buf->samples[i] = mcp3208_read(channel_ctrl[i % NUM_CHANNELS]);
             __delay_cycles(DELAY_CS_HOLD);
         }
