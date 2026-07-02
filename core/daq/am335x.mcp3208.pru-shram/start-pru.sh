@@ -18,6 +18,21 @@ ok()   { printf '\033[1;32m   OK: %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m   WARN: %s\033[0m\n' "$*"; }
 fail() { printf '\033[1;31m   FAIL: %s\033[0m\n' "$*"; exit 1; }
 
+set_pin_mode() {
+    local pin="$1" mode="$2" pinmux_dir=""
+
+    if command -v config-pin >/dev/null 2>&1; then
+        config-pin "$pin" "$mode"
+        return
+    fi
+
+    pinmux_dir="$(find /sys/devices/platform/ocp -maxdepth 2 -type d \
+        -name "*${pin}_pinmux" -print -quit 2>/dev/null || true)"
+    [[ -n "$pinmux_dir" ]] || fail "cannot find ${pin}_pinmux; install/load cape-universal pin helpers"
+    [[ -w "$pinmux_dir/state" ]] || fail "cannot write $pinmux_dir/state"
+    printf '%s\n' "$mode" > "$pinmux_dir/state"
+}
+
 [[ $EUID -eq 0 ]] || fail "must run as root (sudo)"
 [[ -f "/lib/firmware/$FIRMWARE" ]] || fail "missing /lib/firmware/$FIRMWARE; run install.sh first"
 
@@ -66,14 +81,10 @@ info "Stopping PRU0 firmware"
 echo stop > "${RPROC}state" 2>/dev/null || true
 
 info "Configuring PRU0 MCP3208 pins"
-if command -v config-pin >/dev/null 2>&1; then
-    config-pin P9_31 pruout
-    config-pin P9_30 pruout
-    config-pin P9_28 pruout
-    config-pin P9_29 pruin
-else
-    warn "config-pin not found; falling back to direct padconf writes"
-fi
+set_pin_mode P9_31 pruout
+set_pin_mode P9_30 pruout
+set_pin_mode P9_28 pruout
+set_pin_mode P9_29 pruin
 "$BUILD_DIR/config_pru_pins"
 
 info "Starting PRU0 firmware"
