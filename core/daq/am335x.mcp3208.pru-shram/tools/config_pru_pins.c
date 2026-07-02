@@ -53,8 +53,8 @@ int main(void)
         uint8_t after = regs[idx] & FUNC_MASK;
         int matched = after == (pins[i].target & FUNC_MASK);
 
-        printf("%s: 0x%02x -> 0x%02x %s\n",
-               pins[i].desc, before, after, matched ? "OK" : "FAIL");
+        printf("%s: 0x%02x -> 0x%02x expected 0x%02x %s\n",
+               pins[i].desc, before, after, pins[i].target, matched ? "OK" : "FAIL");
         if (!matched)
             ok = 0;
     }

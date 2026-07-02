@@ -28,6 +28,13 @@
 
 &mcasp0 { status = "disabled"; };
 
+&ocp {
+	P9_28_pinmux { status = "disabled"; };
+	P9_29_pinmux { status = "disabled"; };
+	P9_30_pinmux { status = "disabled"; };
+	P9_31_pinmux { status = "disabled"; };
+};
+
 &am33xx_pinmux {
 	pru0_mcp3208_pins: pinmux-pru0-mcp3208 {
 		pinctrl-single,pins = <
