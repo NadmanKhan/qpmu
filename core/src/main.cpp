@@ -208,6 +208,46 @@ using DAQ_Reader_Type = qpmu::Host_CSV_File_Reader;
 
 static SPSC_Ring<Measurement_Frame, 4096> log_ring;
 
+namespace {
+
+void print_verbose_sample_header()
+{
+    std::printf("\neach channel is raw/proc; proc = phasor magnitude; G=* means sent to GUI\n");
+    std::printf("%8s%c |", "seq", 'G');
+    for (const auto &signal : Signal_Infos) {
+        std::printf(" %8s", signal.name);
+    }
+    std::printf("\n");
+
+    std::printf("%8s%c |", "--------", '-');
+    for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
+        std::printf(" %8s", "--------");
+    }
+    std::printf("\n");
+}
+
+void print_verbose_sample_row(const Sample_Frame &sample_frame,
+                              const Measurement_Frame &measurement_frame, bool published_to_gui)
+{
+    static bool header_printed = false;
+    if (!header_printed) {
+        print_verbose_sample_header();
+        header_printed = true;
+    }
+
+    std::printf("%8zu%c |", sample_frame.seq_num, published_to_gui ? '*' : '.');
+    for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
+        const auto &estimate = measurement_frame.estimate_array[channel];
+        std::printf(" %4u/%3.0f",
+                    static_cast<unsigned>(sample_frame.sample_array[channel]),
+                    static_cast<double>(std::abs(estimate.phasor)));
+    }
+    std::printf("\n");
+    std::fflush(stdout);
+}
+
+} // namespace
+
 template <qpmu::DAQ_Reader Reader, std::size_t F_Nominal, std::size_t F_Sampling>
 int run_service(const Args &args, Reader &&sample_reader)
 {
@@ -251,17 +291,7 @@ int run_service(const Args &args, Reader &&sample_reader)
 
         auto sample_frame = sample_reader.sample_frame();
 
-        // 2. Print raw samples (optional)
-        if (args.verbose) {
-            std::printf("\n========== Frame %zu ==========", sample_frame.seq_num);
-            std::printf("\nSamples:");
-            for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
-                std::printf("\n\t%s: %d", Signal_Infos[channel].name,
-                            sample_frame.sample_array[channel]);
-            }
-        }
-
-        // 3. Process sample
+        // 2. Process sample
         if (!dsp_engine.push_sample_frame(sample_frame)) {
             if (args.verbose) {
                 std::fprintf(stderr, "Error processing sample: %s\n", dsp_engine.error());
@@ -269,37 +299,19 @@ int run_service(const Args &args, Reader &&sample_reader)
             continue;
         }
         auto measurement_frame = dsp_engine.measurement_frame();
+        const bool published_to_gui = sample_frame.seq_num % args.gui_decimation == 0;
 
-        // 4. Print detailed estimates (optional)
-        if (args.verbose) {
-            std::printf("\nPhasor estimates:");
-            for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
-                auto phasor = measurement_frame.estimate_array[channel].phasor;
-                std::printf("\n\t%s: (%.3f, %.3f°)", Signal_Infos[channel].name, std::abs(phasor),
-                            std::arg(phasor) * (180.0 / M_PI));
-            }
-            std::printf("\nFrequency estimates (Hz):");
-            for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
-                std::printf("\n\t%s: %.3f", Signal_Infos[channel].name,
-                            measurement_frame.estimate_array[channel].frequency);
-            }
-            std::printf("\nROCOF estimates (Hz/s):");
-            for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
-                std::printf("\n\t%s: %.3f", Signal_Infos[channel].name,
-                            measurement_frame.estimate_array[channel].rocof);
-            }
-        }
-
-        // 5. Publish to GUI with decimation
-        if (sample_frame.seq_num % args.gui_decimation == 0) {
+        // 3. Publish to GUI with decimation
+        if (published_to_gui) {
             gui_server.update_measurement(measurement_frame);
-
-            if (args.verbose) {
-                std::printf("\nPublished frame %zu to GUI\n", sample_frame.seq_num);
-            }
         }
 
-        // 6. Push to data logger (non-blocking, drops if ring full)
+        // 4. Print one diagnostic row per sample (optional)
+        if (args.verbose) {
+            print_verbose_sample_row(sample_frame, measurement_frame, published_to_gui);
+        }
+
+        // 5. Push to data logger (non-blocking, drops if ring full)
         if (args.log_file) {
             log_ring.try_push(measurement_frame);
         }
