@@ -1,4 +1,4 @@
-/* pru0_main.c — MCP3208 SPI bit-bang → PRUSS shared RAM
+/* pru0_main.c - MCP3208 SPI bit-bang -> PRUSS shared RAM
  *
  * Samples NUM_CHANNELS channels of the MCP3208 via bit-banged SPI, fills
  * double-buffered shared RAM, and signals the host via sequence counter.
@@ -23,7 +23,7 @@
 #include "../shared/buffer.h"
 #include "resource_table_empty.h"
 
-/* ── GPIO pin masks (bit positions in R30/R31) ───────────────────────────── */
+/* -- GPIO pin masks (bit positions in R30/R31) ----------------------------- */
 
 #ifdef __TI_COMPILER_VERSION__
 volatile register uint32_t __R30;
@@ -35,7 +35,7 @@ volatile register uint32_t __R31;
 #define PIN_MOSI (1u << 2) /* R30[2] output */
 #define PIN_CS (1u << 3) /* R30[3] output */
 
-/* ── MCP3208 SPI timing (PRU cycles, 200 MHz = 5 ns/cycle) ───────────────-─ */
+/* -- MCP3208 SPI timing (PRU cycles, 200 MHz = 5 ns/cycle) ----------------- */
 
 #define DELAY_CS_SETUP 20 /* Tsucs: CS assert to first clock */
 #define DELAY_CLK_HIGH 40 /* Thi:   clock high half-period   */
@@ -47,11 +47,11 @@ static const uint8_t channel_ctrl[NUM_CHANNELS] = {
     0b1000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101,
 };
 
-/* ── Shared memory ───────────────────────────────────────────────────────── */
+/* -- Shared memory --------------------------------------------------------- */
 
 static volatile Shared_State *shared = (volatile Shared_State *)0x10000;
 
-/* ── SPI transaction ─────────────────────────────────────────────────────── */
+/* -- SPI transaction ------------------------------------------------------- */
 
 static uint16_t mcp3208_read(uint8_t ctrl)
 {
@@ -97,7 +97,7 @@ static uint16_t mcp3208_read(uint8_t ctrl)
     return result & 0x0FFF;
 }
 
-/* ── 64-bit timestamp from PRU0 cycle counter (200 MHz = 5 ns/cycle) ───── */
+/* -- 64-bit timestamp from PRU0 cycle counter (200 MHz = 5 ns/cycle) ------- */
 
 static uint64_t accumulated_cycles;
 
@@ -114,7 +114,7 @@ static uint64_t timestamp_ns(void)
     return (accumulated_cycles + cycles) * 5;
 }
 
-/* ── Entry point ─────────────────────────────────────────────────────────── */
+/* -- Entry point ----------------------------------------------------------- */
 
 int main(void)
 {
@@ -131,19 +131,29 @@ int main(void)
     PRU0_CTRL.CYCLE = 0;
     PRU0_CTRL.CTRL_bit.CTR_EN = 1;
 
+    shared->magic = QPMU_PRU_MAGIC;
+    shared->heartbeat = 0;
+    shared->status = QPMU_PRU_STATUS_BOOTING;
+    shared->sample_index = 0;
     shared->seq = 0;
 
     for (;;) {
         ++seq;
+        ++shared->heartbeat;
+        shared->status = QPMU_PRU_STATUS_FILLING;
+        shared->sample_index = 0;
         buf = &shared->buf[seq & 1];
 
         buf->timestamp_ns = timestamp_ns();
         for (i = 0; i < SAMPLES_PER_BUF; i++) {
+            shared->sample_index = (uint32_t)i;
             buf->samples[i] = mcp3208_read(channel_ctrl[i % NUM_CHANNELS]);
             __delay_cycles(DELAY_CS_HOLD);
         }
 
+        shared->status = QPMU_PRU_STATUS_PUBLISHED;
         shared->seq = seq;
+        ++shared->heartbeat;
     }
 
     return 0;

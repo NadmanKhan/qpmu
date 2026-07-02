@@ -1,5 +1,6 @@
 #include "reader.hpp"
 
+#include <chrono>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
@@ -66,13 +67,23 @@ AM335x_MCP3208_PRU_SHRAM_Reader::~AM335x_MCP3208_PRU_SHRAM_Reader()
 
 bool AM335x_MCP3208_PRU_SHRAM_Reader::read_sample_frame() noexcept
 {
+    if (_shared->magic != QPMU_PRU_MAGIC) {
+        std::snprintf(_error, sizeof(_error),
+                      "QPMU PRU firmware not publishing shared state (magic=0x%08x)",
+                      _shared->magic);
+        return false;
+    }
+
     std::uint32_t seq;
-    constexpr int max_spins = 100000000;
-    int spins = 0;
+    const auto start = std::chrono::steady_clock::now();
+    const auto start_heartbeat = _shared->heartbeat;
     while ((seq = _shared->seq) == _last_seq) {
-        if (++spins >= max_spins) {
-            std::snprintf(_error, sizeof(_error), "PRU not responding (seq stuck at %u)",
-                          _last_seq);
+        if (std::chrono::steady_clock::now() - start >= std::chrono::seconds(2)) {
+            const auto heartbeat = _shared->heartbeat;
+            std::snprintf(_error, sizeof(_error),
+                          "PRU not publishing frames (seq=%u, heartbeat=%u->%u, status=%u, sample=%u)",
+                          _last_seq, start_heartbeat, heartbeat, _shared->status,
+                          _shared->sample_index);
             return false;
         }
     }
