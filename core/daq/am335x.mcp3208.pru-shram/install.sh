@@ -32,6 +32,16 @@ require_root() {
     [[ $EUID -eq 0 ]] || fail "must run as root (sudo)"
 }
 
+set_uenv_line() {
+    local file="$1" key="$2" value="$3"
+
+    if grep -q "^${key}=" "$file"; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+    else
+        echo "${key}=${value}" >> "$file"
+    fi
+}
+
 # -- Phase 0: preflight ------------------------------------------------------
 
 phase0_preflight() {
@@ -83,7 +93,7 @@ compile_overlay() {
 phase1_overlays() {
     info "Phase 1: compile and install device tree overlays"
 
-    local overlay_dest="/boot/dtbs/$KERNEL/overlays"
+    local overlay_dest="/lib/firmware"
     mkdir -p "$overlay_dest"
 
     compile_overlay "$OVERLAY_DIR/BB-PRU-MCP3208-00A0.dtso" "BB-PRU-MCP3208-00A0"
@@ -101,23 +111,18 @@ phase1_overlays() {
         cp "$uenv" "${uenv}.backup.$(date +%Y%m%d%H%M%S)"
 
         # Ensure overlays enabled
-        grep -q '^enable_uboot_overlays=1' "$uenv" || \
-            echo 'enable_uboot_overlays=1' >> "$uenv"
+        set_uenv_line "$uenv" enable_uboot_overlays 1
 
         # Disable audio (frees mcasp0 pins for PRU)
-        grep -q '^disable_uboot_overlay_audio=1' "$uenv" || \
-            echo 'disable_uboot_overlay_audio=1' >> "$uenv"
+        set_uenv_line "$uenv" disable_uboot_overlay_audio 1
 
         # Comment out old PRU overlay
         sed -i 's|^uboot_overlay_pru=.*|#&|' "$uenv"
 
         # Add our overlays if not present
-        grep -q 'BB-PRU-MCP3208-00A0' "$uenv" || \
-            echo 'uboot_overlay_addr4=BB-PRU-MCP3208-00A0.dtbo' >> "$uenv"
-        grep -q 'BB-UART1-00A0' "$uenv" || \
-            echo 'uboot_overlay_addr5=BB-UART1-00A0.dtbo' >> "$uenv"
-        grep -q 'BB-PPS-00A0' "$uenv" || \
-            echo 'uboot_overlay_addr6=BB-PPS-00A0.dtbo' >> "$uenv"
+        set_uenv_line "$uenv" uboot_overlay_addr4 /lib/firmware/BB-PRU-MCP3208-00A0.dtbo
+        set_uenv_line "$uenv" uboot_overlay_addr5 /lib/firmware/BB-UART1-00A0.dtbo
+        set_uenv_line "$uenv" uboot_overlay_addr6 /lib/firmware/BB-PPS-00A0.dtbo
 
         ok "uEnv.txt updated (backup saved)"
     else
@@ -203,8 +208,7 @@ summary() {
     info "Setup complete. Checklist:"
     echo ""
     echo "  [ ] Reboot to load overlays if this was the first install:  sudo reboot"
-    echo "  [ ] After reboot, verify overlays:  ls /proc/device-tree/chosen/overlays/"
-    echo "  [ ] Start PRU0 after reboot:  sudo $SCRIPT_DIR/start-pru.sh"
+    echo "  [ ] After reboot, start PRU0 and verify pinmux:  sudo $SCRIPT_DIR/start-pru.sh"
     echo "  [ ] Verify ADC ranges:  sudo $SCRIPT_DIR/start-pru.sh --expect 0:MIN:MAX"
     echo "  [ ] Test GPS:  cgps -s"
     echo "  [ ] Test PPS:  sudo ppstest /dev/pps0"

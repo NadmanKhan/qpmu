@@ -1,8 +1,8 @@
 /*
  * Configure P9_28-P9_31 pad mux registers for PRU0 bit-banged MCP3208 SPI.
  *
- * The overlay disables mcasp0 at boot. This tool applies the pad mux at
- * runtime because pru_rproc does not reliably apply the pinctrl group for us.
+ * The boot overlay should own these pins. This tool verifies the registers and
+ * attempts a direct fallback write on images that permit it.
  */
 
 #include <fcntl.h>

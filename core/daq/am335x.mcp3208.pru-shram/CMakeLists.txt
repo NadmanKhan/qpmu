@@ -91,11 +91,11 @@ add_custom_target(deploy_pru0
 )
 
 add_custom_target(install_overlays
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-PRU-MCP3208-00A0.dtbo /boot/dtbs/$\(uname\ -r\)/overlays/
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-UART1-00A0.dtbo      /boot/dtbs/$\(uname\ -r\)/overlays/
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-PPS-00A0.dtbo        /boot/dtbs/$\(uname\ -r\)/overlays/
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-PRU-MCP3208-00A0.dtbo /lib/firmware/
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-UART1-00A0.dtbo      /lib/firmware/
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/overlay/BB-PPS-00A0.dtbo        /lib/firmware/
     DEPENDS bbb_overlays
-    COMMENT "Installing device tree overlays to /boot"
+    COMMENT "Installing device tree overlays to /lib/firmware"
 )
 
 # --- Shared RAM test tool (only builds on ARM / BBB) ---

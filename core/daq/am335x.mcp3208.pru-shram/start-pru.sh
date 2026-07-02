@@ -12,6 +12,7 @@ SHARED_DIR="$SCRIPT_DIR/shared"
 BUILD_DIR="/tmp/qpmu-am335x-mcp3208-pru-shram-build"
 FIRMWARE="pru0_mcp3208"
 EXPECT_ARGS=()
+PIN_HELPER_WARNED=0
 
 info() { printf '\033[1;34m>> %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m   OK: %s\033[0m\n' "$*"; }
@@ -28,7 +29,13 @@ set_pin_mode() {
 
     pinmux_dir="$(find /sys/devices/platform/ocp -maxdepth 2 -type d \
         -name "*${pin}_pinmux" -print -quit 2>/dev/null || true)"
-    [[ -n "$pinmux_dir" ]] || fail "cannot find ${pin}_pinmux; install/load cape-universal pin helpers"
+    if [[ -z "$pinmux_dir" ]]; then
+        if [[ $PIN_HELPER_WARNED -eq 0 ]]; then
+            warn "no runtime pin helpers; relying on boot overlay"
+            PIN_HELPER_WARNED=1
+        fi
+        return
+    fi
     [[ -w "$pinmux_dir/state" ]] || fail "cannot write $pinmux_dir/state"
     printf '%s\n' "$mode" > "$pinmux_dir/state"
 }
@@ -80,7 +87,7 @@ gcc -O2 -o "$BUILD_DIR/config_pru_pins" "$TOOLS_DIR/config_pru_pins.c"
 info "Stopping PRU0 firmware"
 echo stop > "${RPROC}state" 2>/dev/null || true
 
-info "Configuring PRU0 MCP3208 pins"
+info "Configuring/verifying PRU0 MCP3208 pins"
 set_pin_mode P9_31 pruout
 set_pin_mode P9_30 pruout
 set_pin_mode P9_28 pruout
