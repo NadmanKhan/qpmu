@@ -15,6 +15,7 @@ EXPECT_ARGS=()
 
 info() { printf '\033[1;34m>> %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m   OK: %s\033[0m\n' "$*"; }
+warn() { printf '\033[1;33m   WARN: %s\033[0m\n' "$*"; }
 fail() { printf '\033[1;31m   FAIL: %s\033[0m\n' "$*"; exit 1; }
 
 [[ $EUID -eq 0 ]] || fail "must run as root (sudo)"
@@ -65,6 +66,14 @@ info "Stopping PRU0 firmware"
 echo stop > "${RPROC}state" 2>/dev/null || true
 
 info "Configuring PRU0 MCP3208 pins"
+if command -v config-pin >/dev/null 2>&1; then
+    config-pin P9_31 pruout
+    config-pin P9_30 pruout
+    config-pin P9_28 pruout
+    config-pin P9_29 pruin
+else
+    warn "config-pin not found; falling back to direct padconf writes"
+fi
 "$BUILD_DIR/config_pru_pins"
 
 info "Starting PRU0 firmware"
