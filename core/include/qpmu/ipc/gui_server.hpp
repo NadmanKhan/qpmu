@@ -46,9 +46,6 @@ public:
             return false;
         }
 
-        // Set socket permissions (user only)
-        umask(0077);
-
         // Initialize server address structure
         sockaddr_un server_addr = {};
         server_addr.sun_family = AF_UNIX;
@@ -61,6 +58,13 @@ public:
             set_error("Failed to bind socket to " + _config.socket_path);
             close(_server_fd);
             _server_fd = -1;
+            return false;
+        }
+        if (chmod(_config.socket_path.c_str(), 0666) < 0) {
+            set_error("Failed to set permissions on " + _config.socket_path);
+            close(_server_fd);
+            _server_fd = -1;
+            unlink(_config.socket_path.c_str());
             return false;
         }
 
