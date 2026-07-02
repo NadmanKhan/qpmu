@@ -3,9 +3,10 @@
  * BB-PRU-MCP3208-00A0.dtso — pin overlay for PRU-based MCP3208 ADC
  *
  * 1. Disables mcasp0 (audio) so it releases P9_28, P9_29, P9_31.
- * 2. Sets P9_28–P9_31 to PRU0 R30/R31 mode (mode 5/6).
- * 3. Attaches the pin group to &pru0; the device core applies it at boot
- *    via pinctrl_bind_pins() before pru_rproc probes (no /dev/mem writes).
+ * 2. Documents the P9_28-P9_31 PRU0 R30/R31 modes.
+ *
+ * Runtime pad mux is applied by start-pru.sh via tools/config_pru_pins.c;
+ * do not rely on pru_rproc to apply this pinctrl group.
  *
  * Verified against: am335x-bonegreen-wireless-common-univ.dtsi (config-pin
  * source), am335x-boneblack-pruswuart.dts, am335x-pocketbeagle.dts.
@@ -36,9 +37,4 @@
 			AM33XX_PADCONF(AM335X_PIN_MCASP0_AHCLKR, PIN_OUTPUT, MUX_MODE5)
 		>;
 	};
-};
-
-&pru0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pru0_mcp3208_pins>;
 };

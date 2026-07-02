@@ -102,3 +102,5 @@ add_custom_target(install_overlays
 
 add_executable(test_shram EXCLUDE_FROM_ALL tools/test_shram.c)
 target_include_directories(test_shram PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(config_pru_pins EXCLUDE_FROM_ALL tools/config_pru_pins.c)

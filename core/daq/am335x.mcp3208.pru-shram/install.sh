@@ -205,7 +205,7 @@ summary() {
     echo "  [ ] Reboot to load overlays if this was the first install:  sudo reboot"
     echo "  [ ] After reboot, verify overlays:  ls /proc/device-tree/chosen/overlays/"
     echo "  [ ] Start PRU0 after reboot:  sudo $SCRIPT_DIR/start-pru.sh"
-    echo "  [ ] Test ADC:  sudo $BUILD_DIR/test_shram"
+    echo "  [ ] Verify ADC ranges:  sudo $SCRIPT_DIR/start-pru.sh --expect 0:MIN:MAX"
     echo "  [ ] Test GPS:  cgps -s"
     echo "  [ ] Test PPS:  sudo ppstest /dev/pps0"
     echo "  [ ] Verify chrony:  chronyc sources -v"

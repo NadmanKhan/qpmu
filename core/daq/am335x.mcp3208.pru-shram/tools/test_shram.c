@@ -2,7 +2,9 @@
  * test_shram.c - standalone test for PRU shared RAM data flow.
  *
  * Reads sample frames from PRUSS shared RAM and prints seq, timestamp, status,
- * heartbeat, and first-scan channel values. Times out if PRU stops producing data.
+ * heartbeat, first-scan channel values, and averaged channel values. Times out
+ * if PRU stops producing data. Optional --expect CH:MIN:MAX checks averaged
+ * values against known hardware readings.
  *
  * Build:  gcc -O2 -o test_shram test_shram.c
  * Run:    sudo ./test_shram
@@ -64,11 +66,33 @@ static int parse_int_arg(const char *value, const char *name)
     return (int)parsed;
 }
 
+static void parse_expect_arg(const char *value, int enabled[NUM_CHANNELS],
+                             int min_adc[NUM_CHANNELS], int max_adc[NUM_CHANNELS])
+{
+    int ch;
+    int lo;
+    int hi;
+
+    if (sscanf(value, "%d:%d:%d", &ch, &lo, &hi) != 3 || ch < 0 || ch >= NUM_CHANNELS
+        || lo < 0 || hi > 4095 || lo > hi) {
+        fprintf(stderr, "Invalid --expect %s; use CH:MIN:MAX with ADC counts 0-4095\n", value);
+        exit(2);
+    }
+
+    enabled[ch] = 1;
+    min_adc[ch] = lo;
+    max_adc[ch] = hi;
+}
+
 int main(int argc, char **argv)
 {
     int clear = 0;
     int frames = 10;
     int timeout_ms = 2000;
+    int expect_enabled[NUM_CHANNELS] = { 0 };
+    int expect_min[NUM_CHANNELS] = { 0 };
+    int expect_max[NUM_CHANNELS] = { 0 };
+    int failed_expectation = 0;
     int i;
 
     for (i = 1; i < argc; ++i) {
@@ -86,8 +110,17 @@ int main(int argc, char **argv)
                 return 2;
             }
             timeout_ms = parse_int_arg(argv[i], "--timeout-ms");
+        } else if (strcmp(argv[i], "--expect") == 0) {
+            if (++i >= argc) {
+                fprintf(stderr, "--expect requires CH:MIN:MAX\n");
+                return 2;
+            }
+            parse_expect_arg(argv[i], expect_enabled, expect_min, expect_max);
         } else {
-            fprintf(stderr, "Usage: %s [--clear] [--frames N] [--timeout-ms N]\n", argv[0]);
+            fprintf(stderr,
+                    "Usage: %s [--clear] [--frames N] [--timeout-ms N]"
+                    " [--expect CH:MIN:MAX]...\n",
+                    argv[0]);
             return 2;
         }
     }
@@ -153,16 +186,38 @@ int main(int argc, char **argv)
 
         volatile Sample_Buffer *buf = &st->buf[seq & 1];
         uint64_t ts;
+        uint32_t avg[NUM_CHANNELS];
         memcpy(&ts, (void *)&buf->timestamp_ns, sizeof(ts));
 
         printf("seq=%" PRIu32 " heartbeat=%" PRIu32 " status=%s sample=%" PRIu32
-               " ts=%" PRIu64 "ns  ch0=%u ch1=%u ch2=%u ch3=%u ch4=%u ch5=%u\n",
+               " ts=%" PRIu64 "ns  first=%u,%u,%u,%u,%u,%u",
                seq, st->heartbeat, status_name(st->status), st->sample_index, ts,
                buf->samples[0], buf->samples[1], buf->samples[2], buf->samples[3],
                buf->samples[4], buf->samples[5]);
+
+        printf(" avg=");
+        for (int ch = 0; ch < NUM_CHANNELS; ++ch) {
+            uint32_t sum = 0;
+            for (int scan = 0; scan < NUM_SCANS; ++scan)
+                sum += buf->samples[scan * NUM_CHANNELS + ch];
+            avg[ch] = sum / NUM_SCANS;
+            printf("%s%" PRIu32, ch == 0 ? "" : ",", avg[ch]);
+        }
+        printf("\n");
+
+        for (int ch = 0; ch < NUM_CHANNELS; ++ch) {
+            if (!expect_enabled[ch])
+                continue;
+            if ((int)avg[ch] < expect_min[ch] || (int)avg[ch] > expect_max[ch]) {
+                fprintf(stderr, "ADC ch%d expected %d-%d, got %" PRIu32 "\n",
+                        ch, expect_min[ch], expect_max[ch], avg[ch]);
+                failed_expectation = 1;
+            }
+        }
+
         last = seq;
     }
 
     munmap((void *)base, PRUSS_SHARED_RAM_SIZE);
-    return 0;
+    return failed_expectation ? 1 : 0;
 }

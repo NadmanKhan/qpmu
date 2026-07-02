@@ -11,8 +11,8 @@
  *
  * MCP3208 timing at 3.3 V (DS21298E, conservative):
  *   Tsucs >= 100 ns  ->  20 cycles @ 200 MHz
- *   Thi   >= 200 ns  ->  40 cycles
- *   Tlo   >= 200 ns  ->  40 cycles
+ *   Thi   >= 250 ns  ->  50 cycles
+ *   Tlo   >= 250 ns  ->  50 cycles
  *   Tcsh  >= 500 ns  -> 100 cycles
  */
 
@@ -38,8 +38,8 @@ volatile register uint32_t __R31;
 /* -- MCP3208 SPI timing (PRU cycles, 200 MHz = 5 ns/cycle) ----------------- */
 
 #define DELAY_CS_SETUP 20 /* Tsucs: CS assert to first clock */
-#define DELAY_CLK_HIGH 40 /* Thi:   clock high half-period   */
-#define DELAY_CLK_LOW 40 /* Tlo:   clock low half-period    */
+#define DELAY_CLK_HIGH 100 /* Thi:   500 ns, safe down to 2.7 V */
+#define DELAY_CLK_LOW 100 /* Tlo:   500 ns, safe down to 2.7 V */
 #define DELAY_CS_HOLD 100 /* Tcsh:  CS deassert hold time    */
 
 /* Single-ended control nibbles per channel: start=1, SGL=1, D2:D0 */
