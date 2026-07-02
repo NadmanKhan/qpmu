@@ -30,7 +30,7 @@ static bool parse_csv_line(const std::string &line, Timestamp &ts, Sample_Array 
     return true;
 }
 
-CSV_File_Reader::CSV_File_Reader(const char *csv_path)
+Host_CSV_File_Reader::Host_CSV_File_Reader(const char *csv_path)
 {
     std::ifstream file(csv_path);
     if (!file.is_open()) {
@@ -78,7 +78,7 @@ CSV_File_Reader::CSV_File_Reader(const char *csv_path)
     _next_time = std::chrono::steady_clock::now();
 }
 
-bool CSV_File_Reader::read_sample_frame() noexcept
+bool Host_CSV_File_Reader::read_sample_frame() noexcept
 {
     std::this_thread::sleep_until(_next_time);
 
@@ -97,12 +97,12 @@ bool CSV_File_Reader::read_sample_frame() noexcept
     return true;
 }
 
-const Sample_Frame &CSV_File_Reader::sample_frame() const noexcept
+const Sample_Frame &Host_CSV_File_Reader::sample_frame() const noexcept
 {
     return _sample_frame;
 }
 
-const char *CSV_File_Reader::error() const noexcept
+const char *Host_CSV_File_Reader::error() const noexcept
 {
     return _error;
 }

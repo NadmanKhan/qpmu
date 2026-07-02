@@ -83,13 +83,9 @@ add_custom_target(bbb_overlays DEPENDS BB-PRU-MCP3208-00A0 BB-UART1-00A0 BB-PPS-
 
 # --- Deploy / install targets ---
 
-set(RPROC0 "/sys/class/remoteproc/remoteproc1")
-
 add_custom_target(deploy_pru0
     COMMAND cp ${PRU0_OUT} /lib/firmware/pru0_mcp3208
-    COMMAND bash -c "echo stop > ${RPROC0}/state 2>/dev/null || true"
-    COMMAND bash -c "echo pru0_mcp3208 > ${RPROC0}/firmware"
-    COMMAND bash -c "echo start > ${RPROC0}/state"
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/start-pru.sh
     DEPENDS pru0_firmware
     COMMENT "Deploying PRU0 firmware"
 )

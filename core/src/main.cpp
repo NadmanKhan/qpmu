@@ -203,7 +203,7 @@ Args parse_args(int argc, char *argv[])
 #if defined(QPMU_DAQ_AM335X_MCP3208_PRU_SHRAM)
 using DAQ_Reader_Type = qpmu::AM335x_MCP3208_PRU_SHRAM_Reader;
 #else
-using DAQ_Reader_Type = qpmu::CSV_File_Reader;
+using DAQ_Reader_Type = qpmu::Host_CSV_File_Reader;
 #endif
 
 static SPSC_Ring<Measurement_Frame, 4096> log_ring;

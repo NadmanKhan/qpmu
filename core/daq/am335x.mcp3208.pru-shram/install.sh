@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# setup.sh - deploy QPMU ADC + GPS on BeagleBone Black (Debian 13, kernel 6.x)
+# install.sh - install QPMU ADC + GPS support on BeagleBone Black.
 #
-# Run from the repo root:  sudo ./core/daq/am335x.mcp3208.pru-shram/setup.sh
+# Run from the repo root:  sudo ./core/daq/am335x.mcp3208.pru-shram/install.sh
 #
 set -euo pipefail
 
@@ -13,14 +13,13 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 OVERLAY_DIR="$SCRIPT_DIR/overlay"
 CONFIG_DIR="$SCRIPT_DIR/config"
-TOOLS_DIR="$SCRIPT_DIR/tools"
 PRU0_DIR="$SCRIPT_DIR/pru0"
 SHARED_DIR="$SCRIPT_DIR/shared"
 
 PRU_CGT="${PRU_CGT:-/usr/share/ti/cgt-pru}"
 PRU_SSP="${PRU_SSP:-$REPO_ROOT/external/pru-software-support-package}"
 
-BUILD_DIR="/tmp/qpmu-bbb-build"
+BUILD_DIR="/tmp/qpmu-am335x-mcp3208-pru-shram-build"
 
 # -- Helpers ------------------------------------------------------------------
 
@@ -59,28 +58,6 @@ phase0_preflight() {
     done
     [[ -n "$DT_INCLUDE" ]] || fail "cannot find dt-bindings/pinctrl/am33xx.h - set DT_INCLUDE"
     ok "DT includes: $DT_INCLUDE"
-
-    # PRU remoteproc
-    RPROC=""
-    for rp in /sys/class/remoteproc/remoteproc*/; do
-        name="$(cat "${rp}name" 2>/dev/null || true)"
-        if [[ "$name" == *"4a334000"* ]]; then
-            RPROC="$rp"
-            break
-        fi
-    done
-    if [[ -z "$RPROC" ]]; then
-        modprobe pru_rproc 2>/dev/null || true
-        for rp in /sys/class/remoteproc/remoteproc*/; do
-            name="$(cat "${rp}name" 2>/dev/null || true)"
-            if [[ "$name" == *"4a334000"* ]]; then
-                RPROC="$rp"
-                break
-            fi
-        done
-    fi
-    [[ -n "$RPROC" ]] || fail "cannot find PRU0 remoteproc (4a334000.pru)"
-    ok "PRU0 remoteproc: $RPROC"
 
     # PRU toolchain
     [[ -x "$PRU_CGT/bin/clpru" ]] || fail "clpru not found at $PRU_CGT/bin/clpru"
@@ -148,21 +125,10 @@ phase1_overlays() {
     fi
 }
 
-# -- Phase 2: test tool ------------------------------------------------------
+# -- Phase 2: PRU firmware ---------------------------------------------------
 
-phase2_test_tool() {
-    info "Phase 2: build shared RAM test tool"
-
-    gcc -O2 -I"$SHARED_DIR" \
-        -o "$BUILD_DIR/test_shram" "$TOOLS_DIR/test_shram.c"
-    ok "test_shram built at $BUILD_DIR/test_shram"
-    echo "    Run: sudo $BUILD_DIR/test_shram"
-}
-
-# -- Phase 3: PRU firmware ---------------------------------------------------
-
-phase3_pru() {
-    info "Phase 3: build and deploy PRU0 firmware"
+phase2_pru() {
+    info "Phase 2: build and deploy PRU0 firmware"
 
     local obj="$BUILD_DIR/pru0_main.object"
     local out="$BUILD_DIR/pru0.out"
@@ -189,26 +155,13 @@ phase3_pru() {
     ok "PRU0 linked"
 
     cp "$out" /lib/firmware/pru0_mcp3208
-    echo stop > "${RPROC}state" 2>/dev/null || true
-    "$BUILD_DIR/test_shram" --clear --frames 0 || warn "could not clear PRUSS shared RAM"
-    echo pru0_mcp3208 > "${RPROC}firmware"
-    echo start > "${RPROC}state"
-    sleep 1
-
-    local state
-    state="$(cat "${RPROC}state")"
-    [[ "$state" == "running" ]] || fail "PRU0 state: $state (expected running)"
-    ok "PRU0 firmware deployed and running"
-
-    "$BUILD_DIR/test_shram" --frames 3 --timeout-ms 3000 || \
-        fail "PRU0 started but did not publish QPMU frames"
-    ok "PRU0 shared RAM stream verified"
+    ok "PRU0 firmware installed"
 }
 
-# -- Phase 4: GPS / PPS config -----------------------------------------------
+# -- Phase 3: GPS / PPS config -----------------------------------------------
 
-phase4_gps() {
-    info "Phase 4: configure gpsd + chrony for GPS/PPS time sync"
+phase3_gps() {
+    info "Phase 3: configure gpsd + chrony for GPS/PPS time sync"
 
     # Install packages if missing
     for pkg in gpsd gpsd-clients pps-tools chrony; do
@@ -251,7 +204,7 @@ summary() {
     echo ""
     echo "  [ ] Reboot to load overlays if this was the first install:  sudo reboot"
     echo "  [ ] After reboot, verify overlays:  ls /proc/device-tree/chosen/overlays/"
-    echo "  [ ] After reboot, re-run this setup script so it clears RAM, deploys firmware, and verifies frames"
+    echo "  [ ] Start PRU0 after reboot:  sudo $SCRIPT_DIR/start-pru.sh"
     echo "  [ ] Test ADC:  sudo $BUILD_DIR/test_shram"
     echo "  [ ] Test GPS:  cgps -s"
     echo "  [ ] Test PPS:  sudo ppstest /dev/pps0"
@@ -265,7 +218,6 @@ summary() {
 
 phase0_preflight
 phase1_overlays
-phase2_test_tool
-phase3_pru
-phase4_gps
+phase2_pru
+phase3_gps
 summary

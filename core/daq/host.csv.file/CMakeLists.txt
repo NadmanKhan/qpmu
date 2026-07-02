@@ -1,4 +1,4 @@
-# C++ host library — CSV file replay (simulation / testing)
+# C++ host library - CSV file replay (default host backend / tests)
 add_library(qpmu_daq STATIC
     reader.cpp
 )
