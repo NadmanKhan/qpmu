@@ -60,7 +60,14 @@ phase0_preflight() {
 
     # DT include path
     DT_INCLUDE=""
+    local kernel_series="${KERNEL%%-*}"
+    kernel_series="${kernel_series%.*}.x"
+    local kernel_dt_include="/opt/source/dtb-${kernel_series}/include"
+    if [[ -f "$kernel_dt_include/dt-bindings/pinctrl/am33xx.h" ]]; then
+        DT_INCLUDE="$kernel_dt_include"
+    fi
     for candidate in /opt/source/dtb-*/include; do
+        [[ -n "$DT_INCLUDE" ]] && break
         if [[ -f "$candidate/dt-bindings/pinctrl/am33xx.h" ]]; then
             DT_INCLUDE="$candidate"
             break
