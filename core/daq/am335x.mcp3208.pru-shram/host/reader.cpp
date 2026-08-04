@@ -50,6 +50,8 @@ AM335x_MCP3208_PRU_SHRAM_Reader::AM335x_MCP3208_PRU_SHRAM_Reader(AM335x_MCP3208_
     : _mapped(other._mapped),
       _shared(other._shared),
       _last_seq(other._last_seq),
+      _buffer(other._buffer),
+      _scan_index(other._scan_index),
       _sample_frame(other._sample_frame),
       _utc_offset(other._utc_offset),
       _calibration_seq(other._calibration_seq)
@@ -74,36 +76,40 @@ bool AM335x_MCP3208_PRU_SHRAM_Reader::read_sample_frame() noexcept
         return false;
     }
 
-    std::uint32_t seq;
-    const auto start = std::chrono::steady_clock::now();
-    const auto start_heartbeat = _shared->heartbeat;
-    while ((seq = _shared->seq) == _last_seq) {
-        if (std::chrono::steady_clock::now() - start >= std::chrono::seconds(2)) {
-            const auto heartbeat = _shared->heartbeat;
-            std::snprintf(_error, sizeof(_error),
-                          "PRU not publishing frames (seq=%u, heartbeat=%u->%u, status=%u, sample=%u)",
-                          _last_seq, start_heartbeat, heartbeat, _shared->status,
-                          _shared->sample_index);
-            return false;
+    if (_scan_index >= NUM_SCANS) {
+        std::uint32_t seq;
+        const auto start = std::chrono::steady_clock::now();
+        const auto start_heartbeat = _shared->heartbeat;
+        while ((seq = _shared->seq) == _last_seq) {
+            if (std::chrono::steady_clock::now() - start >= std::chrono::seconds(2)) {
+                const auto heartbeat = _shared->heartbeat;
+                std::snprintf(_error, sizeof(_error),
+                              "PRU not publishing frames (seq=%u, heartbeat=%u->%u, status=%u, sample=%u)",
+                              _last_seq, start_heartbeat, heartbeat, _shared->status,
+                              _shared->sample_index);
+                return false;
+            }
         }
+
+        const volatile Sample_Buffer *buf = &_shared->buf[seq & 1];
+        std::memcpy(&_buffer, (const void *)buf, sizeof(_buffer));
+        _scan_index = 0;
+        _last_seq = seq;
+
+        if (seq - _calibration_seq > 1000)
+            calibrate_utc_offset();
     }
 
-    const volatile Sample_Buffer *buf = &_shared->buf[seq & 1];
-
-    _sample_frame.timestamp = static_cast<Timestamp>(buf->timestamp_ns) + _utc_offset;
-    if (seq - _calibration_seq > 1000)
-        calibrate_utc_offset();
-
+    constexpr Timestamp sample_period_ns = Time_Resolution / QPMU_PRU_SAMPLE_RATE_HZ;
+    _sample_frame.timestamp = static_cast<Timestamp>(_buffer.timestamp_ns) + _utc_offset
+                            + static_cast<Timestamp>(_scan_index) * sample_period_ns;
     for (std::size_t ch = 0; ch < Signal_Infos.size(); ++ch) {
-        std::uint32_t sum = 0;
-        for (std::size_t scan = 0; scan < NUM_SCANS; ++scan) {
-            sum += buf->samples[scan * NUM_CHANNELS + ch];
-        }
-        _sample_frame.sample_array[ch] = static_cast<Sample>(sum / NUM_SCANS);
+        _sample_frame.sample_array[ch] =
+                _buffer.samples[_scan_index * NUM_CHANNELS + ch];
     }
 
     ++_sample_frame.seq_num;
-    _last_seq = seq;
+    ++_scan_index;
 
     return true;
 }

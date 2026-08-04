@@ -216,7 +216,6 @@ summary() {
     echo ""
     echo "  [ ] Reboot to load overlays if this was the first install:  sudo reboot"
     echo "  [ ] After reboot, start PRU0 and verify pinmux:  sudo $SCRIPT_DIR/start-pru.sh"
-    echo "  [ ] Verify ADC ranges:  sudo $SCRIPT_DIR/start-pru.sh --expect 0:MIN:MAX"
     echo "  [ ] Test GPS:  cgps -s"
     echo "  [ ] Test PPS:  sudo ppstest /dev/pps0"
     echo "  [ ] Verify chrony:  chronyc sources -v"

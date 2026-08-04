@@ -37,10 +37,13 @@ volatile register uint32_t __R31;
 
 /* -- MCP3208 SPI timing (PRU cycles, 200 MHz = 5 ns/cycle) ----------------- */
 
-#define DELAY_CS_SETUP 20 /* Tsucs: CS assert to first clock */
-#define DELAY_CLK_HIGH 100 /* Thi:   500 ns, safe down to 2.7 V */
-#define DELAY_CLK_LOW 100 /* Tlo:   500 ns, safe down to 2.7 V */
+#define DELAY_CS_SETUP 100 /* Tsucs: CS assert to first clock */
+#define DELAY_CLK_HIGH 500 /* Thi:   2.5 us, allows ADC input settling */
+#define DELAY_CLK_LOW 500 /* Tlo:   2.5 us, allows ADC input settling */
 #define DELAY_CS_HOLD 100 /* Tcsh:  CS deassert hold time    */
+#define PRU_CYCLES_PER_SECOND 200000000U
+#define SCAN_PERIOD_CYCLES \
+    ((PRU_CYCLES_PER_SECOND + (QPMU_PRU_SAMPLE_RATE_HZ / 2U)) / QPMU_PRU_SAMPLE_RATE_HZ)
 
 /* Single-ended control nibbles per channel: start=1, SGL=1, D2:D0 */
 static const uint8_t channel_ctrl[NUM_CHANNELS] = {
@@ -78,13 +81,13 @@ static uint16_t mcp3208_read(uint8_t ctrl)
         __delay_cycles(DELAY_CLK_HIGH);
     }
 
-    /* Null/sample clock */
+    /* Complete sample/hold. The next sampled bit is the null bit. */
     __R30 &= ~PIN_SCLK;
     __delay_cycles(DELAY_CLK_LOW);
     __R30 |= PIN_SCLK;
     __delay_cycles(DELAY_CLK_HIGH);
 
-    /* 13 clocks: null bit + B11..B0 (MSB first) */
+    /* 13 clocks: null bit + B11..B0 (MSB first). */
     for (i = 0; i < 13; i++) {
         __R30 &= ~PIN_SCLK;
         __delay_cycles(DELAY_CLK_LOW);
@@ -100,6 +103,12 @@ static uint16_t mcp3208_read(uint8_t ctrl)
 /* -- 64-bit timestamp from PRU0 cycle counter (200 MHz = 5 ns/cycle) ------- */
 
 static uint64_t accumulated_cycles;
+
+static void wait_until_cycle(uint32_t target)
+{
+    while ((int32_t)(PRU0_CTRL.CYCLE - target) < 0) {
+    }
+}
 
 static uint64_t timestamp_ns(void)
 {
@@ -119,8 +128,10 @@ static uint64_t timestamp_ns(void)
 int main(void)
 {
     uint32_t seq = 0;
+    uint32_t next_scan_cycle;
     volatile Sample_Buffer *buf;
-    int i;
+    int scan;
+    int ch;
 
     CT_CFG.SYSCFG_bit.STANDBY_INIT = 0; /* enable OCP master port */
 
@@ -145,10 +156,16 @@ int main(void)
         buf = &shared->buf[seq & 1];
 
         buf->timestamp_ns = timestamp_ns();
-        for (i = 0; i < SAMPLES_PER_BUF; i++) {
-            shared->sample_index = (uint32_t)i;
-            buf->samples[i] = mcp3208_read(channel_ctrl[i % NUM_CHANNELS]);
-            __delay_cycles(DELAY_CS_HOLD);
+        next_scan_cycle = PRU0_CTRL.CYCLE;
+        for (scan = 0; scan < NUM_SCANS; scan++) {
+            for (ch = 0; ch < NUM_CHANNELS; ch++) {
+                int sample = scan * NUM_CHANNELS + ch;
+                shared->sample_index = (uint32_t)sample;
+                buf->samples[sample] = mcp3208_read(channel_ctrl[ch]);
+                __delay_cycles(DELAY_CS_HOLD);
+            }
+            next_scan_cycle += SCAN_PERIOD_CYCLES;
+            wait_until_cycle(next_scan_cycle);
         }
 
         shared->status = QPMU_PRU_STATUS_PUBLISHED;

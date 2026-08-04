@@ -45,3 +45,29 @@ cmake --build build-debug   # or build-release
 ```
 
 The built application will be in `build-debug/app/` (or `build-release/app/`).
+
+## BeagleBone Black DAQ
+
+Configure and build the service and PRU firmware with the AM335x/MCP3208
+backend:
+
+```bash
+cmake -S . -B build \
+  -DQPMU_DAQ=am335x.mcp3208.pru-shram \
+  -DBUILD_TESTING=OFF
+cmake --build build --target qpmu_service pru0_firmware
+sudo install -m 0644 \
+  build/core/daq/am335x.mcp3208.pru-shram/pru0/pru0.out \
+  /lib/firmware/pru0_mcp3208
+```
+
+After installing the firmware, initialize PRU0 once after each reboot, then
+start the service. The PRU backend samples at a fixed 1200 Hz.
+
+```bash
+sudo ./core/daq/am335x.mcp3208.pru-shram/start-pru.sh
+sudo ./build/core/qpmu_service -v
+```
+
+Use repeatable `--scale NAME:FACTOR` options to apply channel calibration to
+the processed phasor values sent to the GUI and logger.

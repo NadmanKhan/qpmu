@@ -29,6 +29,8 @@ private:
     void *_mapped = nullptr;
     const volatile Shared_State *_shared = nullptr;
     std::uint32_t _last_seq = 0;
+    Sample_Buffer _buffer = {};
+    std::size_t _scan_index = NUM_SCANS;
     Sample_Frame _sample_frame = {};
     char _error[256] = {};
     std::int64_t _utc_offset = 0;

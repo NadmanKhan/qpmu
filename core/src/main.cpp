@@ -1,6 +1,8 @@
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 #include "qpmu/concurrency/spsc_ring.hpp"
 #include "qpmu/concurrency/worker.hpp"
@@ -28,6 +30,9 @@ struct Args
     const char *data_file = nullptr;
 #endif
     qpmu::DSP_Config dsp_config;
+    std::array<qpmu::Float, qpmu::Signal_Infos.size()> phasor_scale{
+        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f
+    };
     const char *log_file = nullptr;
     std::size_t log_size_mb = 8192; // 8 GB
 };
@@ -57,6 +62,7 @@ void print_usage(const char *program_name)
             "  --freq-median N         Frequency median filter window (default: 7, 0 to disable)\n"
             "  --rocof-median N        ROCOF median filter window (default: 11, 0 to disable)\n"
             "  --rocof-window N        ROCOF regression window (default: 9, min 3)\n"
+            "  --scale NAME:FACTOR     Scale phasor magnitude, e.g. VA:1.23 (repeatable)\n"
             "\n"
             "  -h, --help              Show this help message\n"
             "\nExamples:\n"
@@ -160,6 +166,32 @@ Args parse_args(int argc, char *argv[])
                 std::fprintf(stderr, "Error: --rocof-window must be 3-31\n");
                 std::exit(1);
             }
+        } else if (std::strcmp(argv[i], "--scale") == 0) {
+            if (++i >= argc) {
+                std::fprintf(stderr, "Error: %s requires NAME:FACTOR\n", argv[i - 1]);
+                std::exit(1);
+            }
+            std::string spec = argv[i];
+            const auto sep = spec.find(':');
+            if (sep == std::string::npos) {
+                std::fprintf(stderr, "Error: --scale requires NAME:FACTOR\n");
+                std::exit(1);
+            }
+
+            const std::string name = spec.substr(0, sep);
+            const auto scale = static_cast<qpmu::Float>(std::atof(spec.c_str() + sep + 1));
+            bool found = false;
+            for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
+                if (name == Signal_Infos[channel].name) {
+                    args.phasor_scale[channel] = scale;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found || scale <= 0) {
+                std::fprintf(stderr, "Error: invalid --scale %s\n", argv[i]);
+                std::exit(1);
+            }
         } else if (std::strcmp(argv[i], "--log-file") == 0) {
             if (++i >= argc) {
                 std::fprintf(stderr, "Error: %s requires an argument\n", argv[i - 1]);
@@ -212,7 +244,7 @@ namespace {
 
 void print_verbose_sample_header()
 {
-    std::printf("\neach channel is raw/proc; proc = phasor magnitude; G=* means sent to GUI\n");
+    std::printf("\neach channel is raw/proc; proc = scaled phasor magnitude; G=* means sent to GUI\n");
     std::printf("%8s%c |", "seq", 'G');
     for (const auto &signal : Signal_Infos) {
         std::printf(" %8s", signal.name);
@@ -224,6 +256,17 @@ void print_verbose_sample_header()
         std::printf(" %8s", "--------");
     }
     std::printf("\n");
+}
+
+void print_compact_magnitude(double magnitude)
+{
+    if (magnitude < 10.0) {
+        std::printf("%3.1f", magnitude);
+    } else if (magnitude < 1000.0) {
+        std::printf("%-3.0f", magnitude);
+    } else {
+        std::printf("%.0f", magnitude);
+    }
 }
 
 void print_verbose_sample_row(const Sample_Frame &sample_frame,
@@ -238,15 +281,22 @@ void print_verbose_sample_row(const Sample_Frame &sample_frame,
     std::printf("%8zu%c |", sample_frame.seq_num, published_to_gui ? '*' : '.');
     for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
         const auto &estimate = measurement_frame.estimate_array[channel];
-        std::printf(" %4u/%3.0f",
-                    static_cast<unsigned>(sample_frame.sample_array[channel]),
-                    static_cast<double>(std::abs(estimate.phasor)));
+        std::printf(" %4u/", static_cast<unsigned>(sample_frame.sample_array[channel]));
+        print_compact_magnitude(static_cast<double>(std::abs(estimate.phasor)));
     }
     std::printf("\n");
     std::fflush(stdout);
 }
 
 } // namespace
+
+void apply_phasor_scale(Measurement_Frame &measurement_frame,
+                        const std::array<Float, Signal_Infos.size()> &phasor_scale)
+{
+    for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
+        measurement_frame.estimate_array[channel].phasor *= phasor_scale[channel];
+    }
+}
 
 template <qpmu::DAQ_Reader Reader, std::size_t F_Nominal, std::size_t F_Sampling>
 int run_service(const Args &args, Reader &&sample_reader)
@@ -299,6 +349,7 @@ int run_service(const Args &args, Reader &&sample_reader)
             continue;
         }
         auto measurement_frame = dsp_engine.measurement_frame();
+        apply_phasor_scale(measurement_frame, args.phasor_scale);
         const bool published_to_gui = sample_frame.seq_num % args.gui_decimation == 0;
 
         // 3. Publish to GUI with decimation
@@ -324,6 +375,14 @@ int main(int argc, char *argv[])
 {
     Args args = parse_args(argc, argv);
 
+#if defined(QPMU_DAQ_AM335X_MCP3208_PRU_SHRAM)
+    if (args.sampling_rate != QPMU_PRU_SAMPLE_RATE_HZ) {
+        std::fprintf(stderr, "Error: AM335x PRU DAQ samples at %u Hz; use -s %u\n",
+                     QPMU_PRU_SAMPLE_RATE_HZ, QPMU_PRU_SAMPLE_RATE_HZ);
+        return 1;
+    }
+#endif
+
     // Print startup configuration
     std::fprintf(stderr, "QPMU Core Service\n");
     std::fprintf(stderr, "=================\n");
@@ -346,6 +405,13 @@ int main(int argc, char *argv[])
     std::fprintf(stderr, "  Freq median:     %zu\n", args.dsp_config.freq_median_window);
     std::fprintf(stderr, "  ROCOF median:    %zu\n", args.dsp_config.rocof_median_window);
     std::fprintf(stderr, "  ROCOF regr. win: %zu\n", args.dsp_config.rocof_regression_window);
+    std::fprintf(stderr, "  Scale:           ");
+    for (std::size_t channel = 0; channel < Signal_Infos.size(); ++channel) {
+        std::fprintf(stderr, "%s%s=%.6g", channel == 0 ? "" : " ",
+                     Signal_Infos[channel].name,
+                     static_cast<double>(args.phasor_scale[channel]));
+    }
+    std::fprintf(stderr, "\n");
     std::fprintf(stderr, "\nData Logging:\n");
     if (args.log_file) {
         double retention_hours = (double(args.log_size_mb) * 1024.0 * 1024.0)
